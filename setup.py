@@ -11,10 +11,10 @@ setup(
     packages=find_packages(),
     zip_safe=False,
     install_requires=['numpy', 'matplotlib', 'astropy', 'python-cpl',
-                      'mpdaf', 'sqlalchemy', 'dataset', 'PyYAML'],
-    # entry_points={
-    #     'console_scripts': [
-    #         'create_db = mydrs.reduction.create_db:main',
-    #     ]
-    # },
+                      'mpdaf', 'sqlalchemy', 'dataset', 'PyYAML', 'click'],
+    entry_points={
+        'console_scripts': [
+            'musered=musered.__main__:main',
+        ]
+    },
 )
