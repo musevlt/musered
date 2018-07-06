@@ -4,7 +4,7 @@ import os
 import sys
 from astroquery.eso import Eso
 
-from .utils import load_yaml_config
+from .musered import MuseRed
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -29,51 +29,49 @@ def cli(ctx, debug, list_datasets, settings):
         logger.error("settings file '%s' not found", settings)
         sys.exit(1)
 
-    logger.debug('loading settings from %s', settings)
-    ctx.obj = conf = load_yaml_config(settings)
-    conf['debug'] = debug
+    ctx.obj = mr = MuseRed(settings)
+    # mr.debug = debug
 
     if list_datasets:
-        logger.info('Available datasets:')
-        for name in conf['datasets']:
-            logger.info('- %s', name)
-            sys.exit(0)
+        mr.list_datasets()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('dataset', nargs=-1)
 @click.option('--username', help='username')
-@click.pass_obj
-def retrieve_data(conf, dataset, username):
+@click.pass_context
+def retrieve_data(ctx, dataset, username):
     """Retrieve files from DATASET from the ESO archive."""
 
-    params = conf['retrieve_data']
+    mr = ctx.obj
+    params = mr.conf['retrieve_data']
     if username is not None:
         params = {**params, 'username': username}
 
     eso = Eso()
     eso.login(**params)
+    os.makedirs(mr.rawpath, exist_ok=True)
 
-    destination = conf['paths']['raw']
-    datasets = conf['datasets']
     for ds in dataset:
-        if ds not in datasets:
+        if ds not in mr.datasets:
             logger.error("dataset '%s' not found", ds)
             sys.exit(1)
 
-        table = eso.query_instrument('muse', column_filters=datasets[ds])
+        table = eso.query_instrument(
+            'muse', column_filters=mr.datasets[ds]['filters'])
         logger.info('Found %d exposures', len(table))
         logger.debug('\n'.join(table['DP.ID']))
-
-        eso.retrieve_data(table['DP.ID'], destination=destination,
+        eso.retrieve_data(table['DP.ID'], destination=mr.rawpath,
                           with_calib='raw')
+
+    # ctx.invoke(update_database)
 
 
 cli.add_command(retrieve_data)
 
 
 def main():
-    cli(obj={}, prog_name='musered')
+    cli(prog_name='musered')
 
 
 if __name__ == '__main__':
