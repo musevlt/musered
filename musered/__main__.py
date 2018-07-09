@@ -2,9 +2,9 @@ import click
 import logging
 import os
 import sys
-from astroquery.eso import Eso
 
 from .musered import MuseRed
+from .scripts.retrieve_data import retrieve_data
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -36,38 +36,9 @@ def cli(ctx, debug, list_datasets, settings):
         mr.list_datasets()
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('dataset', nargs=-1)
-@click.option('--username', help='username')
-@click.pass_context
-def retrieve_data(ctx, dataset, username):
-    """Retrieve files from DATASET from the ESO archive."""
-
-    mr = ctx.obj
-    params = mr.conf['retrieve_data']
-    if username is not None:
-        params = {**params, 'username': username}
-
-    eso = Eso()
-    eso.login(**params)
-    os.makedirs(mr.rawpath, exist_ok=True)
-
-    for ds in dataset:
-        if ds not in mr.datasets:
-            logger.error("dataset '%s' not found", ds)
-            sys.exit(1)
-
-        table = eso.query_instrument(
-            'muse', column_filters=mr.datasets[ds]['filters'])
-        logger.info('Found %d exposures', len(table))
-        logger.debug('\n'.join(table['DP.ID']))
-        eso.retrieve_data(table['DP.ID'], destination=mr.rawpath,
-                          with_calib='raw')
-
-    # ctx.invoke(update_database)
-
-
-cli.add_command(retrieve_data)
+for cmd in (retrieve_data, ):
+    cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
+    cli.add_command(cmd)
 
 
 def main():
