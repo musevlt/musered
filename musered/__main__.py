@@ -43,6 +43,7 @@ def cli(ctx, debug, list_datasets, settings):
 
     if list_datasets:
         mr.list_datasets()
+        sys.exit(0)
 
 
 for cmd in (retrieve_data, update_db):

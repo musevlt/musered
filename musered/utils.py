@@ -2,9 +2,11 @@ import dataset
 import datetime
 import logging
 import os
+import numpy as np
 import re
 import yaml
 
+from astropy.table import Table, MaskedColumn
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, pool
@@ -49,6 +51,31 @@ def load_db(filename, **kwargs):
         cursor.close()
 
     return db
+
+
+def load_table(db, name, indexes=None):
+    logger = logging.getLogger(__name__)
+    table = db[name]
+    first = table.find_one()
+    t = Table(list(zip(*[list(o.values()) for o in table.find()])),
+              names=list(first.keys()), masked=True)
+
+    for name, col in t.columns.items():
+        if col.dtype is np.dtype(object):
+            try:
+                data = col.data.data.astype(float)
+            except Exception:
+                pass
+            else:
+                logger.debug('Converted %s column to float', col.name)
+                c = MaskedColumn(name=col.name, dtype=float, fill_value=np.nan,
+                                 data=np.ma.masked_invalid(data))
+                t.replace_column(name, c)
+        elif np.issubdtype(col.dtype, np.floating):
+            t[name] = np.ma.masked_greater_equal(t[name], 1e20)
+    if indexes:
+        t.add_index(indexes)
+    return t
 
 
 def pprint_record(records):
