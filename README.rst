@@ -4,16 +4,20 @@ MUSE Data Reduction
 .. note::
    This is a work in progress !!
 
-The aim of this project is to provide tools for doing an "advanced" data
-reduction, similar to the HUDF one.
+The aim of this project is to provide tools to reduce more easily MUSE
+datasets, and for doing an "advanced" data reduction, similar to the HUDF one.
+
+First, clone the repository and install the package::
+
+    pip install .
 
 Settings
 --------
 
 All the configuration must be done in a YAML file, by default ``settings.yml``
 in the current directory. This file contains all the settings about
-directories, parameters for the musered commands, and for the reduction
-recipes.
+directories, global options, parameters for the *musered* commands, and for the
+reduction recipes.
 
 One important thing in the organisation of the reduction is the concept of
 *dataset*. This defines a set of files that are retrieved and reduced together.
@@ -38,7 +42,7 @@ this::
 
     from astroquery.eso import Eso
     eso = Eso()
-    eso.query_instrument('midi', help=True)
+    eso.query_instrument('muse', help=True)
 
 Once a dataset is defined in the settings file, its data files can be retrieved
 with this command::
@@ -52,9 +56,9 @@ files for different datasets.
 Ingesting metadata in a database
 --------------------------------
 
-Then the next step is to ingest FITS keywords in a database. This step is
-triggered automatically by the ``retrieve_data`` command, but it can also be
-run manually with::
+Then the next step is to ingest FITS keywords in a SQLite database. This step
+is triggered automatically by the ``retrieve_data`` command, but it can also be
+run manually if needed, with::
 
     musered update_db
 
