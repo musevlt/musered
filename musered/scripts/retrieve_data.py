@@ -12,12 +12,11 @@ from astroquery.eso import Eso
               help='print the query result but do not retrieve files')
 @click.option('--no-update-db', is_flag=True,
               help='do not update the database')
-@click.pass_context
-def retrieve_data(ctx, dataset, username, dry_run, no_update_db):
+@click.pass_obj
+def retrieve_data(mr, dataset, username, dry_run, no_update_db):
     """Retrieve files from DATASET from the ESO archive."""
 
     logger = logging.getLogger(__name__)
-    mr = ctx.obj
     params = mr.conf['retrieve_data']
     if username is not None:
         params = {**params, 'username': username}
@@ -42,5 +41,4 @@ def retrieve_data(ctx, dataset, username, dry_run, no_update_db):
                               with_calib='raw')
 
     if not no_update_db:
-        from .update_db import update_db
-        ctx.invoke(update_db)
+        mr.update_db()
