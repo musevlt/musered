@@ -5,6 +5,7 @@ import sys
 
 from .musered import MuseRed
 from .scripts.retrieve_data import retrieve_data
+from .scripts.update_db import update_db
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -25,6 +26,14 @@ def cli(ctx, debug, list_datasets, settings):
         logging.getLogger('musered').setLevel('DEBUG')
         logging.getLogger('astropy').setLevel('DEBUG')
 
+        def run_pdb(type, value, tb):
+            import pdb
+            import traceback
+            traceback.print_exception(type, value, tb)
+            pdb.pm()
+
+        sys.excepthook = run_pdb
+
     if not os.path.isfile(settings):
         logger.error("settings file '%s' not found", settings)
         sys.exit(1)
@@ -36,7 +45,7 @@ def cli(ctx, debug, list_datasets, settings):
         mr.list_datasets()
 
 
-for cmd in (retrieve_data, ):
+for cmd in (retrieve_data, update_db):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 

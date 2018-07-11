@@ -7,8 +7,9 @@ from astroquery.eso import Eso
 
 @click.argument('dataset', nargs=-1)
 @click.option('--username', help='username')
+@click.option('--dry-run', is_flag=True)
 @click.pass_context
-def retrieve_data(ctx, dataset, username):
+def retrieve_data(ctx, dataset, username, dry_run):
     """Retrieve files from DATASET from the ESO archive."""
 
     logger = logging.getLogger(__name__)
@@ -30,7 +31,10 @@ def retrieve_data(ctx, dataset, username):
             'muse', column_filters=mr.datasets[ds]['filters'])
         logger.info('Found %d exposures', len(table))
         logger.debug('\n'.join(table['DP.ID']))
-        eso.retrieve_data(table['DP.ID'], destination=mr.rawpath,
-                          with_calib='raw')
+        if dry_run:
+            print(table)
+        else:
+            eso.retrieve_data(table['DP.ID'], destination=mr.rawpath,
+                              with_calib='raw')
 
     # ctx.invoke(update_database)

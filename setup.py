@@ -10,7 +10,7 @@ setup(
     version='0.1dev',
     packages=find_packages(),
     zip_safe=False,
-    install_requires=['numpy', 'matplotlib', 'astropy', 'python-cpl',
+    install_requires=['numpy', 'matplotlib', 'astropy', 'python-cpl', 'tqdm',
                       'mpdaf', 'sqlalchemy', 'dataset', 'PyYAML', 'click'],
     entry_points={
         'console_scripts': [
