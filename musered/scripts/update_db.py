@@ -4,6 +4,7 @@ import os
 from astropy.io import fits
 from collections import OrderedDict
 from os.path import basename
+from sqlalchemy import sql
 
 from ..utils import get_exp_name, exp2datetime, NOON, ONEDAY, ProgressBar
 
@@ -77,13 +78,33 @@ def iter_fits_files(path):
                 yield os.path.join(root, f)
 
 
-def get_keywords(filenames, bar=None):
+@click.pass_context
+def update_db(ctx):
+    """Create and update the database containing FITS keywords."""
+
+    logger = logging.getLogger(__name__)
+    mr = ctx.obj
+    table = mr.db['raw']
+    flist = list(iter_fits_files(mr.rawpath))
+    logger.info('found %d FITS files', len(flist))
+
     keywords = [k.split('/')[0].strip()
                 for k in FITS_KEYWORDS.splitlines() if k]
 
-    for f in filenames:
-        # hdr = fits.getheader(f, ext=0, ignore_missing_end=True)
+    # get the list of files already in the database
+    try:
+        arcfiles = [x[0] for x in mr.db.executable.execute(
+            sql.select([table.table.c.ARCFILE]))]
+    except Exception:
+        arcfiles = []
+
+    nskip = 0
+    rows = []
+    for f in ProgressBar(flist):
         hdr = fits.getheader(f, ext=0)
+        if hdr['ARCFILE'] in arcfiles:
+            nskip += 1
+            continue
 
         # if tablename in ('std_response', 'std_telluric'):
         #     match = NIGHT_PATTERN.search(f)
@@ -92,7 +113,7 @@ def get_keywords(filenames, bar=None):
 
         # match = GTO_PATTERN.search(f)
         # run = match.groups()[0] if match else ''
-        keys = OrderedDict([
+        row = OrderedDict([
             ('name', get_exp_name(f)),
             ('filename', basename(f)),
             # ('filepath', f),
@@ -105,29 +126,20 @@ def get_keywords(filenames, bar=None):
             # Same as MuseWise
             if date.time() < NOON:
                 night -= ONEDAY
-            keys['night'] = night
+            row['night'] = night
 
         for key in keywords:
             col = key[4:] if key.startswith('ESO ') else key
             col = col.replace(' ', '_').replace('-', '_')
             val = hdr.get(key)
             if val is not None:
-                keys[col] = val
+                row[col] = val
 
-        if bar:
-            bar.update()
-        yield keys
+        rows.append(row)
 
+    table.insert_many(rows)
+    logger.info('inserted %d rows, skipped %d', len(rows), nskip)
 
-@click.pass_context
-def update_db(ctx):
-    """Ingest FITS keywords."""
-
-    logger = logging.getLogger(__name__)
-    mr = ctx.obj
-    table = mr.db['raw']
-    flist = list(iter_fits_files(mr.rawpath))
-    logger.info('found %d FITS files', len(flist))
-
-    with ProgressBar(total=len(flist)) as bar:
-        table.insert_many(get_keywords(flist, bar=bar))
+    for name in ('name', 'ARCFILE'):
+        if not table.has_index([name]):
+            table.create_index([name])
