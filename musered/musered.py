@@ -7,9 +7,6 @@ from sqlalchemy import sql
 from .utils import (load_yaml_config, load_db,
                     get_exp_name, exp2datetime, NOON, ONEDAY, ProgressBar)
 
-# ESO INS TEMP4 NAME = 'Ambient Temperature' / Temperature sensor name
-# ESO INS TEMP7 NAME = 'Right IFU Temperature 1' / Temperature sensor nam
-
 FITS_KEYWORDS = """
 ARCFILE                  / Archive File Name
 DATE-OBS                 / Observing date
@@ -24,7 +21,9 @@ ESO DPR CATG             / Observation category
 ESO DPR TYPE             / Observation type
 ESO INS DROT POSANG      / [deg] Derotator position angle
 ESO INS MODE             / Instrument mode used.
+ESO INS TEMP4 VAL        / Ambient Temperature
 ESO INS TEMP7 VAL        / Right IFU Temperature 1
+ESO INS TEMP11 VAL       / Left IFU Temperature 1
 ESO OBS NAME             / OB name
 ESO OBS START            / OB start time
 ESO OBS TARG NAME        / OB target name
@@ -88,7 +87,7 @@ class MuseRed:
         for name in self.datasets:
             self.logger.info('- %s', name)
 
-    def update_db(self):
+    def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
 
         flist = []
@@ -112,7 +111,7 @@ class MuseRed:
         rows = []
         for f in ProgressBar(flist):
             hdr = fits.getheader(f, ext=0)
-            if hdr['ARCFILE'] in arcfiles:
+            if not force and hdr['ARCFILE'] in arcfiles:
                 nskip += 1
                 continue
 
