@@ -46,6 +46,9 @@ setup(
     zip_safe=False,
     install_requires=['numpy', 'matplotlib', 'astropy', 'python-cpl', 'tqdm',
                       'mpdaf', 'sqlalchemy', 'dataset', 'PyYAML', 'click'],
+    extras_require={
+        'all': ['click_completion'],
+    },
     entry_points={
         'console_scripts': [
             'musered=musered.__main__:main',
