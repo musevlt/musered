@@ -114,7 +114,9 @@ class MuseRed:
         for obj, count in sorted(Counter(objects).items()):
             # skip uninteresting objects
             if obj in ('Bad pixel table for MUSE (BADPIX_TABLE)',
-                       'Mask to signify the vignetted region in the MUSE FOV'):
+                       'Mask to signify the vignetted region in the MUSE FOV',
+                       'Astrometric calibration (ASTROMETRY)',
+                       'HgCd+Ne+Xe LINE_CATALOG for MUSE'):
                 continue
             print(f'- {obj:15s} : {count}')
 
