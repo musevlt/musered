@@ -31,7 +31,7 @@ def retrieve_data(mr, dataset, username, dry_run, no_update_db):
             sys.exit(1)
 
         table = eso.query_instrument(
-            'muse', column_filters=mr.datasets[ds]['filters'])
+            'muse', column_filters=mr.datasets[ds]['archive_filter'])
         logger.info('Found %d exposures', len(table))
         logger.debug('\n'.join(table['DP.ID']))
         if dry_run:

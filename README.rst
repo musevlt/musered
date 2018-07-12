@@ -25,20 +25,20 @@ For instance to define a `IC4406` dataset (observed during WFM-AO
 commissioning)::
 
     datasets:
-        IC4406:
-            filters:
-            # column_filters passed to astroquery.Eso.query_instrument
-            obs_targ_name: IC4406
+      IC4406:
+        archive_filter:
+          # "column_filters" passed to astroquery.Eso.query_instrument
+          obs_targ_name: IC4406
 
-See below for the meaning of *filters*.
+See below for the meaning of *archive_filter*.
 
 Data retrieval
 --------------
 
 Retrieving a dataset is done with `Astroquery
 <https://astroquery.readthedocs.io/en/latest/eso/eso.html>`_. To find all the
-possible query options for Muse, to use in the *filters* for your dataset, use
-this::
+possible query options for Muse, to use in the *archive_filter* for your
+dataset, use this::
 
     from astroquery.eso import Eso
     eso = Eso()
