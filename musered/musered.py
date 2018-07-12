@@ -1,7 +1,9 @@
+import cpl
 import logging
 import os
 from astropy.io import fits
-from collections import OrderedDict
+from collections import OrderedDict, Counter
+from mpdaf.log import ColoredFormatter
 from sqlalchemy import sql
 
 from .utils import (load_yaml_config, load_db,
@@ -78,20 +80,52 @@ class MuseRed:
         self.conf = load_yaml_config(settings_file)
 
         self.datasets = self.conf['datasets']
-        self.rawpath = self.conf['paths']['raw']
+        self.raw_path = self.conf['raw_path']
         self.db = load_db(self.conf['db'])
         self.raw = self.db['raw']
 
     def list_datasets(self):
-        self.logger.info('Available datasets:')
+        """Print the list of datasets."""
         for name in self.datasets:
-            self.logger.info('- %s', name)
+            print(f'- {name}')
+
+    def list_nights(self):
+        """Print the list of nights."""
+        for x in self.select_column('night', distinct=True):
+            print(f'- {x:%Y-%m-%d}')
+
+    def info(self):
+        print(f'{self.raw.count()} files\n')
+
+        print('Datasets:')
+        self.list_datasets()
+        print('\nNights:')
+        objects = self.select_column('night')
+        for obj, count in sorted(Counter(objects).items()):
+            print(f'- {obj:%Y-%m-%d} : {count}')
+
+        print('\nObjects:')
+        objects = self.select_column('OBJECT')
+        for obj, count in sorted(Counter(objects).items()):
+            # skip uninteresting objects
+            if obj in ('Bad pixel table for MUSE (BADPIX_TABLE)',
+                       'Mask to signify the vignetted region in the MUSE FOV'):
+                continue
+            print(f'- {obj:15s} : {count}')
+
+    def select_column(self, name, notnull=True, distinct=False):
+        col = self.raw.table.c[name]
+        whereclause = col.isnot(None) if notnull else None
+        select = sql.select([col], whereclause=whereclause)
+        if distinct:
+            select = select.distinct(col)
+        return [x[0] for x in self.db.executable.execute(select)]
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
 
         flist = []
-        for root, dirs, files in os.walk(self.rawpath):
+        for root, dirs, files in os.walk(self.raw_path):
             for f in files:
                 if f.endswith(('.fits', '.fits.fz')):
                     flist.append(os.path.join(root, f))
@@ -102,8 +136,7 @@ class MuseRed:
 
         # get the list of files already in the database
         try:
-            arcfiles = [x[0] for x in self.db.executable.execute(
-                sql.select([self.raw.table.c.ARCFILE]))]
+            arcfiles = self.select_column('ARCFILE')
         except Exception:
             arcfiles = []
 
@@ -140,3 +173,26 @@ class MuseRed:
         for name in ('name', 'ARCFILE'):
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
+
+    def init_cpl(self):
+        """Load esorex.rc settings and override with the settings file."""
+
+        conf = self.conf['cpl']
+        cpl.esorex.init()
+
+        if conf['recipe_path'] is not None:
+            cpl.Recipe.path = conf['recipe_path']
+        if conf['esorex_msg'] is not None:
+            cpl.esorex.log.level = conf['esorex_msg']  # file logging
+        if conf['msg'] is not None:
+            cpl.esorex.msg.level = conf['msg']  # terminal logging
+        if conf['msg_format'] is not None:
+            cpl.esorex.msg.format = msg_format = conf['msg_format']
+            cpl.esorex.msg.handler.setFormatter(ColoredFormatter(msg_format))
+        if conf['esorex_msg_format'] is not None:
+            cpl.esorex.log.format = conf['esorex_msg_format']
+        if conf['logdir'] is not None:
+            os.makedirs(conf['logdir'], exist_ok=True)
+            # if logfilename is not None:
+            #     cpl.esorex.log.filename = '%s/%s-%s.log' % (
+            #         conf['logdir'], logfilename, datetime.now().isoformat())

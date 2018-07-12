@@ -21,11 +21,13 @@ except ImportError:
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.version_option(version='0.1')
 @click.option('--debug', is_flag=True, help='Debug mode')
+@click.option('--info', is_flag=True, help='Information about the database')
 @click.option('--list-datasets', is_flag=True, help='List datasets')
+@click.option('--list-nights', is_flag=True, help='List nights')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='Settings file, default to settings.yml')
 @click.pass_context
-def cli(ctx, debug, list_datasets, settings):
+def cli(ctx, debug, info, list_datasets, list_nights, settings):
     """Muse data reduction."""
 
     if debug:
@@ -47,9 +49,12 @@ def cli(ctx, debug, list_datasets, settings):
     ctx.obj = mr = MuseRed(settings)
     # mr.debug = debug
 
-    if list_datasets:
+    if info:
+        mr.info()
+    elif list_datasets:
         mr.list_datasets()
-        sys.exit(0)
+    elif list_nights:
+        mr.list_nights()
 
 
 for cmd in (retrieve_data, update_db):
