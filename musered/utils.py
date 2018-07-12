@@ -13,7 +13,8 @@ from sqlalchemy import event, pool
 from pprint import pprint
 
 EXP_PATTERN = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}'
-DATE_PATTERN = '%Y-%m-%dT%H:%M:%S.%f'
+DATETIME_PATTERN = '%Y-%m-%dT%H:%M:%S.%f'
+DATE_PATTERN = '%Y-%m-%d'
 NOON = datetime.time(16, 0, 0)
 ONEDAY = datetime.timedelta(days=1)
 
@@ -99,7 +100,11 @@ def get_exp_name(filename):
         return None
 
 
-def exp2datetime(exp):
+def parse_datetime(exp):
+    return datetime.datetime.strptime(exp, DATETIME_PATTERN)
+
+
+def parse_date(exp):
     return datetime.datetime.strptime(exp, DATE_PATTERN)
 
 

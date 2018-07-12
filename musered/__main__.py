@@ -5,7 +5,6 @@ import sys
 
 from .musered import MuseRed
 from .scripts.retrieve_data import retrieve_data
-from .scripts.update_db import update_db
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -57,7 +56,33 @@ def cli(ctx, debug, info, list_datasets, list_nights, settings):
         mr.list_nights()
 
 
-for cmd in (retrieve_data, update_db):
+@click.option('--force', is_flag=True, help='force update for existing rows')
+@click.pass_obj
+def update_db(mr, force):
+    """Create or update the database containing FITS keywords."""
+    mr.update_db(force=force)
+
+
+@click.option('--bias', is_flag=True, help='Run muse_bias')
+@click.option('--dark', is_flag=True, help='Run muse_dark')
+@click.option('--flat', is_flag=True, help='Run muse_flat')
+@click.pass_obj
+def process_calib(mr, bias, dark, flat):
+    """Process calibrations (bias, dark, flat).
+
+    By default, process calibrations for all nights, and all types.
+
+    """
+    run_all = not any([bias, dark, flat])
+    if bias or run_all:
+        mr.process_calib('BIAS')
+    if dark or run_all:
+        mr.process_calib('DARK')
+    if flat or run_all:
+        mr.process_calib('FLAT,LAMP')
+
+
+for cmd in (retrieve_data, update_db, process_calib):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 

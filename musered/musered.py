@@ -2,12 +2,13 @@ import cpl
 import logging
 import os
 from astropy.io import fits
+from astropy.utils.decorators import lazyproperty
 from collections import OrderedDict, Counter
 from mpdaf.log import ColoredFormatter
 from sqlalchemy import sql
 
-from .utils import (load_yaml_config, load_db,
-                    get_exp_name, exp2datetime, NOON, ONEDAY, ProgressBar)
+from .utils import (load_yaml_config, load_db, get_exp_name,
+                    parse_date, parse_datetime, NOON, ONEDAY, ProgressBar)
 
 FITS_KEYWORDS = """
 ARCFILE                  / Archive File Name
@@ -84,6 +85,10 @@ class MuseRed:
         self.db = load_db(self.conf['db'])
         self.raw = self.db['raw']
 
+    @lazyproperty
+    def nights(self):
+        return self.select_column('night', distinct=True)
+
     def list_datasets(self):
         """Print the list of datasets."""
         for name in self.datasets:
@@ -91,7 +96,7 @@ class MuseRed:
 
     def list_nights(self):
         """Print the list of nights."""
-        for x in self.select_column('night', distinct=True):
+        for x in self.nights:
             print(f'- {x:%Y-%m-%d}')
 
     def info(self):
@@ -113,10 +118,13 @@ class MuseRed:
                 continue
             print(f'- {obj:15s} : {count}')
 
-    def select_column(self, name, notnull=True, distinct=False):
+    def select_column(self, name, notnull=True, distinct=False,
+                      whereclause=None):
         col = self.raw.table.c[name]
-        whereclause = col.isnot(None) if notnull else None
-        select = sql.select([col], whereclause=whereclause)
+        wc = col.isnot(None) if notnull else None
+        if whereclause is not None:
+            wc = sql.and_(whereclause, wc)
+        select = sql.select([col], whereclause=wc)
         if distinct:
             select = select.distinct(col)
         return [x[0] for x in self.db.executable.execute(select)]
@@ -149,10 +157,11 @@ class MuseRed:
                 continue
 
             row = OrderedDict([('name', get_exp_name(f)),
-                               ('filename', os.path.basename(f))])
+                               ('filename', os.path.basename(f)),
+                               ('path', f)])
 
             if 'DATE-OBS' in hdr:
-                date = exp2datetime(hdr['DATE-OBS'])
+                date = parse_datetime(hdr['DATE-OBS'])
                 row['night'] = date.date()
                 # Same as MuseWise
                 if date.time() < NOON:
@@ -169,6 +178,9 @@ class MuseRed:
 
         self.raw.insert_many(rows)
         self.logger.info('inserted %d rows, skipped %d', len(rows), nskip)
+
+        # cleanup cached attributes
+        del self.nights
 
         for name in ('name', 'ARCFILE'):
             if not self.raw.has_index([name]):
@@ -196,3 +208,26 @@ class MuseRed:
             # if logfilename is not None:
             #     cpl.esorex.log.filename = '%s/%s-%s.log' % (
             #         conf['logdir'], logfilename, datetime.now().isoformat())
+
+    def process_calib(self, calib_type, night_list=None):
+        from .recipes.calib import BIAS, DARK, FLAT
+
+        calib_cls = {'BIAS': BIAS, 'DARK': DARK, 'FLAT,LAMP': FLAT}
+        if calib_type not in calib_cls:
+            raise ValueError(f'invalid calib_type {calib_type}')
+        recipe = calib_cls[calib_type]()
+
+        NIGHT = self.raw.table.c.night
+        OBJECT = self.raw.table.c.OBJECT
+
+        if night_list is not None:
+            night_list = [parse_date(night) for night in night_list]
+        else:
+            night_list = self.select_column('night', distinct=True,
+                                            whereclause=(OBJECT == calib_type))
+
+        for n in night_list:
+            whereclause = sql.and_(NIGHT == n, OBJECT == calib_type)
+            flist = self.select_column('path', whereclause=whereclause)
+            self.logger.info('night %s : %d bias files', n, len(flist))
+            recipe.run(flist)
