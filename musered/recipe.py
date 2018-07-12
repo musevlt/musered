@@ -38,6 +38,7 @@ class Recipe:
                  outdir=None,
                  use_drs_output=True,
                  temp_dir=None,
+                 version=None,
                  nifu=-1):
         # self.qc = {}
         self.nbwarn = 0
@@ -52,7 +53,7 @@ class Recipe:
         if self.outdir is not None:
             os.makedirs(self.outdir, exist_ok=True)
 
-        self._recipe = cpl.Recipe(self.recipe_name, version=cpl.drs_version)
+        self._recipe = cpl.Recipe(self.recipe_name, version=version)
         self._recipe.output_dir = self.outdir if use_drs_output else None
         self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
@@ -70,13 +71,12 @@ class Recipe:
     def info(self):
         info = self.logger.info
         info('Musered version %s', __version__)
-        info('- DRS version        : %s', cpl.drs_version)
+        info('- DRS version        : %s', self._recipe.version[1])
         info('- Recipe path        : %s', cpl.Recipe.path)
         # info('- Reference File dir : %s', cpl.ref_dir)
         info('- Log Level          : %s', cpl.esorex.msg.level)
         info('- Log filename       : %s', cpl.esorex.log.filename)
-        info('- Recipe             : %s version %s',
-             self.recipe_name, self._recipe.version[1])
+        info('- Recipe             : %s', self.recipe_name)
 
         # if self.indir is not None:
         #     info('- Input directory    : %s', self.indir)

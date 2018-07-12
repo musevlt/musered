@@ -1,4 +1,5 @@
 import cpl
+import datetime
 import logging
 import os
 from astropy.io import fits
@@ -84,6 +85,9 @@ class MuseRed:
         self.raw_path = self.conf['raw_path']
         self.db = load_db(self.conf['db'])
         self.raw = self.db['raw']
+        self.logdir = self.conf['cpl']['logdir']
+
+        self.init_cpl()
 
     @lazyproperty
     def nights(self):
@@ -208,8 +212,6 @@ class MuseRed:
         if conf['logdir'] is not None:
             os.makedirs(conf['logdir'], exist_ok=True)
             # if logfilename is not None:
-            #     cpl.esorex.log.filename = '%s/%s-%s.log' % (
-            #         conf['logdir'], logfilename, datetime.now().isoformat())
 
     def process_calib(self, calib_type, night_list=None):
         from .recipes.calib import BIAS, DARK, FLAT
@@ -217,6 +219,7 @@ class MuseRed:
         calib_cls = {'BIAS': BIAS, 'DARK': DARK, 'FLAT,LAMP': FLAT}
         if calib_type not in calib_cls:
             raise ValueError(f'invalid calib_type {calib_type}')
+
         recipe = calib_cls[calib_type]()
 
         NIGHT = self.raw.table.c.night
@@ -229,7 +232,12 @@ class MuseRed:
                                             whereclause=(OBJECT == calib_type))
 
         for n in night_list:
+            date = datetime.datetime.now().isoformat()
+            cpl.esorex.log.filename = os.path.join(
+                self.logdir, f"{calib_type}-{date}.log")
+
             whereclause = sql.and_(NIGHT == n, OBJECT == calib_type)
             flist = self.select_column('path', whereclause=whereclause)
             self.logger.info('night %s : %d bias files', n, len(flist))
             recipe.run(flist)
+            break
