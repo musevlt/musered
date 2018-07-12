@@ -23,7 +23,7 @@ def retrieve_data(mr, dataset, username, dry_run, no_update_db):
 
     eso = Eso()
     eso.login(**params)
-    os.makedirs(mr.rawpath, exist_ok=True)
+    os.makedirs(mr.raw_path, exist_ok=True)
 
     for ds in dataset:
         if ds not in mr.datasets:
@@ -37,7 +37,7 @@ def retrieve_data(mr, dataset, username, dry_run, no_update_db):
         if dry_run:
             print(table)
         else:
-            eso.retrieve_data(table['DP.ID'], destination=mr.rawpath,
+            eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
                               with_calib='raw')
 
     if not no_update_db:
