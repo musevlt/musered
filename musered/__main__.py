@@ -56,6 +56,12 @@ for cmd in (retrieve_data, update_db):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 
+try:
+    from click_repl import register_repl
+    register_repl(cli)
+except ImportError:
+    pass
+
 
 def main():
     cli(prog_name='musered')
