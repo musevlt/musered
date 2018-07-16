@@ -1,4 +1,6 @@
 import cpl
+import datetime
+import json
 import logging
 import os
 import shutil
@@ -16,7 +18,7 @@ class Recipe:
     ----------
     indir : str
         Name of input directory.
-    outdir : str
+    output_dir : str
         Name of output directory.
     use_drs_output : bool
         If True, output files are saved by the DRS, else files are saved by
@@ -29,33 +31,28 @@ class Recipe:
     """
 
     recipe_name = None
+    OBJECT = None
+    OBJECT_out = None
     # indir = None
-    outdir = None
     default_params = None
 
-    def __init__(self,
-                 # indir=None,
-                 outdir=None,
-                 use_drs_output=True,
-                 temp_dir=None,
-                 version=None,
-                 nifu=-1):
-        # self.qc = {}
+    def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
+                 log_dir='.', version=None, nifu=-1):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
         self.outfiles = defaultdict(list)
+        self.log_dir = log_dir
+        self.log_file = None
 
-        # if indir is not None:
-        #     self.indir = indir
-        if outdir is not None:
-            self.outdir = outdir
-
-        if self.outdir is not None:
-            os.makedirs(self.outdir, exist_ok=True)
+        if output_dir is not None:
+            self.output_dir = output_dir
+        else:
+            self.output_dir = self.OBJECT_out
 
         self._recipe = cpl.Recipe(self.recipe_name, version=version)
-        self._recipe.output_dir = self.outdir if use_drs_output else None
-        self._recipe.temp_dir = temp_dir
+        self._recipe.output_dir = self.output_dir if use_drs_output else None
+        if temp_dir is not None:
+            self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
 
         if 'nifu' in self.param:
@@ -65,30 +62,17 @@ class Recipe:
             for name, value in self.default_params.items():
                 self.param[name] = value
 
-        # self.param['saveimage'] = saveimage
-        # self._recipe.env['MUSE_PIXTABLE_SAVE_AS_IMAGE'] = 1
-
-    def info(self):
         info = self.logger.info
         info('Musered version %s', __version__)
         info('- DRS version        : %s', self._recipe.version[1])
         info('- Recipe path        : %s', cpl.Recipe.path)
-        # info('- Reference File dir : %s', cpl.ref_dir)
-        info('- Log Level          : %s', cpl.esorex.msg.level)
-        info('- Log filename       : %s', cpl.esorex.log.filename)
         info('- Recipe             : %s', self.recipe_name)
+        # self.param['saveimage'] = saveimage
+        # self._recipe.env['MUSE_PIXTABLE_SAVE_AS_IMAGE'] = 1
 
-        # if self.indir is not None:
-        #     info('- Input directory    : %s', self.indir)
-
-        if self.outdir is not None:
-            info('- Output directory   : %s', self.outdir)
-
-        if self._recipe is not None:
-            for p in self.param:
-                print(p.name, p.value, p.default)
-            for f in self._recipe.calib:
-                print(f.tag, f.min, f.max, f.frames)
+    def dump_params(self):
+        params = {p.name: p.value for p in self.param if p.value is not None}
+        return json.dumps(params)
 
     def write_fits(self, name_or_hdulist, filetype, filename):
         if type(name_or_hdulist) is list:
@@ -106,27 +90,39 @@ class Recipe:
 
         self.outfiles[filetype].append(filename)
 
-    def run(self, flist, *args, params=None, **kwargs):
+    def run(self, flist, *args, params=None, verbose=False, **kwargs):
         t0 = time.time()
+        info = self.logger.info
 
         if isinstance(flist, str):
             flist = [flist]
 
         if len(flist) == 0:
-            self.logger.error('No exposure found -- stopped')
-            return
+            raise ValueError('No exposure found -- stopped')
 
         if params is not None:
             for name, value in params.items():
                 self.param[name] = value
 
+        date = datetime.datetime.now().isoformat()
+        cpl.esorex.log.filename = self.log_file = os.path.join(
+            self.log_dir, f"{self.recipe_name}-{date}.log")
+
+        info('- Log file           : %s', self.log_file)
+        info('- Output directory   : %s', kwargs.get('output_dir',
+                                                     self.output_dir))
+        info('- Non-default params :')
+        for p in self.param:
+            # FIXME: check params passed in kwargs
+            if p.value is not None:
+                info('%10s : %s (%s)', p.name, p.value, p.default)
+
         results = self._run(flist, *args, **kwargs)
 
-        self.warn = results.log.warning
+        self.nbwarn = len(results.log.warning)
         self.timeit = (time.time() - t0) // 60
-        self.logger.info('%s successfully run with %d warnings',
-                         self.recipe_name, len(self.warn))
-        self.logger.info('Execution time %g minutes', self.timeit)
-        self.logger.info('DRS user time: %s, sys: %s', results.stat.user_time,
-                         results.stat.sys_time)
+        info('%s successfully run, %d warnings', self.recipe_name, self.nbwarn)
+        info('Execution time %g minutes', self.timeit)
+        info('DRS user time: %s, sys: %s', results.stat.user_time,
+             results.stat.sys_time)
         return results

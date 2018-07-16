@@ -4,16 +4,17 @@ from ..recipe import Recipe
 class BIAS(Recipe):
 
     recipe_name = 'muse_bias'
-    # outdir = BIASDIR
+    OBJECT = 'BIAS'
+    OBJECT_out = 'MASTER_BIAS'
 
-    def _run(self, biaslist, badpix_table=None):
+    def _run(self, biaslist, badpix_table=None, **kwargs):
         if len(biaslist) < 3:
             raise ValueError('Error need at least 3 exposures')
 
         if badpix_table is not None:
             self._recipe.calib.BADPIX_TABLE = badpix_table
 
-        results = self._recipe(raw={'BIAS': biaslist})
+        results = self._recipe(raw={'BIAS': biaslist}, **kwargs)
 
         return results
 
@@ -21,9 +22,10 @@ class BIAS(Recipe):
 class DARK(Recipe):
 
     recipe_name = 'muse_dark'
-    # outdir = DARKDIR
+    OBJECT = 'DARK'
+    OBJECT_out = 'MASTER_DARK'
 
-    def _run(self, darklist, master_bias, badpix_table=None):
+    def _run(self, darklist, master_bias, badpix_table=None, **kwargs):
         if len(darklist) < 3:
             raise ValueError('Error need at least 3 exposures')
 
@@ -31,7 +33,7 @@ class DARK(Recipe):
         if badpix_table is not None:
             self._recipe.calib.BADPIX_TABLE = badpix_table
 
-        results = self._recipe(raw={'DARK': darklist})
+        results = self._recipe(raw={'DARK': darklist}, **kwargs)
 
         return results
 
@@ -39,10 +41,12 @@ class DARK(Recipe):
 class FLAT(Recipe):
 
     recipe_name = 'muse_flat'
-    # outdir = FLATDIR
+    OBJECT = 'FLAT,LAMP'
+    OBJECT_out = 'MASTER_FLAT'
     default_params = {'samples': True}
 
-    def _run(self, flatlist, master_bias, master_dark=None, badpix_table=None):
+    def _run(self, flatlist, master_bias, master_dark=None, badpix_table=None,
+             **kwargs):
         if len(flatlist) < 3:
             raise ValueError('Error need at least 3 exposures')
 
@@ -52,6 +56,10 @@ class FLAT(Recipe):
         if badpix_table is not None:
             self._recipe.calib.BADPIX_TABLE = badpix_table
 
-        results = self._recipe(raw={'FLAT': flatlist})
+        results = self._recipe(raw={'FLAT': flatlist}, **kwargs)
 
         return results
+
+
+calib_classes = {cls.OBJECT: cls for cls in locals().values()
+                 if isinstance(cls, type) and issubclass(cls, Recipe)}

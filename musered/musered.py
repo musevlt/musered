@@ -5,7 +5,7 @@ import os
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import OrderedDict, Counter
-from mpdaf.log import ColoredFormatter
+from mpdaf.log import setup_logging
 from sqlalchemy import sql
 
 from .utils import (load_yaml_config, load_db, get_exp_name,
@@ -83,9 +83,11 @@ class MuseRed:
 
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
+        self.reduced_path = self.conf['reduced_path']
         self.db = load_db(self.conf['db'])
         self.raw = self.db['raw']
-        self.logdir = self.conf['cpl']['logdir']
+        self.reduced = self.db['reduced']
+        self.log_dir = self.conf['cpl']['log_dir']
 
         self.init_cpl()
 
@@ -202,41 +204,61 @@ class MuseRed:
             cpl.Recipe.path = conf['recipe_path']
         if conf['esorex_msg'] is not None:
             cpl.esorex.log.level = conf['esorex_msg']  # file logging
-        if conf['msg'] is not None:
-            cpl.esorex.msg.level = conf['msg']  # terminal logging
-        if conf['msg_format'] is not None:
-            cpl.esorex.msg.format = msg_format = conf['msg_format']
-            cpl.esorex.msg.handler.setFormatter(ColoredFormatter(msg_format))
         if conf['esorex_msg_format'] is not None:
             cpl.esorex.log.format = conf['esorex_msg_format']
-        if conf['logdir'] is not None:
-            os.makedirs(conf['logdir'], exist_ok=True)
-            # if logfilename is not None:
+        if conf['log_dir'] is not None:
+            os.makedirs(conf['log_dir'], exist_ok=True)
+
+        # terminal logging: disable cpl's logger as it uses the root logger.
+        cpl.esorex.msg.level = 'off'
+        default_fmt = '%(levelname)s - %(name)s: %(message)s'
+        setup_logging(name='cpl', level=conf.get('msg', 'info').upper(),
+                      color=True, fmt=conf.get('msg_format', default_fmt))
 
     def process_calib(self, calib_type, night_list=None):
-        from .recipes.calib import BIAS, DARK, FLAT
+        from .recipes.calib import calib_classes
 
-        calib_cls = {'BIAS': BIAS, 'DARK': DARK, 'FLAT,LAMP': FLAT}
-        if calib_type not in calib_cls:
+        if calib_type not in calib_classes:
             raise ValueError(f'invalid calib_type {calib_type}')
 
-        recipe = calib_cls[calib_type]()
-
-        NIGHT = self.raw.table.c.night
-        OBJECT = self.raw.table.c.OBJECT
+        # create the cpl.Recipe object
+        conf = self.conf['recipes']
+        recipe_cls = calib_classes[calib_type]
+        recipe_name = recipe_cls.recipe_name
+        params = {**conf.get('common', {}), **conf.get(recipe_name, {})}
+        params.setdefault('log_dir', self.log_dir)
+        self.logger.debug('params: %r', params)
+        recipe = recipe_cls(**params)
 
         if night_list is not None:
             night_list = [parse_date(night) for night in night_list]
         else:
+            OBJECT = self.raw.table.c.OBJECT
             night_list = self.select_column('night', distinct=True,
                                             whereclause=(OBJECT == calib_type))
 
-        for n in night_list:
-            date = datetime.datetime.now().isoformat()
-            cpl.esorex.log.filename = os.path.join(
-                self.logdir, f"{calib_type}-{date}.log")
+        for night in night_list:
+            res = list(self.raw.find(night=night, OBJECT=calib_type))
+            flist = [o['path'] for o in res]
+            mode = set(o['INS_MODE'] for o in res)
+            if len(mode) > 1:
+                raise ValueError('night with multiple INS.MODE, not supported')
+            mode = mode.pop()
+            self.logger.info('night %s, %d bias files, mode=%s',
+                             night, len(flist), mode)
 
-            whereclause = sql.and_(NIGHT == n, OBJECT == calib_type)
-            flist = self.select_column('path', whereclause=whereclause)
-            self.logger.info('night %s : %d bias files', n, len(flist))
-            recipe.run(flist)
+            output_dir = os.path.join(self.reduced_path, recipe.output_dir,
+                                      f'{night.isoformat()}.{mode}')
+            results = recipe.run(flist, output_dir=output_dir, verbose=True)
+            self.reduced.insert(dict(
+                date=datetime.datetime.now().isoformat(),
+                dateobs=night,
+                path=output_dir,
+                OBJECT=calib_type,
+                user_time=results.stat.user_time,
+                sys_time=results.stat.sys_time,
+                tottime=recipe.timeit,
+                nbwarn=recipe.nbwarn,
+                log_file=recipe.log_file,
+                params=recipe.dump_params(),
+            ))
