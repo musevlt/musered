@@ -100,7 +100,7 @@ class MuseRed:
 
     def list_nights(self):
         """Print the list of nights."""
-        for x in self.nights:
+        for x in sorted(self.nights):
             print(f'- {x:%Y-%m-%d}')
 
     def info(self):
@@ -240,4 +240,3 @@ class MuseRed:
             flist = self.select_column('path', whereclause=whereclause)
             self.logger.info('night %s : %d bias files', n, len(flist))
             recipe.run(flist)
-            break

@@ -105,7 +105,7 @@ def parse_datetime(exp):
 
 
 def parse_date(exp):
-    return datetime.datetime.strptime(exp, DATE_PATTERN)
+    return datetime.datetime.strptime(exp, DATE_PATTERN).date()
 
 
 def isnotebook():  # pragma: no cover
