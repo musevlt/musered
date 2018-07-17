@@ -73,22 +73,59 @@ ESO TEL MOON RA
 # ESO OCS SGS OFFSET RASUM
 
 
+class StaticCalib:
+
+    def __init__(self, path, conf):
+        self.path = path
+        self.conf = conf
+
+    @lazyproperty
+    def files(self):
+        return os.listdir(self.path)
+
+    def _find_file(self, key, default, date=None):
+        for item in self.conf:
+            if key not in item:
+                continue
+            if date is None:
+                file = item[key]
+                break
+            start_date = item.get('start_date', datetime.date.min)
+            end_date = item.get('end_date', datetime.date.max)
+            if start_date < date < end_date:
+                file = item[key]
+                break
+        else:
+            # found nothing, use default
+            file = default
+
+        if file not in self.files:
+            raise ValueError(f'could not find {file}')
+        return os.path.join(self.path, file)
+
+    def badpix_table(self, date=None):
+        return self._find_file('badpix_table', 'badpix_table.fits', date=date)
+
+
 class MuseRed:
 
     def __init__(self, settings_file='settings.yml'):
         self.logger = logging.getLogger(__name__)
         self.logger.debug('loading settings from %s', settings_file)
         self.settings_file = settings_file
-        self.conf = load_yaml_config(settings_file)
 
+        self.conf = load_yaml_config(settings_file)
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
         self.reduced_path = self.conf['reduced_path']
+        self.log_dir = self.conf['cpl']['log_dir']
+
         self.db = load_db(self.conf['db'])
         self.raw = self.db['raw']
         self.reduced = self.db['reduced']
-        self.log_dir = self.conf['cpl']['log_dir']
 
+        self.static_calib = StaticCalib(self.conf['muse_calib_path'],
+                                        self.conf['static_calib'])
         self.init_cpl()
 
     @lazyproperty
@@ -249,7 +286,12 @@ class MuseRed:
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{night.isoformat()}.{mode}')
+            if 'BADPIX_TABLE' in recipe.calib:
+                badpix_table = self.static_calib.badpix_table(date=night)
+                recipe.calib['BADPIX_TABLE'] = badpix_table
+
             results = recipe.run(flist, output_dir=output_dir, verbose=True)
+
             self.reduced.insert(dict(
                 date=datetime.datetime.now().isoformat(),
                 dateobs=night,

@@ -54,6 +54,7 @@ class Recipe:
         if temp_dir is not None:
             self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
+        self.calib = self._recipe.calib
 
         if 'nifu' in self.param:
             self.param['nifu'] = nifu
