@@ -32,6 +32,13 @@ commissioning)::
 
 See below for the meaning of *archive_filter*.
 
+About the command-line interface
+--------------------------------
+
+Every step can be run with sub-commands of the ``musered`` command. It is also
+possible to setup completion (TODO: explain), or to run the subcommands in
+a REPL with ``musered repl``.
+
 Data retrieval
 --------------
 
@@ -64,3 +71,14 @@ run manually if needed, with::
 
 Running recipes
 ---------------
+
+Calibrations
+~~~~~~~~~~~~
+
+To run ``muse_bias`` recipe for a given night::
+
+    musered process_calib --bias 2017-06-15
+
+To run ``muse_flat`` recipe for all nights, skipping already processed nights::
+
+    musered process_calib --flat --skip
