@@ -292,15 +292,15 @@ class MuseRed:
 
             results = recipe.run(flist, output_dir=output_dir, verbose=True)
 
-            self.reduced.insert(dict(
+            self.reduced.upsert(dict(
                 date=datetime.datetime.now().isoformat(),
                 dateobs=night,
                 path=output_dir,
-                OBJECT=calib_type,
+                OBJECT=recipe.OBJECT_out,
                 user_time=results.stat.user_time,
                 sys_time=results.stat.sys_time,
                 tottime=recipe.timeit,
                 nbwarn=recipe.nbwarn,
                 log_file=recipe.log_file,
                 params=recipe.dump_params(),
-            ))
+            ), ['dateobs', 'OBJECT'])

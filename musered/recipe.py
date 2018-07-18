@@ -121,9 +121,9 @@ class Recipe:
         results = self._run(flist, *args, **kwargs)
 
         self.nbwarn = len(results.log.warning)
-        self.timeit = (time.time() - t0) // 60
+        self.timeit = (time.time() - t0) / 60
         info('%s successfully run, %d warnings', self.recipe_name, self.nbwarn)
-        info('Execution time %g minutes', self.timeit)
+        info('Execution time %.2f minutes', self.timeit)
         info('DRS user time: %s, sys: %s', results.stat.user_time,
              results.stat.sys_time)
         return results
