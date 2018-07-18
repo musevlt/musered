@@ -25,11 +25,12 @@ class DARK(Recipe):
     OBJECT = 'DARK'
     OBJECT_out = 'MASTER_DARK'
 
-    def _run(self, darklist, master_bias, badpix_table=None, **kwargs):
+    def _run(self, darklist, master_bias=None, badpix_table=None, **kwargs):
         if len(darklist) < 3:
             raise ValueError('Error need at least 3 exposures')
 
-        self._recipe.calib.MASTER_BIAS = master_bias
+        if master_bias is not None:
+            self._recipe.calib.MASTER_BIAS = master_bias
         if badpix_table is not None:
             self._recipe.calib.BADPIX_TABLE = badpix_table
 
@@ -45,12 +46,13 @@ class FLAT(Recipe):
     OBJECT_out = 'MASTER_FLAT'
     default_params = {'samples': True}
 
-    def _run(self, flatlist, master_bias, master_dark=None, badpix_table=None,
-             **kwargs):
+    def _run(self, flatlist, master_bias=None, master_dark=None,
+             badpix_table=None, **kwargs):
         if len(flatlist) < 3:
             raise ValueError('Error need at least 3 exposures')
 
-        self._recipe.calib.MASTER_BIAS = master_bias
+        if master_bias is not None:
+            self._recipe.calib.MASTER_BIAS = master_bias
         if master_dark is not None:
             self._recipe.calib.MASTER_DARK = master_dark
         if badpix_table is not None:
@@ -61,5 +63,4 @@ class FLAT(Recipe):
         return results
 
 
-calib_classes = {cls.OBJECT: cls for cls in locals().values()
-                 if isinstance(cls, type) and issubclass(cls, Recipe)}
+calib_classes = {cls.OBJECT: cls for cls in (BIAS, DARK, FLAT)}

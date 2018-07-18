@@ -5,6 +5,7 @@ import os
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import OrderedDict, Counter
+from glob import glob
 from mpdaf.log import setup_logging
 from sqlalchemy import sql
 
@@ -252,6 +253,17 @@ class MuseRed:
         setup_logging(name='cpl', level=conf.get('msg', 'info').upper(),
                       color=True, fmt=conf.get('msg_format', default_fmt))
 
+    def find_calib(self, night, OBJECT, ins_mode, nrequired=24):
+        res = self.reduced.find_one(dateobs=night, INS_MODE=ins_mode,
+                                    OBJECT=OBJECT)
+        if res is None:
+            raise ValueError(f'could not find valid {OBJECT}')
+        flist = sorted(glob(f"{res['path']}/*.fits"))
+        if len(flist) != nrequired:
+            raise ValueError(f'found {len(flist)} {OBJECT} files '
+                             f'instead of {nrequired}')
+        return flist
+
     def process_calib(self, calib_type, night_list=None, skip_processed=False):
         from .recipes.calib import calib_classes
 
@@ -288,18 +300,23 @@ class MuseRed:
 
             res = list(self.raw.find(night=night, OBJECT=calib_type))
             flist = [o['path'] for o in res]
-            mode = set(o['INS_MODE'] for o in res)
-            if len(mode) > 1:
+            ins_mode = set(o['INS_MODE'] for o in res)
+            if len(ins_mode) > 1:
                 raise ValueError('night with multiple INS.MODE, not supported')
-            mode = mode.pop()
+            ins_mode = ins_mode.pop()
             self.logger.info('night %s, %d bias files, mode=%s',
-                             night, len(flist), mode)
+                             night, len(flist), ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
-                                      f'{night.isoformat()}.{mode}')
+                                      f'{night.isoformat()}.{ins_mode}')
+
             if 'BADPIX_TABLE' in recipe.calib:
                 badpix_table = self.static_calib.badpix_table(date=night)
                 recipe.calib['BADPIX_TABLE'] = badpix_table
+
+            if 'MASTER_BIAS' in recipe.calib:
+                recipe.calib['MASTER_BIAS'] = self.find_calib(
+                    night, 'MASTER_BIAS', ins_mode)
 
             results = recipe.run(flist, output_dir=output_dir, verbose=True)
 
@@ -308,6 +325,7 @@ class MuseRed:
                 dateobs=night,
                 path=output_dir,
                 OBJECT=recipe.OBJECT_out,
+                INS_MODE=ins_mode,
                 user_time=results.stat.user_time,
                 sys_time=results.stat.sys_time,
                 tottime=recipe.timeit,
