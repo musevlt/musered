@@ -64,11 +64,12 @@ def update_db(mr, force):
 
 
 @click.argument('night', nargs=-1)
+@click.option('--skip', is_flag=True, help='Skip already processed nights')
 @click.option('--bias', is_flag=True, help='Run muse_bias')
 @click.option('--dark', is_flag=True, help='Run muse_dark')
 @click.option('--flat', is_flag=True, help='Run muse_flat')
 @click.pass_obj
-def process_calib(mr, night, bias, dark, flat):
+def process_calib(mr, night, skip, bias, dark, flat):
     """Process calibrations (bias, dark, flat) for NIGHT.
 
     By default, process calibrations for all nights, and all types.
@@ -79,11 +80,11 @@ def process_calib(mr, night, bias, dark, flat):
 
     run_all = not any([bias, dark, flat])
     if bias or run_all:
-        mr.process_calib('BIAS', night_list=night)
+        mr.process_calib('BIAS', night_list=night, skip_processed=skip)
     if dark or run_all:
-        mr.process_calib('DARK', night_list=night)
+        mr.process_calib('DARK', night_list=night, skip_processed=skip)
     if flat or run_all:
-        mr.process_calib('FLAT,LAMP', night_list=night)
+        mr.process_calib('FLAT,LAMP', night_list=night, skip_processed=skip)
 
 
 for cmd in (retrieve_data, update_db, process_calib):

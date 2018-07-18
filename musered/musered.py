@@ -164,8 +164,8 @@ class MuseRed:
             print(f'- {obj:15s} : {count}')
 
     def select_column(self, name, notnull=True, distinct=False,
-                      whereclause=None):
-        col = self.raw.table.c[name]
+                      whereclause=None, table='raw'):
+        col = self.db[table].table.c[name]
         wc = col.isnot(None) if notnull else None
         if whereclause is not None:
             wc = sql.and_(whereclause, wc)
@@ -252,7 +252,7 @@ class MuseRed:
         setup_logging(name='cpl', level=conf.get('msg', 'info').upper(),
                       color=True, fmt=conf.get('msg_format', default_fmt))
 
-    def process_calib(self, calib_type, night_list=None):
+    def process_calib(self, calib_type, night_list=None, skip_processed=False):
         from .recipes.calib import calib_classes
 
         if calib_type not in calib_classes:
@@ -274,7 +274,18 @@ class MuseRed:
             night_list = self.select_column('night', distinct=True,
                                             whereclause=(OBJECT == calib_type))
 
+        if skip_processed:
+            OBJECT = self.reduced.table.c.OBJECT
+            night_processed = set(self.select_column(
+                'dateobs', table='reduced',
+                whereclause=(OBJECT == recipe.OBJECT_out)
+            ))
+
         for night in night_list:
+            if skip_processed and night in night_processed:
+                self.logger.info('night %s already processed', night)
+                continue
+
             res = list(self.raw.find(night=night, OBJECT=calib_type))
             flist = [o['path'] for o in res]
             mode = set(o['INS_MODE'] for o in res)
