@@ -277,6 +277,17 @@ class MuseRed:
                              f'instead of {nrequired}')
         return flist
 
+    def get_calib_frames(self, recipe, night, ins_mode, day_off=0):
+        frames = {}
+        for frame in recipe.calib_frames:
+            if frame == 'BADPIX_TABLE':
+                frames[frame] = self.static_calib.badpix_table(date=night)
+            elif frame != 'MASTER_DARK':
+                # TODO: add option to use DARK
+                frames[frame] = self.find_calib(night, frame, ins_mode,
+                                                day_off=day_off)
+        return frames
+
     def process_calib(self, calib_type, night_list=None, skip_processed=False):
         from .recipes.calib import calib_classes
 
@@ -337,15 +348,8 @@ class MuseRed:
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{night.isoformat()}.{ins_mode}')
 
-            if 'BADPIX_TABLE' in recipe.calib:
-                badpix_table = self.static_calib.badpix_table(date=night)
-                recipe.calib['BADPIX_TABLE'] = badpix_table
-
-            if 'MASTER_BIAS' in recipe.calib:
-                recipe.calib['MASTER_BIAS'] = self.find_calib(
-                    night, 'MASTER_BIAS', ins_mode, day_off=1)
-
-            results = recipe.run(flist, output_dir=output_dir, verbose=True)
+            calib = self.get_calib_frames(recipe, night, ins_mode, day_off=1)
+            results = recipe.run(flist, output_dir=output_dir, **calib)
 
             self.reduced.upsert(dict(
                 date=datetime.datetime.now().isoformat(),

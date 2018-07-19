@@ -71,23 +71,26 @@ def update_db(mr, force):
 @click.option('--bias', is_flag=True, help='Run muse_bias')
 @click.option('--dark', is_flag=True, help='Run muse_dark')
 @click.option('--flat', is_flag=True, help='Run muse_flat')
+@click.option('--arc', is_flag=True, help='Run muse_wavecal')
 @click.pass_obj
-def process_calib(mr, night, skip, bias, dark, flat):
+def process_calib(mr, night, skip, bias, dark, flat, arc):
     """Process calibrations (bias, dark, flat) for NIGHT.
 
-    By default, process calibrations for all nights, and all types.
+    By default, process calibrations for all nights, and all types except dark.
 
     """
     if len(night) == 0:
         night = None
 
-    run_all = not any([bias, dark, flat])
+    run_all = not any([bias, dark, flat, arc])
     if bias or run_all:
         mr.process_calib('BIAS', night_list=night, skip_processed=skip)
-    if dark or run_all:
+    if dark:
         mr.process_calib('DARK', night_list=night, skip_processed=skip)
     if flat or run_all:
         mr.process_calib('FLAT,LAMP', night_list=night, skip_processed=skip)
+    if arc or run_all:
+        mr.process_calib('WAVE', night_list=night, skip_processed=skip)
 
 
 for cmd in (retrieve_data, update_db, process_calib):

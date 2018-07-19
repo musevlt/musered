@@ -33,6 +33,7 @@ class Recipe:
     OBJECT_out = None
     # indir = None
     default_params = None
+    n_inputs_min = None
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
                  log_dir='.', version=None, nifu=-1):
@@ -53,6 +54,7 @@ class Recipe:
             self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
         self.calib = self._recipe.calib
+        self.calib_frames = list(dict(self.calib).keys())
 
         if 'nifu' in self.param:
             self.param['nifu'] = nifu
@@ -86,7 +88,7 @@ class Recipe:
 
         self.outfiles[filetype].append(filename)
 
-    def run(self, flist, *args, params=None, verbose=False, **kwargs):
+    def run(self, flist, *args, params=None, **kwargs):
         t0 = time.time()
         info = self.logger.info
 
@@ -95,6 +97,9 @@ class Recipe:
 
         if len(flist) == 0:
             raise ValueError('No exposure found -- stopped')
+
+        if self.n_inputs_min is not None and len(flist) < self.n_inputs_min:
+            raise ValueError('Error need at least 3 exposures')
 
         if params is not None:
             for name, value in params.items():
@@ -112,6 +117,12 @@ class Recipe:
             # FIXME: check params passed in kwargs
             if p.value is not None:
                 info('%10s : %s (%s)', p.name, p.value, p.default)
+
+        for frame in self.calib_frames:
+            try:
+                self.calib[frame] = kwargs.pop(frame)
+            except KeyError:
+                pass
 
         results = self._run(flist, *args, **kwargs)
 
