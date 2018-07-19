@@ -8,8 +8,6 @@ import time
 from astropy.io import fits
 from collections import defaultdict
 
-from .version import __version__
-
 
 class Recipe:
     """Base class for the DRS Recipes.
@@ -63,11 +61,8 @@ class Recipe:
             for name, value in self.default_params.items():
                 self.param[name] = value
 
-        info = self.logger.info
-        info('Musered version %s', __version__)
-        info('- DRS version        : %s', self._recipe.version[1])
-        info('- Recipe path        : %s', cpl.Recipe.path)
-        info('- Recipe             : %s', self.recipe_name)
+        self.logger.info('%s recipe (DRS v%s from %s)', self.recipe_name,
+                         self._recipe.version[1], cpl.Recipe.path)
         # self.param['saveimage'] = saveimage
         # self._recipe.env['MUSE_PIXTABLE_SAVE_AS_IMAGE'] = 1
 

@@ -5,6 +5,7 @@ import sys
 
 from .musered import MuseRed
 from .scripts.retrieve_data import retrieve_data
+from .version import __version__
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -18,7 +19,7 @@ except ImportError:
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
-@click.version_option(version='0.1')
+@click.version_option(version=__version__)
 @click.option('--debug', is_flag=True, help='Debug mode')
 @click.option('--info', is_flag=True, help='Information about the database')
 @click.option('--list-datasets', is_flag=True, help='List datasets')
@@ -31,6 +32,7 @@ def cli(ctx, debug, info, list_datasets, list_nights, settings):
 
     if debug:
         logging.getLogger('musered').setLevel('DEBUG')
+        logging.getLogger('musered').handlers[0].setLevel('DEBUG')
         logging.getLogger('astropy').setLevel('DEBUG')
 
         def run_pdb(type, value, tb):
@@ -46,6 +48,7 @@ def cli(ctx, debug, info, list_datasets, list_nights, settings):
         sys.exit(1)
 
     ctx.obj = mr = MuseRed(settings)
+    logger.info('Musered version %s', __version__)
     # mr.debug = debug
 
     if info:

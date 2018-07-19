@@ -290,7 +290,6 @@ class MuseRed:
         params = {**conf.get('common', {}), **conf.get(recipe_name, {})}
         params.setdefault('log_dir', self.log_dir)
         self.logger.debug('params: %r', params)
-        recipe = recipe_cls(**params)
 
         if night_list is not None:
             night_list = [parse_date(night) for night in night_list]
@@ -298,17 +297,32 @@ class MuseRed:
             OBJECT = self.raw.table.c.OBJECT
             night_list = self.select_column('night', distinct=True,
                                             whereclause=(OBJECT == calib_type))
+        night_list = list(sorted(night_list))
+
+        info = self.logger.info
+        info('%s, %d nights', recipe_name, len(night_list))
+        self.logger.debug('nights: ' + ', '.join(map(str, night_list)))
 
         if skip_processed:
             OBJECT = self.reduced.table.c.OBJECT
             night_processed = set(self.select_column(
                 'dateobs', table='reduced',
-                whereclause=(OBJECT == recipe.OBJECT_out)
+                whereclause=(OBJECT == recipe_cls.OBJECT_out)
             ))
+            self.logger.debug('processed: ' +
+                              ', '.join(map(str, sorted(night_processed))))
+            if len(night_processed) == len(night_list):
+                info('Already processed, nothing to do')
+                return
+            else:
+                info('%d nights already processed', len(night_processed))
+
+        # Instantiate the recipe object
+        recipe = recipe_cls(**params)
 
         for night in night_list:
             if skip_processed and night in night_processed:
-                self.logger.info('night %s already processed', night)
+                self.logger.debug('night %s already processed', night)
                 continue
 
             res = list(self.raw.find(night=night, OBJECT=calib_type))
@@ -317,8 +331,8 @@ class MuseRed:
             if len(ins_mode) > 1:
                 raise ValueError('night with multiple INS.MODE, not supported')
             ins_mode = ins_mode.pop()
-            self.logger.info('night %s, %d bias files, mode=%s',
-                             night, len(flist), ins_mode)
+            info('night %s, %d bias files, mode=%s', night, len(flist),
+                 ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{night.isoformat()}.{ins_mode}')
