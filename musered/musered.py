@@ -1,5 +1,6 @@
 import cpl
 import datetime
+import itertools
 import logging
 import os
 from astropy.io import fits
@@ -253,11 +254,23 @@ class MuseRed:
         setup_logging(name='cpl', level=conf.get('msg', 'info').upper(),
                       color=True, fmt=conf.get('msg_format', default_fmt))
 
-    def find_calib(self, night, OBJECT, ins_mode, nrequired=24):
+    def find_calib(self, night, OBJECT, ins_mode, nrequired=24, day_off=0):
         res = self.reduced.find_one(dateobs=night, INS_MODE=ins_mode,
                                     OBJECT=OBJECT)
+        if res is None and day_off != 0:
+            for off, direction in itertools.product(range(1, day_off + 1),
+                                                    (1, -1)):
+                off = datetime.timedelta(days=off * direction)
+                res = self.reduced.find_one(
+                    dateobs=night + off, INS_MODE=ins_mode, OBJECT=OBJECT)
+                if res is not None:
+                    self.logger.warning('Using %s from night %s',
+                                        OBJECT, night + off)
+                    break
+
         if res is None:
-            raise ValueError(f'could not find valid {OBJECT}')
+            raise ValueError(f'could not find {OBJECT} for night {night}')
+
         flist = sorted(glob(f"{res['path']}/*.fits"))
         if len(flist) != nrequired:
             raise ValueError(f'found {len(flist)} {OBJECT} files '
@@ -316,7 +329,7 @@ class MuseRed:
 
             if 'MASTER_BIAS' in recipe.calib:
                 recipe.calib['MASTER_BIAS'] = self.find_calib(
-                    night, 'MASTER_BIAS', ins_mode)
+                    night, 'MASTER_BIAS', ins_mode, day_off=1)
 
             results = recipe.run(flist, output_dir=output_dir, verbose=True)
 
