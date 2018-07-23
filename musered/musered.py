@@ -132,7 +132,11 @@ class MuseRed:
 
     @lazyproperty
     def nights(self):
-        return self.select_column('night', distinct=True)
+        """Return the list of nights for which data is available."""
+        if 'night' in self.raw.columns:
+            return self.select_column('night', distinct=True)
+        else:
+            return []
 
     def list_datasets(self):
         """Print the list of datasets."""
@@ -149,21 +153,29 @@ class MuseRed:
 
         print('Datasets:')
         self.list_datasets()
+
         print('\nNights:')
-        objects = self.select_column('night')
-        for obj, count in sorted(Counter(objects).items()):
-            print(f'- {obj:%Y-%m-%d} : {count}')
+        if 'night' in self.raw.columns:
+            objects = self.select_column('night')
+            for obj, count in sorted(Counter(objects).items()):
+                print(f'- {obj:%Y-%m-%d} : {count}')
+        else:
+            print('Nothing yet.')
 
         print('\nObjects:')
-        objects = self.select_column('OBJECT')
-        for obj, count in sorted(Counter(objects).items()):
-            # skip uninteresting objects
-            if obj in ('Bad pixel table for MUSE (BADPIX_TABLE)',
-                       'Mask to signify the vignetted region in the MUSE FOV',
-                       'Astrometric calibration (ASTROMETRY)',
-                       'HgCd+Ne+Xe LINE_CATALOG for MUSE'):
-                continue
-            print(f'- {obj:15s} : {count}')
+        if 'OBJECT' in self.raw.columns:
+            objects = self.select_column('OBJECT')
+            for obj, count in sorted(Counter(objects).items()):
+                # skip uninteresting objects
+                if obj in (
+                        'Bad pixel table for MUSE (BADPIX_TABLE)',
+                        'Mask to signify the vignetted region in the MUSE FOV',
+                        'Astrometric calibration (ASTROMETRY)',
+                        'HgCd+Ne+Xe LINE_CATALOG for MUSE'):
+                    continue
+                print(f'- {obj:15s} : {count}')
+        else:
+            print('Nothing yet.')
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
