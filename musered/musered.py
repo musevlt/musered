@@ -2,13 +2,15 @@ import cpl
 import datetime
 import itertools
 import logging
+import numpy as np
 import os
 from astropy.io import fits
+from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
-from collections import OrderedDict, Counter
+from collections import OrderedDict, defaultdict
 from glob import glob
 from mpdaf.log import setup_logging
-from sqlalchemy import sql
+from sqlalchemy import sql, func
 
 from .utils import (load_yaml_config, load_db, get_exp_name,
                     parse_date, parse_datetime, NOON, ONEDAY, ProgressBar)
@@ -154,28 +156,41 @@ class MuseRed:
         print('Datasets:')
         self.list_datasets()
 
-        print('\nNights:')
-        if 'night' in self.raw.columns:
-            objects = self.select_column('night')
-            for obj, count in sorted(Counter(objects).items()):
-                print(f'- {obj:%Y-%m-%d} : {count}')
-        else:
+        if 'night' not in self.raw.columns:
             print('Nothing yet.')
+            return
 
-        print('\nObjects:')
-        if 'OBJECT' in self.raw.columns:
-            objects = self.select_column('OBJECT')
-            for obj, count in sorted(Counter(objects).items()):
-                # skip uninteresting objects
-                if obj in (
-                        'Bad pixel table for MUSE (BADPIX_TABLE)',
-                        'Mask to signify the vignetted region in the MUSE FOV',
-                        'Astrometric calibration (ASTROMETRY)',
-                        'HgCd+Ne+Xe LINE_CATALOG for MUSE'):
-                    continue
-                print(f'- {obj:15s} : {count}')
-        else:
-            print('Nothing yet.')
+        # uninteresting objects to exclude from the report
+        excludes = ('Astrometric calibration (ASTROMETRY)', )
+
+        # count files per night and per type
+        col = self.raw.table.columns
+        query = (sql.select([col.night, col.OBJECT, func.count(col.night)])
+                 .where(col.night.isnot(None))
+                 .group_by(col.night, col.OBJECT))
+
+        # reorganize rows to have types (in columns) per night (rows)
+        rows = defaultdict(dict)
+        keys = set()
+        for night, obj, count in self.db.executable.execute(query):
+            if obj in excludes:
+                continue
+            rows[night]['night'] = night.isoformat()
+            rows[night][obj] = count
+            keys.add(obj)
+
+        # set default counts
+        for row, key in itertools.product(rows.values(), keys):
+            row.setdefault(key, 0)
+
+        t = Table(rows=list(rows.values()), masked=True)
+        # move night column to the beginning
+        t.columns.move_to_end('night', last=False)
+        for col in t.columns.values()[1:]:
+            col[col == 0] = np.ma.masked
+
+        print('\nRaw data:\n')
+        t.pprint(max_lines=-1)
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
