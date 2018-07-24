@@ -79,8 +79,8 @@ class MuseRed:
         self.reduced_path = self.conf['reduced_path']
 
         self.db = load_db(self.conf['db'])
-        self.raw = self.db['raw']
-        self.reduced = self.db['reduced']
+        self.raw = self.db.create_table('raw')
+        self.reduced = self.db.create_table('reduced')
 
         self.static_calib = StaticCalib(self.conf['muse_calib_path'],
                                         self.conf['static_calib'])
