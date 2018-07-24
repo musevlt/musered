@@ -164,33 +164,37 @@ class MuseRed:
         excludes = ('Astrometric calibration (ASTROMETRY)', )
 
         # count files per night and per type
-        col = self.raw.table.columns
-        query = (sql.select([col.night, col.OBJECT, func.count(col.night)])
-                 .where(col.night.isnot(None))
-                 .group_by(col.night, col.OBJECT))
+        for table, datecol, title in (
+                (self.raw, 'night', 'Raw'),
+                (self.reduced, 'date_obs', 'Processed')):
+            col = table.table.columns
+            query = (sql.select([col[datecol], col.OBJECT,
+                                 func.count(col[datecol])])
+                     .where(col[datecol].isnot(None))
+                     .group_by(col[datecol], col.OBJECT))
 
-        # reorganize rows to have types (in columns) per night (rows)
-        rows = defaultdict(dict)
-        keys = set()
-        for night, obj, count in self.db.executable.execute(query):
-            if obj in excludes:
-                continue
-            rows[night]['night'] = night.isoformat()
-            rows[night][obj] = count
-            keys.add(obj)
+            # reorganize rows to have types (in columns) per night (rows)
+            rows = defaultdict(dict)
+            keys = set()
+            for date, obj, count in self.db.executable.execute(query):
+                if obj in excludes:
+                    continue
+                rows[date]['date'] = date.isoformat()
+                rows[date][obj] = count
+                keys.add(obj)
 
-        # set default counts
-        for row, key in itertools.product(rows.values(), keys):
-            row.setdefault(key, 0)
+            # set default counts
+            for row, key in itertools.product(rows.values(), keys):
+                row.setdefault(key, 0)
 
-        t = Table(rows=list(rows.values()), masked=True)
-        # move night column to the beginning
-        t.columns.move_to_end('night', last=False)
-        for col in t.columns.values()[1:]:
-            col[col == 0] = np.ma.masked
+            t = Table(rows=list(rows.values()), masked=True)
+            # move date column to the beginning
+            t.columns.move_to_end('date', last=False)
+            for col in t.columns.values()[1:]:
+                col[col == 0] = np.ma.masked
 
-        print('\nRaw data:\n')
-        t.pprint(max_lines=-1)
+            print(f'\n{title} data:\n')
+            t.pprint(max_lines=-1)
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
