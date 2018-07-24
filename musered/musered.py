@@ -198,13 +198,13 @@ class MuseRed:
                 # Same as MuseWise
                 if date.time() < NOON:
                     row['night'] -= ONEDAY
+            else:
+                row['night'] = None
 
             for key in keywords:
                 col = key[4:] if key.startswith('ESO ') else key
                 col = col.replace(' ', '_').replace('-', '_')
-                val = hdr.get(key)
-                if val is not None:
-                    row[col] = val
+                row[col] = hdr.get(key)
 
             rows.append(row)
 
