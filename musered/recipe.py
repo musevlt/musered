@@ -30,31 +30,33 @@ class Recipe:
 
     recipe_name = None
     OBJECT = None
-    OBJECT_out = None
     # indir = None
     default_params = None
     n_inputs_min = None
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
-                 log_dir='.', version=None, nifu=-1):
+                 log_dir='.', version=None, nifu=-1, tag=None):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
         self.outfiles = defaultdict(list)
         self.log_dir = log_dir
         self.log_file = None
 
+        self._recipe = cpl.Recipe(self.recipe_name, version=version)
+
+        if tag is not None:
+            self._recipe.tag = tag
+
         if output_dir is not None:
             self.output_dir = output_dir
         else:
-            self.output_dir = self.OBJECT_out
+            self.output_dir = self.output_frames[0]
 
-        self._recipe = cpl.Recipe(self.recipe_name, version=version)
         self._recipe.output_dir = self.output_dir if use_drs_output else None
         if temp_dir is not None:
             self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
         self.calib = self._recipe.calib
-        self.calib_frames = list(dict(self.calib).keys())
 
         if 'nifu' in self.param:
             self.param['nifu'] = nifu
@@ -65,12 +67,28 @@ class Recipe:
 
         self.logger.info('%s recipe (DRS v%s from %s)', self.recipe_name,
                          self._recipe.version[1], cpl.Recipe.path)
-        # self.param['saveimage'] = saveimage
-        # self._recipe.env['MUSE_PIXTABLE_SAVE_AS_IMAGE'] = 1
+
+    @property
+    def calib_frames(self):
+        """Return the list of calibration frames."""
+        return list(dict(self.calib).keys())
+
+    @property
+    def output_frames(self):
+        """Return the list of output frames."""
+        return self._recipe.output[self._recipe.tag]
 
     def dump_params(self):
         params = {p.name: p.value for p in self.param if p.value is not None}
         return json.dumps(params)
+
+    def dump(self):
+        return {
+            'tottime': self.timeit,
+            'nbwarn': self.nbwarn,
+            'log_file': self.log_file,
+            'params': self.dump_params(),
+        }
 
     def write_fits(self, name_or_hdulist, filetype, filename):
         if type(name_or_hdulist) is list:
@@ -87,6 +105,9 @@ class Recipe:
             raise ValueError('unknown output type: %r', name_or_hdulist)
 
         self.outfiles[filetype].append(filename)
+
+    def _run(self, flist, **kwargs):
+        return self._recipe(raw={self._recipe.tag: flist}, **kwargs)
 
     def run(self, flist, *args, params=None, **kwargs):
         t0 = time.time()

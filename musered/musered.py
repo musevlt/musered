@@ -282,14 +282,14 @@ class MuseRed:
                       color=True, fmt=conf.get('msg_format', default_fmt))
 
     def find_calib(self, night, OBJECT, ins_mode, nrequired=24, day_off=0):
-        res = self.reduced.find_one(dateobs=night, INS_MODE=ins_mode,
+        res = self.reduced.find_one(date_obs=night, INS_MODE=ins_mode,
                                     OBJECT=OBJECT)
         if res is None and day_off != 0:
             for off, direction in itertools.product(range(1, day_off + 1),
                                                     (1, -1)):
                 off = datetime.timedelta(days=off * direction)
                 res = self.reduced.find_one(
-                    dateobs=night + off, INS_MODE=ins_mode, OBJECT=OBJECT)
+                    date_obs=night + off, INS_MODE=ins_mode, OBJECT=OBJECT)
                 if res is not None:
                     self.logger.warning('Using %s from night %s',
                                         OBJECT, night + off)
@@ -298,7 +298,7 @@ class MuseRed:
         if res is None:
             raise ValueError(f'could not find {OBJECT} for night {night}')
 
-        flist = sorted(glob(f"{res['path']}/*.fits"))
+        flist = sorted(glob(f"{res['path']}/{OBJECT}*.fits"))
         if len(flist) != nrequired:
             raise ValueError(f'found {len(flist)} {OBJECT} files '
                              f'instead of {nrequired}')
@@ -306,35 +306,40 @@ class MuseRed:
 
     def get_calib_frames(self, recipe, night, ins_mode, day_off=0):
         frames = {}
+        # TODO: add option to use DARK
+        skip_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
         for frame in recipe.calib_frames:
             if frame == 'BADPIX_TABLE':
                 frames[frame] = self.static_calib.badpix_table(date=night)
-            elif frame != 'MASTER_DARK':
-                # TODO: add option to use DARK
+            elif frame not in skip_frames:
                 frames[frame] = self.find_calib(night, frame, ins_mode,
                                                 day_off=day_off)
+
         return frames
 
-    def process_calib(self, calib_type, night_list=None, skip_processed=False):
-        from .recipes.calib import calib_classes
-
-        if calib_type not in calib_classes:
-            raise ValueError(f'invalid calib_type {calib_type}')
-
-        # create the cpl.Recipe object
+    def get_recipe_params(self, recipe_name):
+        """Return the dict of params for a recipe."""
         conf = self.conf['recipes']
-        recipe_cls = calib_classes[calib_type]
-        recipe_name = recipe_cls.recipe_name
         params = {**conf.get('common', {}), **conf.get(recipe_name, {})}
         params.setdefault('log_dir', self.log_dir)
+        return params
+
+    def process_calib(self, calib_type, night_list=None, skip_processed=False):
+        from .recipes.calib import get_calib_cls
+
+        # create the cpl.Recipe object
+        recipe_cls = get_calib_cls(calib_type)
+        recipe_name = recipe_cls.recipe_name
+        params = self.get_recipe_params(recipe_name)
         self.logger.debug('params: %r', params)
 
+        # get the list of nights to process
         if night_list is not None:
             night_list = [parse_date(night) for night in night_list]
         else:
-            OBJECT = self.raw.table.c.OBJECT
-            night_list = self.select_column('night', distinct=True,
-                                            whereclause=(OBJECT == calib_type))
+            night_list = self.select_column(
+                'night', distinct=True,
+                whereclause=(self.raw.table.c.OBJECT == calib_type))
         night_list = list(sorted(night_list))
 
         info = self.logger.info
@@ -342,11 +347,9 @@ class MuseRed:
         self.logger.debug('nights: ' + ', '.join(map(str, night_list)))
 
         if skip_processed:
-            OBJECT = self.reduced.table.c.OBJECT
-            night_processed = set(self.select_column(
-                'dateobs', table='reduced',
-                whereclause=(OBJECT == recipe_cls.OBJECT_out)
-            ))
+            night_processed = self.select_column(
+                'date_obs', table='reduced', distinct=True,
+                whereclause=(self.reduced.table.c.recipe_name == recipe_name))
             self.logger.debug('processed: ' +
                               ', '.join(map(str, sorted(night_processed))))
             if len(night_processed) == len(night_list):
@@ -378,16 +381,23 @@ class MuseRed:
             calib = self.get_calib_frames(recipe, night, ins_mode, day_off=1)
             results = recipe.run(flist, output_dir=output_dir, **calib)
 
-            self.reduced.upsert(dict(
-                date=datetime.datetime.now().isoformat(),
-                dateobs=night,
-                path=output_dir,
-                OBJECT=recipe.OBJECT_out,
-                INS_MODE=ins_mode,
-                user_time=results.stat.user_time,
-                sys_time=results.stat.sys_time,
-                tottime=recipe.timeit,
-                nbwarn=recipe.nbwarn,
-                log_file=recipe.log_file,
-                params=recipe.dump_params(),
-            ), ['dateobs', 'OBJECT'])
+            self.logger.debug('Output frames : ', recipe.output_frames)
+            date_run = datetime.datetime.now().isoformat()
+
+            for out_frame in recipe.output_frames:
+                # save in database for each output frame, but check before that
+                # files were created for each frame (some are optional)
+                flist = sorted(glob(f"{output_dir}/{out_frame}*.fits"))
+                if len(flist) == 0:
+                    continue
+                self.reduced.upsert({
+                    'date_run': date_run,
+                    'recipe_name': recipe_name,
+                    'date_obs': night,
+                    'path': output_dir,
+                    'OBJECT': out_frame,
+                    'INS_MODE': ins_mode,
+                    'user_time': results.stat.user_time,
+                    'sys_time': results.stat.sys_time,
+                    **recipe.dump()
+                }, ['date_obs', 'recipe_name', 'OBJECT'])
