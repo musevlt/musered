@@ -8,7 +8,7 @@ from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from collections import OrderedDict, defaultdict
-from glob import glob
+from glob import glob, iglob
 from mpdaf.log import setup_logging
 from sqlalchemy import sql, func
 
@@ -122,7 +122,6 @@ class MuseRed:
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
         self.reduced_path = self.conf['reduced_path']
-        self.log_dir = self.conf['cpl']['log_dir']
 
         self.db = load_db(self.conf['db'])
         self.raw = self.db['raw']
@@ -130,7 +129,7 @@ class MuseRed:
 
         self.static_calib = StaticCalib(self.conf['muse_calib_path'],
                                         self.conf['static_calib'])
-        self.init_cpl()
+        self.init_cpl_params()
 
     @lazyproperty
     def nights(self):
@@ -264,7 +263,7 @@ class MuseRed:
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
 
-    def init_cpl(self):
+    def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""
 
         conf = self.conf['cpl']
@@ -276,14 +275,20 @@ class MuseRed:
             cpl.esorex.log.level = conf['esorex_msg']  # file logging
         if conf['esorex_msg_format'] is not None:
             cpl.esorex.log.format = conf['esorex_msg_format']
-        if conf['log_dir'] is not None:
-            os.makedirs(conf['log_dir'], exist_ok=True)
+
+        conf.setdefault('log_dir', os.path.join(self.reduced_path, 'logs'))
+        os.makedirs(conf['log_dir'], exist_ok=True)
 
         # terminal logging: disable cpl's logger as it uses the root logger.
         cpl.esorex.msg.level = 'off'
         default_fmt = '%(levelname)s - %(name)s: %(message)s'
         setup_logging(name='cpl', level=conf.get('msg', 'info').upper(),
                       color=True, fmt=conf.get('msg_format', default_fmt))
+
+        # default params for recipes
+        params = self.conf['recipes'].setdefault('common', {})
+        params.setdefault('log_dir', conf['log_dir'])
+        params.setdefault('temp_dir', os.path.join(self.reduced_path, 'tmp'))
 
     def find_calib(self, night, OBJECT, ins_mode, nrequired=24, day_off=0):
         res = self.reduced.find_one(date_obs=night, INS_MODE=ins_mode,
@@ -321,21 +326,12 @@ class MuseRed:
 
         return frames
 
-    def get_recipe_params(self, recipe_name):
-        """Return the dict of params for a recipe."""
-        conf = self.conf['recipes']
-        params = {**conf.get('common', {}), **conf.get(recipe_name, {})}
-        params.setdefault('log_dir', self.log_dir)
-        return params
-
     def process_calib(self, calib_type, night_list=None, skip_processed=False):
         from .recipes.calib import get_calib_cls
 
         # create the cpl.Recipe object
         recipe_cls = get_calib_cls(calib_type)
         recipe_name = recipe_cls.recipe_name
-        params = self.get_recipe_params(recipe_name)
-        self.logger.debug('params: %r', params)
 
         # get the list of nights to process
         if night_list is not None:
@@ -363,7 +359,8 @@ class MuseRed:
                 info('%d nights already processed', len(night_processed))
 
         # Instantiate the recipe object
-        recipe = recipe_cls(**params)
+        recipe = recipe_cls(**self.conf['recipes']['common'])
+        recipe_params = self.conf['recipes'].get(recipe_name)
 
         for night in night_list:
             if skip_processed and night in night_processed:
@@ -383,7 +380,8 @@ class MuseRed:
                                       f'{night.isoformat()}.{ins_mode}')
 
             calib = self.get_calib_frames(recipe, night, ins_mode, day_off=1)
-            results = recipe.run(flist, output_dir=output_dir, **calib)
+            results = recipe.run(flist, output_dir=output_dir,
+                                 params=recipe_params, **calib)
 
             self.logger.debug('Output frames : ', recipe.output_frames)
             date_run = datetime.datetime.now().isoformat()
@@ -391,17 +389,15 @@ class MuseRed:
             for out_frame in recipe.output_frames:
                 # save in database for each output frame, but check before that
                 # files were created for each frame (some are optional)
-                flist = sorted(glob(f"{output_dir}/{out_frame}*.fits"))
-                if len(flist) == 0:
-                    continue
-                self.reduced.upsert({
-                    'date_run': date_run,
-                    'recipe_name': recipe_name,
-                    'date_obs': night,
-                    'path': output_dir,
-                    'OBJECT': out_frame,
-                    'INS_MODE': ins_mode,
-                    'user_time': results.stat.user_time,
-                    'sys_time': results.stat.sys_time,
-                    **recipe.dump()
-                }, ['date_obs', 'recipe_name', 'OBJECT'])
+                if any(iglob(f"{output_dir}/{out_frame}*.fits")):
+                    self.reduced.upsert({
+                        'date_run': date_run,
+                        'recipe_name': recipe_name,
+                        'date_obs': night,
+                        'path': output_dir,
+                        'OBJECT': out_frame,
+                        'INS_MODE': ins_mode,
+                        'user_time': results.stat.user_time,
+                        'sys_time': results.stat.sys_time,
+                        **recipe.dump()
+                    }, ['date_obs', 'recipe_name', 'OBJECT'])
