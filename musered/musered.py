@@ -12,72 +12,18 @@ from glob import glob, iglob
 from mpdaf.log import setup_logging
 from sqlalchemy import sql, func
 
+from .settings import RAW_FITS_KEYWORDS, STATIC_FRAMES
 from .utils import (load_yaml_config, load_db, get_exp_name,
                     parse_date, parse_datetime, NOON, ONEDAY, ProgressBar)
 
-FITS_KEYWORDS = """
-ARCFILE                  / Archive File Name
-DATE-OBS                 / Observing date
-EXPTIME                  / Integration time
-MJD-OBS                  / Obs start
-OBJECT                   / Original target
-ORIGFILE                 / Original File Name
-RA
-DEC
-
-ESO DPR CATG             / Observation category
-ESO DPR TYPE             / Observation type
-ESO INS DROT POSANG      / [deg] Derotator position angle
-ESO INS MODE             / Instrument mode used.
-ESO INS TEMP4 VAL        / Ambient Temperature
-ESO INS TEMP7 VAL        / Right IFU Temperature 1
-ESO INS TEMP11 VAL       / Left IFU Temperature 1
-ESO OBS NAME             / OB name
-ESO OBS START            / OB start time
-ESO OBS TARG NAME        / OB target name
-ESO OCS SGS AG FWHMX MED / [arcsec] AG FWHM X median value
-ESO OCS SGS AG FWHMY MED / [arcsec] AG FWHM Y median value
-ESO OCS SGS AG FWHMX RMS / [arcsec] AG FWHM X RMS value
-ESO OCS SGS AG FWHMY RMS / [arcsec] AG FWHM Y RMS value
-ESO OCS SGS FWHM MED     / [arcsec] SGS FWHM median value
-ESO OCS SGS FWHM RMS     / [arcsec] SGS FWHM RMS value
-ESO PRO DATANCOM         / Number of combined frames
-ESO TEL AIRM END         / Airmass at end
-ESO TEL AIRM START       / Airmass at start
-ESO TEL AMBI WINDDIR     / [deg] Observatory ambient wind direction
-ESO TEL AMBI WINDSP      / [m/s] Observatory ambient wind speed queri
-ESO TEL MOON DEC
-ESO TEL MOON RA
-"""
-
-# FIXME: do we need all this ?
-# ESO OCS SGS AG FWHMX AVG
-# ESO OCS SGS AG FWHMX MAX
-# ESO OCS SGS AG FWHMX MED
-# ESO OCS SGS AG FWHMX MIN
-# ESO OCS SGS AG FWHMX RMS
-# ESO OCS SGS AG FWHMY AVG
-# ESO OCS SGS AG FWHMY MAX
-# ESO OCS SGS AG FWHMY MED
-# ESO OCS SGS AG FWHMY MIN
-# ESO OCS SGS AG FWHMY RMS
-# ESO OCS SGS FLUX AVG
-# ESO OCS SGS FLUX MAX
-# ESO OCS SGS FLUX MED
-# ESO OCS SGS FLUX MIN
-# ESO OCS SGS FLUX RMS
-# ESO OCS SGS FLUX RMSPRC
-# ESO OCS SGS FWHM AVG
-# ESO OCS SGS FWHM MAX
-# ESO OCS SGS FWHM MED
-# ESO OCS SGS FWHM MIN
-# ESO OCS SGS FWHM RMS
-# ESO OCS SGS NOBJ
-# ESO OCS SGS OFFSET DECSUM
-# ESO OCS SGS OFFSET RASUM
-
 
 class StaticCalib:
+    """Manage static calibrations.
+
+    It must be instantiated with a directory containing the default static
+    calibration files, and a settings dict that can be used to define time
+    periods where a given calibration file is valid.
+    """
 
     def __init__(self, path, conf):
         self.path = path
@@ -87,7 +33,15 @@ class StaticCalib:
     def files(self):
         return os.listdir(self.path)
 
-    def _find_file(self, key, default, date=None):
+    @lazyproperty
+    def catg_list(self):
+        cat = defaultdict(list)
+        for f in self.files:
+            key = fits.getval(f, 'ESO PRO CATG', ext=0)
+            cat[key].append(f)
+        return cat
+
+    def get(self, key, date=None):
         for item in self.conf:
             if key not in item:
                 continue
@@ -100,15 +54,16 @@ class StaticCalib:
                 file = item[key]
                 break
         else:
-            # found nothing, use default
-            file = default
+            # found nothing, use default if given
+            if len(self.catg_list[key]) > 1:
+                logger = logging.getLogger(__name__)
+                logger.warning('multiple options for %s, using the first '
+                               'one: %r', key, self.catg_list[key])
+            file = self.catg_list[key][0]
 
         if file not in self.files:
             raise ValueError(f'could not find {file}')
         return os.path.join(self.path, file)
-
-    def badpix_table(self, date=None):
-        return self._find_file('badpix_table', 'badpix_table.fits', date=date)
 
 
 class MuseRed:
@@ -217,7 +172,7 @@ class MuseRed:
         self.logger.info('found %d FITS files', len(flist))
 
         keywords = [k.split('/')[0].strip()
-                    for k in FITS_KEYWORDS.splitlines() if k]
+                    for k in RAW_FITS_KEYWORDS.splitlines() if k]
 
         # get the list of files already in the database
         try:
@@ -316,10 +271,11 @@ class MuseRed:
     def get_calib_frames(self, recipe, night, ins_mode, day_off=0):
         frames = {}
         # TODO: add option to use DARK
+        # FIXME: use NONLINEARITY_GAIN ?
         skip_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
         for frame in recipe.calib_frames:
-            if frame == 'BADPIX_TABLE':
-                frames[frame] = self.static_calib.badpix_table(date=night)
+            if frame in STATIC_FRAMES:
+                frames[frame] = self.static_calib.get(frame, date=night)
             elif frame not in skip_frames:
                 frames[frame] = self.find_calib(night, frame, ins_mode,
                                                 day_off=day_off)
