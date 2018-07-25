@@ -34,11 +34,10 @@ def retrieve_data(mr, dataset, username, dry_run, no_update_db):
             'muse', column_filters=mr.datasets[ds]['archive_filter'])
         logger.info('Found %d exposures', len(table))
         logger.debug('\n'.join(table['DP.ID']))
-        if dry_run:
-            print(table)
-        else:
+        print(table)
+        if not dry_run:
             eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
                               with_calib='raw')
 
-    if not no_update_db:
+    if not dry_run and not no_update_db:
         mr.update_db()
