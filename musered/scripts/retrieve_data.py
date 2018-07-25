@@ -6,14 +6,12 @@ from astroquery.eso import Eso
 
 
 @click.argument('dataset', nargs=-1)
-@click.option('--username',
-              help='username for the ESO archive')
-@click.option('--dry-run', is_flag=True,
-              help='print the query result but do not retrieve files')
-@click.option('--no-update-db', is_flag=True,
-              help='do not update the database')
+@click.option('--username', help='username for the ESO archive')
+@click.option('--help-query', is_flag=True, help="print query options")
+@click.option('--dry-run', is_flag=True, help="don't retrieve files")
+@click.option('--no-update-db', is_flag=True, help="don't update the database")
 @click.pass_obj
-def retrieve_data(mr, dataset, username, dry_run, no_update_db):
+def retrieve_data(mr, dataset, username, help_query, dry_run, no_update_db):
     """Retrieve files from DATASET from the ESO archive."""
 
     logger = logging.getLogger(__name__)
@@ -22,6 +20,11 @@ def retrieve_data(mr, dataset, username, dry_run, no_update_db):
         params = {**params, 'username': username}
 
     eso = Eso()
+
+    if help_query:
+        eso.query_instrument('muse', help=True)
+        return
+
     eso.login(**params)
     os.makedirs(mr.raw_path, exist_ok=True)
 

@@ -60,14 +60,12 @@ Retrieving a dataset is done with `Astroquery
 possible query options for Muse, to use in the *archive_filter* for your
 dataset, use this::
 
-    from astroquery.eso import Eso
-    eso = Eso()
-    eso.query_instrument('muse', help=True)
+    $ musered retrieve_data --help-query
 
 Once a dataset is defined in the settings file, its data files can be retrieved
 with this command::
 
-    musered retrieve_data IC4406
+    $ musered retrieve_data IC4406
 
 Note that this also retrieve the calibration files associated to the data. And
 all files are placed in a unique directory (defined by the ``raw_path``
@@ -80,7 +78,7 @@ Then the next step is to ingest FITS keywords in a SQLite database. This step
 is triggered automatically by the ``retrieve_data`` command, but it can also be
 run manually if needed, with::
 
-    musered update_db
+    $ musered update_db
 
 Running recipes
 ---------------
@@ -106,12 +104,12 @@ recipes.
 
 For instance, to run the ``muse_bias`` recipe for a given night::
 
-    musered process_calib --bias 2017-06-15
+    $ musered process_calib --bias 2017-06-15
 
 Or to run ``muse_flat`` recipe for all nights, skipping already processed
 nights::
 
-    musered process_calib --flat --skip
+    $ musered process_calib --flat --skip
 
 
 .. _astroquery: https://astroquery.readthedocs.io/en/latest/
