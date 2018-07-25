@@ -332,8 +332,8 @@ class MuseRed:
             if len(ins_mode) > 1:
                 raise ValueError('night with multiple INS.MODE, not supported')
             ins_mode = ins_mode.pop()
-            info('night %s, %d bias files, mode=%s', night, len(flist),
-                 ins_mode)
+            info('night %s, %d %s files, mode=%s', night, len(flist),
+                 calib_type, ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{night.isoformat()}.{ins_mode}')
