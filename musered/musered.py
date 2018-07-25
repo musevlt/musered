@@ -37,24 +37,28 @@ class StaticCalib:
     def catg_list(self):
         cat = defaultdict(list)
         for f in self.files:
-            key = fits.getval(f, 'ESO PRO CATG', ext=0)
+            key = fits.getval(os.path.join(self.path, f),
+                              'ESO PRO CATG', ext=0)
             cat[key].append(f)
         return cat
 
     def get(self, key, date=None):
-        for item in self.conf:
-            if key not in item:
-                continue
-            if date is None:
-                file = item[key]
-                break
-            start_date = item.get('start_date', datetime.date.min)
-            end_date = item.get('end_date', datetime.date.max)
-            if start_date < date < end_date:
-                file = item[key]
-                break
-        else:
-            # found nothing, use default if given
+        file = None
+        if key in self.conf:
+            # if key is defined in the conf file, try to find a static calib
+            # file that matched the date requirement
+            for item, val in self.conf[key].items():
+                if date is None:
+                    file = item
+                    break
+                start_date = val.get('start_date', datetime.date.min)
+                end_date = val.get('end_date', datetime.date.max)
+                if start_date < date < end_date:
+                    file = item
+                    break
+
+        if file is None:
+            # found nothing, use default from the static calib directory
             if len(self.catg_list[key]) > 1:
                 logger = logging.getLogger(__name__)
                 logger.warning('multiple options for %s, using the first '
@@ -271,7 +275,6 @@ class MuseRed:
     def get_calib_frames(self, recipe, night, ins_mode, day_off=0):
         frames = {}
         # TODO: add option to use DARK
-        # FIXME: use NONLINEARITY_GAIN ?
         skip_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
         for frame in recipe.calib_frames:
             if frame in STATIC_FRAMES:
