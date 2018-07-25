@@ -1,0 +1,70 @@
+# NOTE: Top-level keys are substitued in the file before loading it.
+
+# Paths (working directory, database, etc.)
+workdir: '.'
+db: 'musered.db'
+raw_path: '{workdir}/raw'
+reduced_path: '{workdir}/reduced/{version}'
+muse_calib_path: '/home/conseil/lib/musedrs/muse-calib'
+
+# Version
+version: '0.1'
+revision: '1'
+
+# python-cpl settings, esorex like.
+cpl:
+  # recipes directory (and version if needed)
+  recipe_path: '/home/conseil/.local/lib/esopipes-plugins'
+  # drs_version: '2.1.0'
+  # log files directory
+  log_dir: '{workdir}/reduced/{version}/logs'
+  # severity level and format of messages printed to the terminal
+  msg: info
+  msg_format: "[%(process)s] %(levelname)s - %(name)s: %(message)s"
+  # msg_format: "[%(process)s] %(levelname)s - %(name)s: %(message)s"
+  # severity level and format of messages for the logfile
+  esorex_msg: debug
+  esorex_msg_format: "%(asctime)s [%(levelname)07s][%(threadName)s] %(name)s: %(message)s"
+
+# This is just an example of how to use substitutions to define date ranges
+# that are used below for static calibrations. Not used elsewhere.
+runs:
+  GTO02: &GTO02
+    start_date: 2014-09-13
+    end_date: 2014-09-27
+
+# Static calibrations.
+# By default files from the muse_calib_path directory are used, but it is also
+# possible here to specify date ranges of validity for specific calibrations.
+static_calib:
+  BADPIX_TABLE:
+    badpix_table.fits:
+      start_date: 2015-05-11
+    badpix_table_pre_2015apr.fits:
+      start_date: 2014-09-17
+      end_date: 2015-05-10
+  ASTROMETRY_TABLE:
+    astrometry_wcs_wfm_gto02.fits: *GTO02
+  GEOMETRY_TABLE:
+    geometry_table_wfm_gto02.fits: *GTO02
+
+# Definition of datasets.
+datasets:
+  IC4406:
+    archive_filter:
+      # "column_filters" passed to astroquery.Eso.query_instrument
+      obs_targ_name: IC4406
+
+# Parameters for the retrieve_data command (passed to astroquery.Eso.login)
+retrieve_data:
+  username: MUSE-GTO
+  store_password: False
+  reenter_password: True
+
+# Parameters for recipes. Can be used to specify additional parameters.
+recipes:
+  common:
+    temp_dir: '{workdir}/reduced/{version}/tmp'
+    # use_drs_output: True
+  # muse_bias:
+  #   outdir: 'MASTER_BIAS'
