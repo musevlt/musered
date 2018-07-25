@@ -114,10 +114,6 @@ class MuseRed:
         print('Datasets:')
         self.list_datasets()
 
-        if 'night' not in self.raw.columns:
-            print('Nothing yet.')
-            return
-
         # uninteresting objects to exclude from the report
         excludes = ('Astrometric calibration (ASTROMETRY)', )
 
@@ -125,6 +121,12 @@ class MuseRed:
         for table, datecol, title in (
                 (self.raw, 'night', 'Raw'),
                 (self.reduced, 'date_obs', 'Processed')):
+
+            print(f'\n{title} data:\n')
+            if datecol not in table.columns:
+                print('Nothing yet.')
+                return
+
             col = table.table.columns
             query = (sql.select([col[datecol], col.OBJECT,
                                  func.count(col[datecol])])
@@ -151,7 +153,6 @@ class MuseRed:
             for col in t.columns.values()[1:]:
                 col[col == 0] = np.ma.masked
 
-            print(f'\n{title} data:\n')
             t.pprint(max_lines=-1)
 
     def select_column(self, name, notnull=True, distinct=False,
