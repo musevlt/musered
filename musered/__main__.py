@@ -63,6 +63,7 @@ def cli(ctx, debug, info, list_datasets, list_nights, settings):
 @click.pass_obj
 def update_db(mr, force):
     """Create or update the database containing FITS keywords."""
+    logger.info('Updating the database from the %s directory', mr.raw_path)
     mr.update_db(force=force)
 
 
