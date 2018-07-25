@@ -35,7 +35,7 @@ class Recipe:
     n_inputs_min = None
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
-                 log_dir='.', version=None, tag=None):
+                 log_dir='.', version=None, nifu=-1, tag=None):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
         self.outfiles = defaultdict(list)
@@ -57,6 +57,9 @@ class Recipe:
             self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
         self.calib = self._recipe.calib
+
+        if 'nifu' in self.param:
+            self.param['nifu'] = nifu
 
         if self.default_params is not None:
             for name, value in self.default_params.items():
