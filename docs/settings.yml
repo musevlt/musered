@@ -65,6 +65,5 @@ retrieve_data:
 recipes:
   common:
     temp_dir: '{workdir}/reduced/{version}/tmp'
-    # use_drs_output: True
-  # muse_bias:
-  #   outdir: 'MASTER_BIAS'
+  muse_wavecal:
+    saveimages: True

@@ -27,7 +27,6 @@ class WAVECAL(Recipe):
 
     recipe_name = 'muse_wavecal'
     OBJECT = 'WAVE'
-    default_params = {'saveimages': True}
     n_inputs_min = 1
 
 

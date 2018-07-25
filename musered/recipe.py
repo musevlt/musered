@@ -137,7 +137,7 @@ class Recipe:
         for p in self.param:
             # FIXME: check params passed in kwargs
             if p.value is not None:
-                info('%10s : %s (%s)', p.name, p.value, p.default)
+                info('%15s = %s (%s)', p.name, p.value, p.default)
 
         for frame in self.calib_frames:
             try:
