@@ -30,11 +30,19 @@ class WAVECAL(Recipe):
     n_inputs_min = 1
 
 
-calib_classes = {cls.OBJECT: cls for cls in (BIAS, DARK, FLAT, WAVECAL)}
+class LSF(Recipe):
+
+    recipe_name = 'muse_lsf'
+    OBJECT = 'WAVE'
+    n_inputs_min = 1
 
 
-def get_calib_cls(calib_type):
-    if calib_type not in calib_classes:
-        raise ValueError(f'invalid calib_type {calib_type}')
+calib_classes = {cls.recipe_name: cls
+                 for cls in (BIAS, DARK, FLAT, WAVECAL, LSF)}
 
-    return calib_classes[calib_type]
+
+def get_calib_cls(recipe_name):
+    if recipe_name not in calib_classes:
+        raise ValueError(f'invalid recipe_name {recipe_name}')
+
+    return calib_classes[recipe_name]

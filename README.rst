@@ -96,7 +96,8 @@ The currently available steps and the related command-line options are:
 - ``muse_bias``: ``--bias``
 - ``muse_dark``: ``--dark``
 - ``muse_flat``: ``--flat``
-- ``muse_wavecal``: ``--arc``
+- ``muse_wavecal``: ``--wavecal``
+- ``muse_lsf``: ``--lsf``
 
 By default, when no option is given, all steps except ``muse_dark`` are run.
 The ``MASTER_DARK`` frames are also excluded from the inputs of the other

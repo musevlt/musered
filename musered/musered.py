@@ -286,12 +286,14 @@ class MuseRed:
 
         return frames
 
-    def process_calib(self, calib_type, night_list=None, skip_processed=False):
+    def process_calib(self, recipe_name, night_list=None,
+                      skip_processed=False):
         from .recipes.calib import get_calib_cls
 
         # create the cpl.Recipe object
-        recipe_cls = get_calib_cls(calib_type)
-        recipe_name = recipe_cls.recipe_name
+        recipe_name = 'muse_' + recipe_name
+        recipe_cls = get_calib_cls(recipe_name)
+        OBJECT = recipe_cls.OBJECT
 
         # get the list of nights to process
         if night_list is not None:
@@ -299,7 +301,7 @@ class MuseRed:
         else:
             night_list = self.select_column(
                 'night', distinct=True,
-                whereclause=(self.raw.table.c.OBJECT == calib_type))
+                whereclause=(self.raw.table.c.OBJECT == OBJECT))
         night_list = list(sorted(night_list))
 
         info = self.logger.info
@@ -327,14 +329,14 @@ class MuseRed:
                 self.logger.debug('night %s already processed', night)
                 continue
 
-            res = list(self.raw.find(night=night, OBJECT=calib_type))
+            res = list(self.raw.find(night=night, OBJECT=OBJECT))
             flist = [o['path'] for o in res]
             ins_mode = set(o['INS_MODE'] for o in res)
             if len(ins_mode) > 1:
                 raise ValueError('night with multiple INS.MODE, not supported')
             ins_mode = ins_mode.pop()
             info('night %s, %d %s files, mode=%s', night, len(flist),
-                 calib_type, ins_mode)
+                 OBJECT, ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{night.isoformat()}.{ins_mode}')
