@@ -7,6 +7,12 @@ MUSE Data Reduction
 The aim of this project is to provide tools to reduce more easily MUSE
 datasets, and for doing an "advanced" data reduction, similar to the HUDF one.
 
+.. warning::
+   Currently we need a development version of *astroquery*, it can be installed
+   with::
+
+     pip install --pre "astroquery>0.3.8"
+
 First, clone the repository and install the package::
 
     pip install .
