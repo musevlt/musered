@@ -33,6 +33,7 @@ class Recipe:
     # indir = None
     default_params = None
     n_inputs_min = None
+    exclude_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
                  log_dir='.', version=None, nifu=-1, tag=None):

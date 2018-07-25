@@ -273,14 +273,15 @@ class MuseRed:
                              f'instead of {nrequired}')
         return flist
 
-    def get_calib_frames(self, recipe, night, ins_mode, day_off=0):
+    def get_calib_frames(self, recipe, night, ins_mode, day_off=0,
+                         exclude_frames=None):
         frames = {}
-        # TODO: add option to use DARK
-        skip_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
-        for frame in recipe.calib_frames:
+        exclude_frames = set(exclude_frames or recipe.exclude_frames)
+
+        for frame in set(recipe.calib_frames) - exclude_frames:
             if frame in STATIC_FRAMES:
                 frames[frame] = self.static_calib.get(frame, date=night)
-            elif frame not in skip_frames:
+            else:
                 frames[frame] = self.find_calib(night, frame, ins_mode,
                                                 day_off=day_off)
 
@@ -322,7 +323,7 @@ class MuseRed:
 
         # Instantiate the recipe object
         recipe = recipe_cls(**self.conf['recipes']['common'])
-        recipe_params = self.conf['recipes'].get(recipe_name)
+        recipe_conf = self.conf['recipes'].get(recipe_name, {})
 
         for night in night_list:
             if skip_processed and night in night_processed:
@@ -341,9 +342,11 @@ class MuseRed:
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{night.isoformat()}.{ins_mode}')
 
-            calib = self.get_calib_frames(recipe, night, ins_mode, day_off=1)
+            calib = self.get_calib_frames(
+                recipe, night, ins_mode, day_off=1,
+                exclude_frames=recipe_conf.get('exclude_frames'))
             results = recipe.run(flist, output_dir=output_dir,
-                                 params=recipe_params, **calib)
+                                 params=recipe_conf.get('params'), **calib)
 
             self.logger.debug('Output frames : ', recipe.output_frames)
             date_run = datetime.datetime.now().isoformat()

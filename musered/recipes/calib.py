@@ -28,6 +28,7 @@ class WAVECAL(Recipe):
     recipe_name = 'muse_wavecal'
     OBJECT = 'WAVE'
     n_inputs_min = 1
+    exclude_frames = ('MASTER_FLAT', ) + Recipe.exclude_frames
 
 
 class LSF(Recipe):

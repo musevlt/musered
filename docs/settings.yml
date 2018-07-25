@@ -66,4 +66,5 @@ recipes:
   common:
     temp_dir: '{workdir}/reduced/{version}/tmp'
   muse_wavecal:
-    saveimages: True
+    params:
+      saveimages: True
