@@ -66,5 +66,7 @@ recipes:
   common:
     temp_dir: '{workdir}/reduced/{version}/tmp'
   muse_wavecal:
+    # This can be used to change the frames excluded by default
+    # exclude_frames: [MASTER_FLAT, MASTER_DARK, NONLINEARITY_GAIN]
     params:
       saveimages: True
