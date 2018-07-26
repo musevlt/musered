@@ -2,7 +2,6 @@ import click
 import logging
 import os
 import sys
-from astroquery.eso import Eso
 
 
 @click.argument('dataset', nargs=-1)
@@ -19,6 +18,7 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, no_update_db):
     if username is not None:
         params = {**params, 'username': username}
 
+    from astroquery.eso import Eso
     eso = Eso()
 
     if help_query:
