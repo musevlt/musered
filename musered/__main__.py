@@ -21,13 +21,12 @@ except ImportError:
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.version_option(version=__version__)
 @click.option('--debug', is_flag=True, help='Debug mode')
-@click.option('--info', is_flag=True, help='Information about the database')
 @click.option('--list-datasets', is_flag=True, help='List datasets')
 @click.option('--list-nights', is_flag=True, help='List nights')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='Settings file, default to settings.yml')
 @click.pass_context
-def cli(ctx, debug, info, list_datasets, list_nights, settings):
+def cli(ctx, debug, list_datasets, list_nights, settings):
     """Muse data reduction."""
 
     if debug:
@@ -51,9 +50,7 @@ def cli(ctx, debug, info, list_datasets, list_nights, settings):
     logger.info('Musered version %s', __version__)
     # mr.debug = debug
 
-    if info:
-        mr.info()
-    elif list_datasets:
+    if list_datasets:
         mr.list_datasets()
     elif list_nights:
         mr.list_nights()
@@ -65,6 +62,17 @@ def update_db(mr, force):
     """Create or update the database containing FITS keywords."""
     logger.info('Updating the database from the %s directory', mr.raw_path)
     mr.update_db(force=force)
+
+
+@click.argument('dateobs', nargs=-1)
+@click.pass_obj
+def info(mr, dateobs):
+    """Create or update the database containing FITS keywords."""
+    if len(dateobs) == 0:
+        mr.info()
+    else:
+        for date in dateobs:
+            mr.info_exp(date)
 
 
 @click.argument('night', nargs=-1)
@@ -100,7 +108,7 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
         mr.process_calib('twilight', night_list=night, skip_processed=skip)
 
 
-for cmd in (retrieve_data, update_db, process_calib):
+for cmd in (info, retrieve_data, update_db, process_calib):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 

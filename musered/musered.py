@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import operator
 import os
+import textwrap
 from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
@@ -163,6 +164,33 @@ class MuseRed:
                     col[col > 0] = 1
 
             t.pprint(max_lines=-1)
+
+    def info_exp(self, date_obs):
+        res = defaultdict(list)
+        for r in self.reduced.find(date_obs=date_obs):
+            res[r['recipe_name']].append(r)
+
+        res = list(res.values())
+        res.sort(key=lambda x: x[0]['date_run'])
+
+        print(textwrap.dedent(f"""
+        ==================
+         {date_obs}
+        ==================
+        """))
+
+        for recipe in res:
+            o = recipe[0]
+            frames = ', '.join(r['OBJECT'] for r in recipe)
+            print(textwrap.dedent(f"""\
+            recipe: {o['recipe_name']}
+            - date    : {o['date_run']}
+            - log     : {o['log_file']}
+            - frames  : {frames}
+            - path    : {o['path']}
+            - warning : {o['nbwarn']}
+            - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
+            """))
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
