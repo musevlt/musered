@@ -33,6 +33,7 @@ class Recipe:
     # indir = None
     default_params = None
     n_inputs_min = None
+    use_illum = None
     exclude_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
@@ -46,6 +47,9 @@ class Recipe:
         self._recipe = cpl.Recipe(self.recipe_name, version=version)
 
         if tag is not None:
+            if tag not in self._recipe.tags:
+                raise ValueError(f'invalid tag {tag} for {self.recipe_name}, '
+                                 'should be in {self._recipe.tags}')
             self._recipe.tag = tag
 
         if output_dir is not None:
@@ -107,8 +111,8 @@ class Recipe:
 
         self.outfiles[filetype].append(filename)
 
-    def _run(self, flist, **kwargs):
-        return self._recipe(raw={self._recipe.tag: flist}, **kwargs)
+    def _run(self, raw, **kwargs):
+        return self._recipe(raw=raw, **kwargs)
 
     def run(self, flist, *args, params=None, **kwargs):
         t0 = time.time()
@@ -146,7 +150,11 @@ class Recipe:
             except KeyError:
                 pass
 
-        results = self._run(flist, *args, **kwargs)
+        raw = {self._recipe.tag: flist}
+        if self.use_illum and kwargs.get('illum'):
+            raw['ILLUM'] = kwargs.pop('illum')
+
+        results = self._run(raw, *args, **kwargs)
 
         self.nbwarn = len(results.log.warning)
         self.timeit = (time.time() - t0) / 60

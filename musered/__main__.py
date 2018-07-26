@@ -74,9 +74,10 @@ def update_db(mr, force):
 @click.option('--flat', is_flag=True, help='Run muse_flat')
 @click.option('--wavecal', is_flag=True, help='Run muse_wavecal')
 @click.option('--lsf', is_flag=True, help='Run muse_lsf')
+@click.option('--twilight', is_flag=True, help='Run muse_twilight')
 @click.pass_obj
-def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf):
-    """Process calibrations (bias, dark, flat) for NIGHT.
+def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
+    """Process calibrations (bias, dark, flat, etc.) for NIGHT.
 
     By default, process calibrations for all nights, and all types except dark.
 
@@ -84,7 +85,7 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf):
     if len(night) == 0:
         night = None
 
-    run_all = not any([bias, dark, flat, wavecal, lsf])
+    run_all = not any([bias, dark, flat, wavecal, lsf, twilight])
     if bias or run_all:
         mr.process_calib('bias', night_list=night, skip_processed=skip)
     if dark:
@@ -95,6 +96,8 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf):
         mr.process_calib('wavecal', night_list=night, skip_processed=skip)
     if lsf or run_all:
         mr.process_calib('lsf', night_list=night, skip_processed=skip)
+    if twilight or run_all:
+        mr.process_calib('twilight', night_list=night, skip_processed=skip)
 
 
 for cmd in (retrieve_data, update_db, process_calib):

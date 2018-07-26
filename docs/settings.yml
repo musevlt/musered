@@ -29,9 +29,15 @@ cpl:
 # This is just an example of how to use substitutions to define date ranges
 # that are used below for static calibrations. Not used elsewhere.
 runs:
-  GTO02: &GTO02
-    start_date: 2014-09-13
-    end_date: 2014-09-27
+  GTO17: &GTO17
+    start_date: 2017-04-01
+    end_date: 2017-06-30
+  GTO24: &GTO24
+    start_date: 2018-04-01
+    end_date: 2018-04-30
+  GTO25: &GTO25
+    start_date: 2018-05-01
+    end_date: 2018-07-01
 
 # Static calibrations.
 # By default files from the muse_calib_path directory are used, but it is also
@@ -44,9 +50,13 @@ static_calib:
       start_date: 2014-09-17
       end_date: 2015-05-10
   ASTROMETRY_TABLE:
-    astrometry_wcs_wfm_gto02.fits: *GTO02
+    astrometry_wcs_wfm_gto17.fits: *GTO17
+    astrometry_wcs_wfm_gto24.fits: *GTO24
+    astrometry_wcs_wfm_gto25.fits: *GTO25
   GEOMETRY_TABLE:
-    geometry_table_wfm_gto02.fits: *GTO02
+    geometry_table_wfm_gto17.fits: *GTO17
+    geometry_table_wfm_gto24.fits: *GTO24
+    geometry_table_wfm_gto25.fits: *GTO25
 
 # Definition of datasets.
 datasets:

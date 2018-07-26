@@ -3,6 +3,7 @@ import datetime
 import itertools
 import logging
 import numpy as np
+import operator
 import os
 from astropy.io import fits
 from astropy.table import Table
@@ -287,8 +288,48 @@ class MuseRed:
 
         return frames
 
+    def find_illum(self, night, ref_temp, ref_mjd_date):
+        """Find the best ILLUM exposure for the night.
+
+        First, illums are sorted by date to find the closest one in time, then
+        if there are multiple illums within 2 hours, the one with the closest
+        temperature is used.
+
+        """
+        illums = sorted(
+            (o['DATE_OBS'],                       # Date
+             abs(o['INS_TEMP7_VAL'] - ref_temp),  # Temperature difference
+             abs(o['MJD_OBS'] - ref_mjd_date),    # Date difference
+             o['path'])                           # File path
+            for o in self.raw.find(OBJECT='FLAT,LAMP,ILLUM', night=night))
+
+        if len(illums) == 0:
+            self.logger.warning('No ILLUM found')
+            return
+
+        # Filter illums to keep the ones within 2 hours
+        close_illums = [illum for illum in illums if illum[2] < 2/24.]
+
+        if len(close_illums) == 0:
+            self.logger.warning('No ILLUM in less than 2h')
+            res = illums[0]
+        elif len(close_illums) == 1:
+            self.logger.debug('Only one ILLUM in less than 2h')
+            res = illums[0]
+        else:
+            self.logger.debug('More than one ILLUM in less than 2h')
+            # Sort by temperature difference
+            illums.sort(key=operator.itemgetter(1))
+            res = illums[0]
+            for illum in illums:
+                self.logger.debug('%.2f %.2f %s', *illum[:3])
+
+        self.logger.info('Found ILLUM : %s (Temp diff: %.3f, Time diff: '
+                         '%.2f min.)', res[0], res[1], res[2] * 24 * 60)
+        return res[3]
+
     def process_calib(self, recipe_name, night_list=None,
-                      skip_processed=False):
+                      skip_processed=False, **kwargs):
         from .recipes.calib import get_calib_cls
 
         # create the cpl.Recipe object
@@ -345,8 +386,15 @@ class MuseRed:
             calib = self.get_calib_frames(
                 recipe, night, ins_mode, day_off=1,
                 exclude_frames=recipe_conf.get('exclude_frames'))
+
+            if recipe.use_illum:
+                ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
+                ref_date = np.mean([o['MJD_OBS'] for o in res])
+                kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
+
+            params = recipe_conf.get('params')
             results = recipe.run(flist, output_dir=output_dir,
-                                 params=recipe_conf.get('params'), **calib)
+                                 params=params, **calib, **kwargs)
 
             self.logger.debug('Output frames : ', recipe.output_frames)
             date_run = datetime.datetime.now().isoformat()

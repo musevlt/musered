@@ -1,6 +1,6 @@
 from ..recipe import Recipe
 
-__all__ = ('BIAS', 'DARK', 'FLAT', 'WAVECAL', 'LSF')
+__all__ = ('BIAS', 'DARK', 'FLAT', 'WAVECAL', 'LSF', 'SKYFLAT')
 
 
 class BIAS(Recipe):
@@ -40,8 +40,16 @@ class LSF(Recipe):
     n_inputs_min = 1
 
 
+class SKYFLAT(Recipe):
+
+    recipe_name = 'muse_twilight'
+    OBJECT = 'FLAT,SKY'
+    n_inputs_min = 3
+    use_illum = True
+
+
 calib_classes = {cls.recipe_name: cls
-                 for cls in (BIAS, DARK, FLAT, WAVECAL, LSF)}
+                 for cls in (BIAS, DARK, FLAT, WAVECAL, LSF, SKYFLAT)}
 
 
 def get_calib_cls(recipe_name):
