@@ -119,9 +119,9 @@ class MuseRed:
         excludes = ('Astrometric calibration (ASTROMETRY)', )
 
         # count files per night and per type
-        for table, datecol, title in (
-                (self.raw, 'night', 'Raw'),
-                (self.reduced, 'date_obs', 'Processed')):
+        for table, datecol, countcol, title in (
+                (self.raw, 'night', 'OBJECT', 'Raw'),
+                (self.reduced, 'date_obs', 'recipe_name', 'Processed')):
 
             print(f'\n{title} data:\n')
             if datecol not in table.columns:
@@ -129,10 +129,10 @@ class MuseRed:
                 return
 
             col = table.table.columns
-            query = (sql.select([col[datecol], col.OBJECT,
+            query = (sql.select([col[datecol], col[countcol],
                                  func.count(col[datecol])])
                      .where(col[datecol].isnot(None))
-                     .group_by(col[datecol], col.OBJECT))
+                     .group_by(col[datecol], col[countcol]))
 
             # reorganize rows to have types (in columns) per night (rows)
             rows = defaultdict(dict)
@@ -153,6 +153,14 @@ class MuseRed:
             t.columns.move_to_end('date', last=False)
             for col in t.columns.values()[1:]:
                 col[col == 0] = np.ma.masked
+
+            if title == 'Processed':
+                for col in t.columns.values()[1:]:
+                    # shorten recipe names
+                    col.name = col.name.replace('muse_', '')
+                    # here it would print the number of time a recipe was run,
+                    # which is not the goal. replace with 1...
+                    col[col > 0] = 1
 
             t.pprint(max_lines=-1)
 
