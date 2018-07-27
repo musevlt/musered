@@ -67,7 +67,7 @@ def update_db(mr, force):
 @click.argument('dateobs', nargs=-1)
 @click.pass_obj
 def info(mr, dateobs):
-    """Create or update the database containing FITS keywords."""
+    """Print info about raw and reduced data, or night or exposure."""
     if len(dateobs) == 0:
         mr.info()
     else:
