@@ -6,7 +6,7 @@ __all__ = ('SCIBASIC', )
 class SCIBASIC(Recipe):
 
     recipe_name = 'muse_scibasic'
-    OBJECT = 'OBJECT'
+    DPR_TYPE = 'OBJECT'
     env = {'MUSE_PIXTABLE_SAVE_AS_IMAGE': 1}
 
 

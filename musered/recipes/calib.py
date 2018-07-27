@@ -6,21 +6,21 @@ __all__ = ('BIAS', 'DARK', 'FLAT', 'WAVECAL', 'LSF', 'SKYFLAT')
 class BIAS(Recipe):
 
     recipe_name = 'muse_bias'
-    OBJECT = 'BIAS'
+    DPR_TYPE = 'BIAS'
     n_inputs_min = 3
 
 
 class DARK(Recipe):
 
     recipe_name = 'muse_dark'
-    OBJECT = 'DARK'
+    DPR_TYPE = 'DARK'
     n_inputs_min = 3
 
 
 class FLAT(Recipe):
 
     recipe_name = 'muse_flat'
-    OBJECT = 'FLAT,LAMP'
+    DPR_TYPE = 'FLAT,LAMP'
     default_params = {'samples': True}
     n_inputs_min = 3
 
@@ -28,20 +28,20 @@ class FLAT(Recipe):
 class WAVECAL(Recipe):
 
     recipe_name = 'muse_wavecal'
-    OBJECT = 'WAVE'
+    DPR_TYPE = 'WAVE'
     exclude_frames = ('MASTER_FLAT', ) + Recipe.exclude_frames
 
 
 class LSF(Recipe):
 
     recipe_name = 'muse_lsf'
-    OBJECT = 'WAVE'
+    DPR_TYPE = 'WAVE'
 
 
 class SKYFLAT(Recipe):
 
     recipe_name = 'muse_twilight'
-    OBJECT = 'FLAT,SKY'
+    DPR_TYPE = 'FLAT,SKY'
     n_inputs_min = 3
     use_illum = True
 

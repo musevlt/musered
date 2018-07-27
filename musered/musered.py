@@ -139,7 +139,10 @@ class MuseRed:
             col = table.table.columns
             query = (sql.select([col[datecol], col[countcol],
                                  func.count(col[datecol])])
-                     .where(col[datecol].isnot(None))
+                     .where(sql.and_(
+                         col[datecol].isnot(None),
+                         col[countcol].isnot(None)
+                     ))
                      .group_by(col[datecol], col[countcol]))
 
             # reorganize rows to have types (in columns) per night (rows)
@@ -346,7 +349,7 @@ class MuseRed:
              abs(o['INS_TEMP7_VAL'] - ref_temp),  # Temperature difference
              abs(o['MJD_OBS'] - ref_mjd_date),    # Date difference
              o['path'])                           # File path
-            for o in self.raw.find(OBJECT='FLAT,LAMP,ILLUM', night=night))
+            for o in self.raw.find(DPR_TYPE='FLAT,LAMP,ILLUM', night=night))
 
         if len(illums) == 0:
             self.logger.warning('No ILLUM found')
@@ -375,12 +378,13 @@ class MuseRed:
 
     def run_recipe(self, recipe_cls, date_list, skip_processed=False,
                    by_night=False, **kwargs):
-        OBJECT = recipe_cls.OBJECT
+        DPR_TYPE = recipe_cls.DPR_TYPE
         recipe_name = recipe_cls.recipe_name
         label = 'night' if by_night else 'exposure'
         datecol = 'night' if by_night else 'date_obs'
 
-        self.logger.info('%s, %d %ss', recipe_name, len(date_list), label)
+        self.logger.info('Running %s for %d %ss',
+                         recipe_name, len(date_list), label)
         self.logger.debug(f'{label}s: ' + ', '.join(map(str, date_list)))
 
         if skip_processed:
@@ -405,15 +409,16 @@ class MuseRed:
                 self.logger.debug('%s already processed', date_obs)
                 continue
 
-            res = list(self.raw.find(**{datecol: date_obs, 'OBJECT': OBJECT}))
+            res = list(self.raw.find(**{datecol: date_obs,
+                                        'DPR_TYPE': DPR_TYPE}))
             flist = [o['path'] for o in res]
             ins_mode = set(o['INS_MODE'] for o in res)
             if len(ins_mode) > 1:
                 raise ValueError(f'{label} with multiple INS.MODE, '
                                  'not supported yet')
             ins_mode = ins_mode.pop()
-            self.logger.info('%s %s, %d %s files, mode=%s',
-                             label, date_obs, len(flist), OBJECT, ins_mode)
+            self.logger.info('%s %s : %d %s files, mode=%s',
+                             label, date_obs, len(flist), DPR_TYPE, ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
                                       f'{date_obs.isoformat()}.{ins_mode}')
@@ -463,7 +468,7 @@ class MuseRed:
         if night_list is not None:
             night_list = [parse_date(night) for night in night_list]
         else:
-            whereclause = (self.raw.table.c.OBJECT == recipe_cls.OBJECT)
+            whereclause = (self.raw.table.c.DPR_TYPE == recipe_cls.DPR_TYPE)
             night_list = self.select_column('night', distinct=True,
                                             whereclause=whereclause)
         night_list = list(sorted(night_list))

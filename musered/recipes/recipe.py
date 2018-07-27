@@ -27,7 +27,7 @@ class Recipe:
     """
 
     recipe_name = None
-    OBJECT = None
+    DPR_TYPE = None
     default_params = None
     n_inputs_min = 1
     use_illum = None
