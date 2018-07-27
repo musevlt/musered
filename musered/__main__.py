@@ -23,10 +23,11 @@ except ImportError:
 @click.option('--debug', is_flag=True, help='Debug mode')
 @click.option('--list-datasets', is_flag=True, help='List datasets')
 @click.option('--list-nights', is_flag=True, help='List nights')
+@click.option('--list-exps', is_flag=True, help='List exposures')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='Settings file, default to settings.yml')
 @click.pass_context
-def cli(ctx, debug, list_datasets, list_nights, settings):
+def cli(ctx, debug, list_datasets, list_nights, list_exps, settings):
     """Muse data reduction."""
 
     if debug:
@@ -52,8 +53,10 @@ def cli(ctx, debug, list_datasets, list_nights, settings):
 
     if list_datasets:
         mr.list_datasets()
-    elif list_nights:
+    if list_nights:
         mr.list_nights()
+    if list_exps:
+        mr.list_exposures()
 
 
 @click.option('--force', is_flag=True, help='force update for existing rows')

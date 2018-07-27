@@ -94,6 +94,9 @@ class MuseRed:
         self.raw = self.db.create_table('raw')
         self.reduced = self.db.create_table('reduced')
 
+        self.rawc = self.raw.table.c
+        self.execute = self.db.executable.execute
+
         self.static_calib = StaticCalib(self.conf['muse_calib_path'],
                                         self.conf['static_calib'])
         self.init_cpl_params()
@@ -101,20 +104,40 @@ class MuseRed:
     @lazyproperty
     def nights(self):
         """Return the list of nights for which data is available."""
-        if 'night' in self.raw.columns:
-            return self.select_column('night', distinct=True)
-        else:
+        if 'night' not in self.raw.columns:
             return []
+        return self.select_column('night', distinct=True)
+
+    @lazyproperty
+    def exposures(self):
+        """Return a dict of science exposure per target."""
+        if 'night' not in self.raw.columns:
+            return {}
+        out = defaultdict(list)
+        for obj, name in self.execute(
+                sql.select([self.rawc.OBJECT, self.rawc.name])
+                .where(self.rawc.DPR_TYPE == 'OBJECT')):
+            out[obj].append(name)
+        return out
 
     def list_datasets(self):
         """Print the list of datasets."""
+        print('Datasets:')
         for name in self.datasets:
             print(f'- {name}')
 
     def list_nights(self):
         """Print the list of nights."""
+        print('Nights:')
         for x in sorted(self.nights):
             print(f'- {x:%Y-%m-%d}')
+
+    def list_exposures(self):
+        """Print the list of exposures."""
+        print('Exposures:')
+        for name, explist in sorted(self.exposures.items()):
+            print(f'- {name}')
+            print('  - ' + '\n  - '.join(explist))
 
     def info(self):
         """Print a summary of the raw and reduced data."""
@@ -148,7 +171,7 @@ class MuseRed:
             # reorganize rows to have types (in columns) per night (rows)
             rows = defaultdict(dict)
             keys = set()
-            for date, obj, count in self.db.executable.execute(query):
+            for date, obj, count in self.execute(query):
                 if obj in excludes:
                     continue
                 rows[date]['date'] = date.isoformat()
@@ -213,7 +236,7 @@ class MuseRed:
         select = sql.select([col], whereclause=wc)
         if distinct:
             select = select.distinct(col)
-        return [x[0] for x in self.db.executable.execute(select)]
+        return [x[0] for x in self.execute(select)]
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
@@ -468,7 +491,7 @@ class MuseRed:
         if night_list is not None:
             night_list = [parse_date(night) for night in night_list]
         else:
-            whereclause = (self.raw.table.c.DPR_TYPE == recipe_cls.DPR_TYPE)
+            whereclause = (self.rawc.DPR_TYPE == recipe_cls.DPR_TYPE)
             night_list = self.select_column('night', distinct=True,
                                             whereclause=whereclause)
         night_list = list(sorted(night_list))
