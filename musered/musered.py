@@ -73,6 +73,12 @@ class StaticCalib:
 
 
 class MuseRed:
+    """The main class handling all MuseRed's logic.
+
+    This class manages the database, and use the settings file, to provide all
+    the methods to operate on the datasets.
+
+    """
 
     def __init__(self, settings_file='settings.yml'):
         self.logger = logging.getLogger(__name__)
@@ -111,6 +117,7 @@ class MuseRed:
             print(f'- {x:%Y-%m-%d}')
 
     def info(self):
+        """Print a summary of the raw and reduced data."""
         print(f'{self.raw.count()} files\n')
 
         print('Datasets:')
@@ -166,6 +173,7 @@ class MuseRed:
             t.pprint(max_lines=-1)
 
     def info_exp(self, date_obs):
+        """Print information about a given exposure or night."""
         res = defaultdict(list)
         for r in self.reduced.find(date_obs=date_obs):
             res[r['recipe_name']].append(r)
@@ -194,6 +202,7 @@ class MuseRed:
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
+        """Select values from a column of the database."""
         col = self.db[table].table.c[name]
         wc = col.isnot(None) if notnull else None
         if whereclause is not None:
@@ -205,7 +214,6 @@ class MuseRed:
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
-
         flist = []
         for root, dirs, files in os.walk(self.raw_path):
             for f in files:
@@ -262,7 +270,6 @@ class MuseRed:
 
     def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""
-
         conf = self.conf['cpl']
         cpl.esorex.init()
 
@@ -288,6 +295,7 @@ class MuseRed:
         params.setdefault('temp_dir', os.path.join(self.reduced_path, 'tmp'))
 
     def find_calib(self, night, OBJECT, ins_mode, nrequired=24, day_off=0):
+        """Return calibration files for a given night, type, and mode."""
         res = self.reduced.find_one(date_obs=night, INS_MODE=ins_mode,
                                     OBJECT=OBJECT)
         if res is None and day_off != 0:
@@ -312,6 +320,7 @@ class MuseRed:
 
     def get_calib_frames(self, recipe, night, ins_mode, day_off=0,
                          exclude_frames=None):
+        """Return a dict with all calibration frames for a recipe."""
         frames = {}
         exclude_frames = set(exclude_frames or recipe.exclude_frames)
 
@@ -366,6 +375,7 @@ class MuseRed:
 
     def process_calib(self, recipe_name, night_list=None,
                       skip_processed=False, **kwargs):
+        """Run a calibration recipe."""
         from .recipes.calib import get_calib_cls
 
         # create the cpl.Recipe object

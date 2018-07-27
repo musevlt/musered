@@ -21,3 +21,6 @@ help:
 
 livehtml:
 	sphinx-autobuild -b html $(ALLSPHINXOPTS) "$(SOURCEDIR)" $(BUILDDIR)/html
+
+sync:
+	rsync -rltDvhc --exclude=.doctrees _build/html/ urania1:/srv/UDF/musered
