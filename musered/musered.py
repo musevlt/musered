@@ -373,70 +373,59 @@ class MuseRed:
                          '%.2f min.)', res[0], res[1], res[2] * 24 * 60)
         return res[3]
 
-    def process_calib(self, recipe_name, night_list=None,
-                      skip_processed=False, **kwargs):
-        """Run a calibration recipe."""
-        from .recipes.calib import get_calib_cls
-
-        # create the cpl.Recipe object
-        recipe_name = 'muse_' + recipe_name
-        recipe_cls = get_calib_cls(recipe_name)
+    def run_recipe(self, recipe_cls, date_list, skip_processed=False,
+                   by_night=False, **kwargs):
         OBJECT = recipe_cls.OBJECT
+        recipe_name = recipe_cls.recipe_name
+        label = 'night' if by_night else 'exposure'
+        datecol = 'night' if by_night else 'date_obs'
 
-        # get the list of nights to process
-        if night_list is not None:
-            night_list = [parse_date(night) for night in night_list]
-        else:
-            night_list = self.select_column(
-                'night', distinct=True,
-                whereclause=(self.raw.table.c.OBJECT == OBJECT))
-        night_list = list(sorted(night_list))
-
-        info = self.logger.info
-        info('%s, %d nights', recipe_name, len(night_list))
-        self.logger.debug('nights: ' + ', '.join(map(str, night_list)))
+        self.logger.info('%s, %d %ss', recipe_name, len(date_list), label)
+        self.logger.debug(f'{label}s: ' + ', '.join(map(str, date_list)))
 
         if skip_processed:
-            night_processed = self.select_column(
+            processed = self.select_column(
                 'date_obs', table='reduced', distinct=True,
                 whereclause=(self.reduced.table.c.recipe_name == recipe_name))
             self.logger.debug('processed: ' +
-                              ', '.join(map(str, sorted(night_processed))))
-            if len(night_processed) == len(night_list):
-                info('Already processed, nothing to do')
+                              ', '.join(map(str, sorted(processed))))
+            if len(processed) == len(date_list):
+                self.logger.info('Already processed, nothing to do')
                 return
             else:
-                info('%d nights already processed', len(night_processed))
+                self.logger.info('%d %ss already processed',
+                                 len(processed), label)
 
         # Instantiate the recipe object
         recipe = recipe_cls(**self.conf['recipes']['common'])
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
 
-        for night in night_list:
-            if skip_processed and night in night_processed:
-                self.logger.debug('night %s already processed', night)
+        for date_obs in date_list:
+            if skip_processed and date_obs in processed:
+                self.logger.debug('%s already processed', date_obs)
                 continue
 
-            res = list(self.raw.find(night=night, OBJECT=OBJECT))
+            res = list(self.raw.find(**{datecol: date_obs, 'OBJECT': OBJECT}))
             flist = [o['path'] for o in res]
             ins_mode = set(o['INS_MODE'] for o in res)
             if len(ins_mode) > 1:
-                raise ValueError('night with multiple INS.MODE, not supported')
+                raise ValueError(f'{label} with multiple INS.MODE, '
+                                 'not supported yet')
             ins_mode = ins_mode.pop()
-            info('night %s, %d %s files, mode=%s', night, len(flist),
-                 OBJECT, ins_mode)
+            self.logger.info('%s %s, %d %s files, mode=%s',
+                             label, date_obs, len(flist), OBJECT, ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
-                                      f'{night.isoformat()}.{ins_mode}')
+                                      f'{date_obs.isoformat()}.{ins_mode}')
 
             calib = self.get_calib_frames(
-                recipe, night, ins_mode, day_off=1,
+                recipe, date_obs, ins_mode, day_off=1,
                 exclude_frames=recipe_conf.get('exclude_frames'))
 
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
                 ref_date = np.mean([o['MJD_OBS'] for o in res])
-                kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
+                kwargs['illum'] = self.find_illum(date_obs, ref_temp, ref_date)
 
             params = recipe_conf.get('params')
             results = recipe.run(flist, output_dir=output_dir,
@@ -452,7 +441,7 @@ class MuseRed:
                     self.reduced.upsert({
                         'date_run': date_run,
                         'recipe_name': recipe_name,
-                        'date_obs': night,
+                        'date_obs': date_obs,
                         'path': output_dir,
                         'OBJECT': out_frame,
                         'INS_MODE': ins_mode,
@@ -460,3 +449,24 @@ class MuseRed:
                         'sys_time': results.stat.sys_time,
                         **recipe.dump()
                     }, ['date_obs', 'recipe_name', 'OBJECT'])
+
+    def process_calib(self, recipe_name, night_list=None,
+                      skip_processed=False, **kwargs):
+        """Run a calibration recipe."""
+
+        # create the cpl.Recipe object
+        from .recipes.calib import get_calib_cls
+        recipe_name = 'muse_' + recipe_name
+        recipe_cls = get_calib_cls(recipe_name)
+
+        # get the list of nights to process
+        if night_list is not None:
+            night_list = [parse_date(night) for night in night_list]
+        else:
+            whereclause = (self.raw.table.c.OBJECT == recipe_cls.OBJECT)
+            night_list = self.select_column('night', distinct=True,
+                                            whereclause=whereclause)
+        night_list = list(sorted(night_list))
+
+        self.run_recipe(recipe_cls, night_list, by_night=True,
+                        skip_processed=skip_processed, **kwargs)
