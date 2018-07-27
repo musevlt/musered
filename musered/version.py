@@ -3,12 +3,11 @@ import os
 __version__ = '0.1.dev'
 __description__ = 'Muse data reduction, quick and easy'
 
-CURDIR = os.path.dirname(os.path.abspath(__file__))
-
 
 def _update_git_version():
     from contextlib import suppress
     from subprocess import check_output
+    CURDIR = os.path.dirname(os.path.abspath(__file__))
     command_number = 'git -C {} rev-list --count HEAD'.format(CURDIR).split()
     with suppress(Exception):
         return check_output(command_number).decode('ascii').strip()
