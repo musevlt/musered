@@ -36,8 +36,7 @@ in the current directory. This file contains all the settings about
 directories, global options, parameters for the *musered* commands, and for the
 reduction recipes.
 
-A `settings file example <./docs/settings.yml>`_ can be found in the ``docs``
-folder.
+See also the :doc:`settings` example.
 
 One important thing in the organisation of the reduction is the concept of
 *dataset*. This defines a set of files that are retrieved and reduced together.
