@@ -14,8 +14,6 @@ class Recipe:
 
     Parameters
     ----------
-    indir : str
-        Name of input directory.
     output_dir : str
         Name of output directory.
     use_drs_output : bool
@@ -30,10 +28,10 @@ class Recipe:
 
     recipe_name = None
     OBJECT = None
-    # indir = None
     default_params = None
-    n_inputs_min = None
+    n_inputs_min = 1
     use_illum = None
+    env = None
     exclude_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
@@ -62,6 +60,9 @@ class Recipe:
             self._recipe.temp_dir = temp_dir
         self.param = self._recipe.param
         self.calib = self._recipe.calib
+
+        if self.env is not None:
+            self._recipe.env.update(self.env)
 
         if 'nifu' in self.param:
             self.param['nifu'] = nifu
@@ -122,10 +123,10 @@ class Recipe:
             flist = [flist]
 
         if len(flist) == 0:
-            raise ValueError('No exposure found -- stopped')
+            raise ValueError('no exposure found')
 
-        if self.n_inputs_min is not None and len(flist) < self.n_inputs_min:
-            raise ValueError('Error need at least 3 exposures')
+        if len(flist) < self.n_inputs_min:
+            raise ValueError(f'need at least {self.n_inputs_min} exposures')
 
         if params is not None:
             for name, value in params.items():

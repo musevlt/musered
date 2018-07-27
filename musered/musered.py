@@ -455,9 +455,9 @@ class MuseRed:
         """Run a calibration recipe."""
 
         # create the cpl.Recipe object
-        from .recipes.calib import get_calib_cls
+        from .recipes.calib import get_recipe_cls
         recipe_name = 'muse_' + recipe_name
-        recipe_cls = get_calib_cls(recipe_name)
+        recipe_cls = get_recipe_cls(recipe_name)
 
         # get the list of nights to process
         if night_list is not None:
