@@ -1,4 +1,4 @@
-from ..recipe import Recipe
+from .recipe import Recipe
 
 __all__ = ('BIAS', 'DARK', 'FLAT', 'WAVECAL', 'LSF', 'SKYFLAT')
 
