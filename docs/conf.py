@@ -1,32 +1,36 @@
-# -*- coding: utf-8 -*-
-#
 # Configuration file for the Sphinx documentation builder.
 #
 # This file does only contain a selection of the most common options. For a
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
-# -- Path setup --------------------------------------------------------------
+import os
+import re
 
-# If extensions (or modules to document with autodoc) are in another directory,
-# add these directories to sys.path here. If the directory is relative to the
-# documentation root, use os.path.abspath to make it absolute, like shown here.
-#
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+# read version from version.py
+basedir = os.path.join(os.path.dirname(__file__), '..', 'musered')
+pkgmeta = {}
 
+with open(os.path.join(basedir, 'version.py')) as f:
+    code = compile(f.read(), 'version.py', 'exec')
+    exec(code, pkgmeta)
+
+if os.path.isfile(os.path.join(basedir, '_githash.py')):
+    with open(os.path.join(basedir, '_githash.py')) as f:
+        code = compile(f.read(), '_githash.py', 'exec')
+        exec(code, pkgmeta)
+    pkgmeta['__version__'] += pkgmeta['__dev_value__']
 
 # -- Project information -----------------------------------------------------
 
 project = 'MuseRed'
-copyright = '2018, Simon Conseil'
+copyright = '2018, Simon Conseil, CRAL'
 author = 'Simon Conseil'
 
 # The short X.Y version
-version = ''
-# The full version, including alpha/beta/rc tags
-release = '0.1'
+version = re.match('\d+\.\d+', pkgmeta['__version__']).group()
+# The full version, including alpha/beta/rc tags.
+release = pkgmeta['__version__']
 
 
 # -- General configuration ---------------------------------------------------
@@ -40,11 +44,15 @@ release = '0.1'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
     'sphinx.ext.doctest',
+    'sphinx.ext.ifconfig',
     'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
-    'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'numpydoc',
+    'sphinx_automodapi.automodapi',
+    'sphinx_automodapi.smart_resolver'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -71,6 +79,10 @@ language = None
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
+# The reST default role (used for this markup: `text`) to use for all
+# documents. Set to the "smart" one.
+default_role = 'obj'
+
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
@@ -80,13 +92,19 @@ pygments_style = 'sphinx'
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+# html_theme = 'alabaster'
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+if not on_rtd:  # only import and set the theme if we're building docs locally
+    import sphinx_rtd_theme
+    html_theme = "sphinx_rtd_theme"
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {'collapse_navigation': False}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -166,7 +184,47 @@ texinfo_documents = [
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3/', None),
+    'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/reference/', None),
+    'matplotlib': ('https://matplotlib.org/', None),
+    'astropy': ('http://docs.astropy.org/en/stable/', None)
+}
+
+# autodoc_default_flags = ['members', 'special-members',
+#                          'inherited-members']
+autodoc_member_order = 'bysource'
+
+autosummary_generate = True
+
+automodapi_toctreedirnm = 'api'
+automodsumm_inherited_members = True
+
+# Debug:
+# automodapi_writereprocessed = True
+# automodsumm_writereprocessed = True
+
+numpydoc_class_members_toctree = False
+numpydoc_show_class_members = False
+# numpydoc_use_plots = True
+
+# Class documentation should contain *both* the class docstring and
+# the __init__ docstring
+autoclass_content = "both"
+
+# Render inheritance diagrams in SVG
+graphviz_output_format = "svg"
+
+graphviz_dot_args = [
+    '-Nfontsize=10',
+    '-Nfontname=Helvetica Neue, Helvetica, Arial, sans-serif',
+    '-Efontsize=10',
+    '-Efontname=Helvetica Neue, Helvetica, Arial, sans-serif',
+    '-Gfontsize=10',
+    '-Gfontname=Helvetica Neue, Helvetica, Arial, sans-serif'
+]
+
 
 # -- Options for todo extension ----------------------------------------------
 
