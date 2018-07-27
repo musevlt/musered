@@ -42,7 +42,9 @@ folder.
 One important thing in the organisation of the reduction is the concept of
 *dataset*. This defines a set of files that are retrieved and reduced together.
 For instance to define a `IC4406` dataset (observed during WFM-AO
-commissioning)::
+commissioning):
+
+.. code-block:: yaml
 
     datasets:
       IC4406:
@@ -55,10 +57,14 @@ See below for the meaning of *archive_filter*.
 About the command-line interface
 ================================
 
-Every step can be run with sub-commands of the ``musered`` command. It is also
-possible to setup completion (using `click-completion`_, TODO: explain), or to
-run the subcommands in a REPL with ``musered repl`` (after installing
-`click-repl`_).
+Every step can be run with sub-commands of the ``musered`` command. By default
+it supposes that the command is run in the directory containing the settings
+file, named ``settings.yml``. Otherwise this settings file can be specified
+with ``--settings``.
+
+It is also possible to setup completion (using `click-completion`_, TODO:
+explain), or to run the subcommands in a REPL with ``musered repl`` (after
+installing `click-repl`_).
 
 Data retrieval
 ==============
@@ -119,6 +125,28 @@ Or to run ``muse_flat`` recipe for all nights, skipping already processed
 nights::
 
     $ musered process_calib --flat --skip
+
+Python API
+==========
+
+MuseRed can also be used as a Python object, with the `~musered.MuseRed` class
+which provides all the methods corresponding to the command-line sub-commands:
+
+.. code-block:: python
+
+    >>> from musered import MuseRed
+    >>> mr = MuseRed(settings_file='settings.yml')
+    >>> mr.list_datasets()
+    - IC4406
+    >>> mr.list_nights()
+    - 2017-04-23
+    - 2017-06-13
+    - 2017-06-15
+    - 2017-06-17
+    - 2017-06-18
+    - 2017-06-19
+    - 2017-10-26
+
 
 
 .. _astroquery: https://astroquery.readthedocs.io/en/latest/
