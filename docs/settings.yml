@@ -80,3 +80,7 @@ recipes:
     # exclude_frames: [MASTER_FLAT, MASTER_DARK, NONLINEARITY_GAIN]
     params:
       saveimages: True
+  # muse_scibasic:
+  #   init:
+  #     use_drs_output: False
+  #     output_dir: '{workdir}/reduced/{version}/SCIBASIC'

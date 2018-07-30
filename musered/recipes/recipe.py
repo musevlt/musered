@@ -6,7 +6,6 @@ import os
 import shutil
 import time
 from astropy.io import fits
-from collections import defaultdict
 
 
 class Recipe:
@@ -28,6 +27,7 @@ class Recipe:
 
     recipe_name = None
     DPR_TYPE = None
+    output_dir = None
     default_params = None
     n_inputs_min = 1
     use_illum = None
@@ -38,9 +38,10 @@ class Recipe:
                  log_dir='.', version=None, nifu=-1, tag=None):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
-        self.outfiles = defaultdict(list)
+        self.outfiles = []
         self.log_dir = log_dir
         self.log_file = None
+        self.use_drs_output = use_drs_output
 
         self._recipe = cpl.Recipe(self.recipe_name, version=version)
 
@@ -52,12 +53,14 @@ class Recipe:
 
         if output_dir is not None:
             self.output_dir = output_dir
-        else:
+        elif self.output_dir is None:
             self.output_dir = self.output_frames[0]
 
         self._recipe.output_dir = self.output_dir if use_drs_output else None
         if temp_dir is not None:
             self._recipe.temp_dir = temp_dir
+            os.makedirs(temp_dir, exist_ok=True)
+
         self.param = self._recipe.param
         self.calib = self._recipe.calib
 
@@ -96,7 +99,7 @@ class Recipe:
             'params': self.dump_params(),
         }
 
-    def write_fits(self, name_or_hdulist, filetype, filename):
+    def write_fits(self, name_or_hdulist, filename):
         if type(name_or_hdulist) is list:
             # Not isinstance because HDUList inherits from list
             self.logger.error('Got a list of frames: %s', name_or_hdulist)
@@ -110,12 +113,26 @@ class Recipe:
         else:
             raise ValueError('unknown output type: %r', name_or_hdulist)
 
-        self.outfiles[filetype].append(filename)
+        self.outfiles.append(filename)
+
+    def save_results(self, results, name=None):
+        ifukey = 'ESO DRS MUSE PIXTABLE LIMITS IFU LOW'
+        for tag in results.tags:
+            if isinstance(results[tag], list):
+                for p in results[tag]:
+                    chan = p[0].header.get(ifukey)
+                    outn = (f'{tag}-{name}-{chan:02d}.fits' if (name and chan)
+                            else p[0].header['PIPEFILE'])
+                    self.write_fits(p, os.path.join(self.output_dir, outn))
+            else:
+                p = results[tag]
+                outn = f'{tag}-{name}.fits' if name else p.header['PIPEFILE']
+                self.write_fits(p, os.path.join(self.output_dir, outn))
 
     def _run(self, raw, **kwargs):
         return self._recipe(raw=raw, **kwargs)
 
-    def run(self, flist, *args, params=None, **kwargs):
+    def run(self, flist, *args, name=None, params=None, **kwargs):
         t0 = time.time()
         info = self.logger.info
 
@@ -156,6 +173,9 @@ class Recipe:
             raw['ILLUM'] = kwargs.pop('illum')
 
         results = self._run(raw, *args, **kwargs)
+
+        if self._recipe.output_dir is None:
+            self.save_results(results, name=name)
 
         self.nbwarn = len(results.log.warning)
         self.timeit = (time.time() - t0) / 60

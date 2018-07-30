@@ -7,6 +7,7 @@ class SCIBASIC(Recipe):
 
     recipe_name = 'muse_scibasic'
     DPR_TYPE = 'OBJECT'
+    output_dir = 'scibasic'
     use_illum = True
     env = {'MUSE_PIXTABLE_SAVE_AS_IMAGE': 1}
     default_params = {'saveimage': False}

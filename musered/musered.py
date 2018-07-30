@@ -315,7 +315,6 @@ class MuseRed:
                 if not self.reduced.has_index([name]):
                     self.reduced.create_index([name])
 
-
     def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""
         conf = self.conf['cpl']
@@ -419,18 +418,23 @@ class MuseRed:
             illums.sort(key=operator.itemgetter(1))
             res = illums[0]
             for illum in illums:
-                self.logger.debug('%.2f %.2f %s', *illum[:3])
+                self.logger.debug('%s Temp diff=%.2f Time diff=%.2f',
+                                  illum[0], illum[1], illum[2] * 24 * 60)
 
         self.logger.info('Found ILLUM : %s (Temp diff: %.3f, Time diff: '
                          '%.2f min.)', res[0], res[1], res[2] * 24 * 60)
         return res[3]
 
     def run_recipe(self, recipe_cls, date_list, skip_processed=False,
-                   by_night=False, **kwargs):
+                   calib=False, **kwargs):
         DPR_TYPE = recipe_cls.DPR_TYPE
         recipe_name = recipe_cls.recipe_name
-        label = 'night' if by_night else 'exposure'
-        datecol = 'night' if by_night else 'DATE_OBS'
+        if calib:
+            label = datecol = namecol = 'night'
+        else:
+            label = 'exposure'
+            datecol = 'DATE_OBS'
+            namecol = 'name'
 
         self.logger.info('Running %s for %d %ss',
                          recipe_name, len(date_list), label)
@@ -450,8 +454,9 @@ class MuseRed:
                                  len(processed), label)
 
         # Instantiate the recipe object
-        recipe = recipe_cls(**self.conf['recipes']['common'])
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
+        recipe = recipe_cls(**self.conf['recipes']['common'],
+                            **recipe_conf.get('init', {}))
 
         for date_obs in date_list:
             if skip_processed and date_obs in processed:
@@ -470,10 +475,12 @@ class MuseRed:
             self.logger.info('%s %s : %d %s files, mode=%s',
                              label, date_obs, len(flist), DPR_TYPE, ins_mode)
 
-            output_dir = os.path.join(self.reduced_path, recipe.output_dir,
-                                      f'{date_obs}.{ins_mode}')
+            if recipe.use_drs_output:
+                outn = f'{date_obs}.{ins_mode}' if calib else date_obs
+                kwargs['output_dir'] = os.path.join(self.reduced_path,
+                                                    recipe.output_dir, outn)
 
-            calib = self.get_calib_frames(
+            calib_frames = self.get_calib_frames(
                 recipe, night, ins_mode, day_off=3,
                 exclude_frames=recipe_conf.get('exclude_frames'))
 
@@ -483,12 +490,13 @@ class MuseRed:
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
 
             params = recipe_conf.get('params')
-            results = recipe.run(flist, output_dir=output_dir,
-                                 params=params, **calib, **kwargs)
+            results = recipe.run(flist, name=res[0][namecol], params=params,
+                                 **calib_frames, **kwargs)
 
-            self.logger.debug('Output frames : ', recipe.output_frames)
+            self.logger.debug('Output frames : %s', recipe.output_frames)
             date_run = datetime.datetime.now().isoformat()
 
+            output_dir = recipe.output_dir
             for out_frame in recipe.output_frames:
                 # save in database for each output frame, but check before that
                 # files were created for each frame (some are optional)
@@ -515,15 +523,13 @@ class MuseRed:
         recipe_cls = get_recipe_cls(recipe_name)
 
         # get the list of nights to process
-        if night_list is not None:
-            night_list = [parse_date(night) for night in night_list]
-        else:
+        if night_list is None:
             whereclause = (self.rawc.DPR_TYPE == recipe_cls.DPR_TYPE)
             night_list = self.select_column('night', distinct=True,
                                             whereclause=whereclause)
         night_list = list(sorted(night_list))
 
-        self.run_recipe(recipe_cls, night_list, by_night=True,
+        self.run_recipe(recipe_cls, night_list, calib=True,
                         skip_processed=skip_processed, **kwargs)
 
     def process_exp(self, recipe_name, explist=None, skip_processed=False,
@@ -537,8 +543,6 @@ class MuseRed:
 
         # get the list of dates to process
         if explist is None:
-            # explist = [parse_datetime(exp) for exp in explist]
-            # else:
             whereclause = (self.rawc.DPR_TYPE == recipe_cls.DPR_TYPE)
             explist = self.select_column('DATE_OBS', whereclause=whereclause)
         explist = list(sorted(explist))
