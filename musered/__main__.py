@@ -21,13 +21,10 @@ except ImportError:
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.version_option(version=__version__)
 @click.option('--debug', is_flag=True, help='Debug mode')
-@click.option('--list-datasets', is_flag=True, help='List datasets')
-@click.option('--list-nights', is_flag=True, help='List nights')
-@click.option('--list-exps', is_flag=True, help='List exposures')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='Settings file, default to settings.yml')
 @click.pass_context
-def cli(ctx, debug, list_datasets, list_nights, list_exps, settings):
+def cli(ctx, debug, settings):
     """Muse data reduction."""
 
     if debug:
@@ -47,16 +44,8 @@ def cli(ctx, debug, list_datasets, list_nights, list_exps, settings):
         logger.error("settings file '%s' not found", settings)
         sys.exit(1)
 
-    ctx.obj = mr = MuseRed(settings)
+    ctx.obj = MuseRed(settings)
     logger.info('Musered version %s', __version__)
-    # mr.debug = debug
-
-    if list_datasets:
-        mr.list_datasets()
-    if list_nights:
-        mr.list_nights()
-    if list_exps:
-        mr.list_exposures()
 
 
 @click.option('--force', is_flag=True, help='force update for existing rows')
@@ -68,14 +57,26 @@ def update_db(mr, force):
 
 
 @click.argument('dateobs', nargs=-1)
+@click.option('--datasets', is_flag=True, help='List datasets')
+@click.option('--nights', is_flag=True, help='List nights')
+@click.option('--exps', is_flag=True, help='List exposures')
 @click.pass_obj
-def info(mr, dateobs):
+def info(mr, dateobs, datasets, nights, exps):
     """Print info about raw and reduced data, or night or exposure."""
-    if len(dateobs) == 0:
-        mr.info()
+
+    if any([datasets, nights, exps]):
+        if datasets:
+            mr.list_datasets()
+        if nights:
+            mr.list_nights()
+        if exps:
+            mr.list_exposures()
     else:
-        for date in dateobs:
-            mr.info_exp(date)
+        if len(dateobs) == 0:
+            mr.info()
+        else:
+            for date in dateobs:
+                mr.info_exp(date)
 
 
 @click.argument('night', nargs=-1)

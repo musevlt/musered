@@ -98,7 +98,7 @@ Inspecting the database
 
 ::
 
-    $ musered --list-datasets --list-nights --list-exps
+    $ musered info --datasets --nights --exps
     INFO Musered version 0.1.dev73
     Datasets:
     - IC4406
