@@ -20,18 +20,39 @@ except ImportError:
 
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.version_option(version=__version__)
-@click.option('--debug', is_flag=True, help='Debug mode')
+@click.option('--loglevel', help='Log level (debug, info, warning, etc.)')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='Settings file, default to settings.yml')
+@click.option('--pdb', is_flag=True, help='Run pdb if an exception occurs')
 @click.pass_context
-def cli(ctx, debug, settings):
-    """Muse data reduction."""
+def cli(ctx, loglevel, settings, pdb):
+    """Main MuseRed command.
 
-    if debug:
-        logging.getLogger('musered').setLevel('DEBUG')
-        logging.getLogger('musered').handlers[0].setLevel('DEBUG')
-        logging.getLogger('astropy').setLevel('DEBUG')
+    See the help of the sub-commands for more details.
 
+    By default musered tries to read a settings file (settings.yml) in the
+    current directory. This file can also be set with --settings, or with the
+    MUSERED_SETTINGS environment variable.
+
+    The logging level can be set in the settings file, and overridden with
+    --loglevel.
+
+    """
+    if not os.path.isfile(settings):
+        logger.error("settings file '%s' not found", settings)
+        sys.exit(1)
+
+    ctx.obj = mr = MuseRed(settings)
+
+    if loglevel is not None:
+        mr.set_loglevel(loglevel)
+        if loglevel.lower() == 'debug':
+            # this is for astroquery, but could be done better..
+            logging.getLogger('astropy').setLevel('DEBUG')
+
+    logger.info('Musered version %s', __version__)
+
+    if pdb:
         def run_pdb(type, value, tb):
             import pdb
             import traceback
@@ -39,13 +60,6 @@ def cli(ctx, debug, settings):
             pdb.pm()
 
         sys.excepthook = run_pdb
-
-    if not os.path.isfile(settings):
-        logger.error("settings file '%s' not found", settings)
-        sys.exit(1)
-
-    ctx.obj = MuseRed(settings)
-    logger.info('Musered version %s', __version__)
 
 
 @click.option('--force', is_flag=True, help='force update for existing rows')

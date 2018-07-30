@@ -11,6 +11,8 @@ muse_calib_path: '/home/conseil/lib/musedrs/muse-calib'
 version: '0.1'
 revision: '1'
 
+loglevel: info
+
 # python-cpl settings, esorex like.
 cpl:
   # recipes directory (and version if needed)

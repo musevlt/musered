@@ -87,6 +87,8 @@ class MuseRed:
         self.settings_file = settings_file
 
         self.conf = load_yaml_config(settings_file)
+        self.set_loglevel(self.conf.get('loglevel', 'info'))
+
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
         self.reduced_path = self.conf['reduced_path']
@@ -225,6 +227,12 @@ class MuseRed:
             - warning : {o['nbwarn']}
             - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
             """))
+
+    def set_loglevel(self, level):
+        logger = logging.getLogger('musered')
+        level = level.upper()
+        logger.setLevel(level)
+        logger.handlers[0].setLevel(level)
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
