@@ -131,7 +131,7 @@ class MuseRed:
         """Print the list of nights."""
         print('Nights:')
         for x in sorted(self.nights):
-            print(f'- {x:%Y-%m-%d}')
+            print(f'- {x}')
 
     def list_exposures(self):
         """Print the list of exposures."""
@@ -373,13 +373,15 @@ class MuseRed:
         """Return a dict with all calibration frames for a recipe."""
         frames = {}
         exclude_frames = set(exclude_frames or recipe.exclude_frames)
+        nrequired = {'TWILIGHT_CUBE': 1}
 
         for frame in set(recipe.calib_frames) - exclude_frames:
             if frame in STATIC_FRAMES:
                 frames[frame] = self.static_calib.get(frame, date=night)
             else:
-                frames[frame] = self.find_calib(night, frame, ins_mode,
-                                                day_off=day_off)
+                frames[frame] = self.find_calib(
+                    night, frame, ins_mode, day_off=day_off,
+                    nrequired=nrequired.get(frame, 24))
 
         return frames
 
@@ -459,6 +461,7 @@ class MuseRed:
             res = list(self.raw.find(**{datecol: date_obs,
                                         'DPR_TYPE': DPR_TYPE}))
             flist = [o['path'] for o in res]
+            night = res[0]['night']
             ins_mode = set(o['INS_MODE'] for o in res)
             if len(ins_mode) > 1:
                 raise ValueError(f'{label} with multiple INS.MODE, '
@@ -471,13 +474,13 @@ class MuseRed:
                                       f'{date_obs}.{ins_mode}')
 
             calib = self.get_calib_frames(
-                recipe, date_obs, ins_mode, day_off=1,
+                recipe, night, ins_mode, day_off=3,
                 exclude_frames=recipe_conf.get('exclude_frames'))
 
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
                 ref_date = np.mean([o['MJD_OBS'] for o in res])
-                kwargs['illum'] = self.find_illum(date_obs, ref_temp, ref_date)
+                kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
 
             params = recipe_conf.get('params')
             results = recipe.run(flist, output_dir=output_dir,
