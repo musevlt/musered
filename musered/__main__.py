@@ -111,7 +111,23 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
         mr.process_calib('twilight', night_list=night, skip_processed=skip)
 
 
-for cmd in (info, retrieve_data, update_db, process_calib):
+@click.argument('exp', nargs=-1)
+@click.option('--skip', is_flag=True, help='Skip already processed exposures')
+@click.option('--scibasic', is_flag=True, help='Run muse_scibasic')
+@click.pass_obj
+def process_exp(mr, exp, skip, scibasic):
+    """Run recipes for science exposures.
+
+    """
+    if len(exp) == 0:
+        exp = None
+
+    run_all = not any([scibasic])
+    if scibasic or run_all:
+        mr.process_exp('scibasic', explist=exp, skip_processed=skip)
+
+
+for cmd in (info, retrieve_data, update_db, process_calib, process_exp):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 

@@ -115,7 +115,7 @@ class MuseRed:
             return {}
         out = defaultdict(list)
         for obj, name in self.execute(
-                sql.select([self.rawc.OBJECT, self.rawc.name])
+                sql.select([self.rawc.OBJECT, self.rawc.DATE_OBS])
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
             out[obj].append(name)
         return out
@@ -143,7 +143,6 @@ class MuseRed:
         """Print a summary of the raw and reduced data."""
         print(f'{self.raw.count()} files\n')
 
-        print('Datasets:')
         self.list_datasets()
 
         # uninteresting objects to exclude from the report
@@ -174,7 +173,7 @@ class MuseRed:
             for date, obj, count in self.execute(query):
                 if obj in excludes:
                     continue
-                rows[date]['date'] = date.isoformat()
+                rows[date]['date'] = date
                 rows[date][obj] = count
                 keys.add(obj)
 
@@ -274,6 +273,7 @@ class MuseRed:
                 # Same as MuseWise
                 if date.time() < NOON:
                     row['night'] -= ONEDAY
+                row['night'] = row['night'].isoformat()
             else:
                 row['night'] = None
 
@@ -290,7 +290,7 @@ class MuseRed:
         # cleanup cached attributes
         del self.nights
 
-        for name in ('name', 'ARCFILE'):
+        for name in ('night', 'DATE_OBS'):
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
 
@@ -404,7 +404,7 @@ class MuseRed:
         DPR_TYPE = recipe_cls.DPR_TYPE
         recipe_name = recipe_cls.recipe_name
         label = 'night' if by_night else 'exposure'
-        datecol = 'night' if by_night else 'date_obs'
+        datecol = 'night' if by_night else 'DATE_OBS'
 
         self.logger.info('Running %s for %d %ss',
                          recipe_name, len(date_list), label)
@@ -444,7 +444,7 @@ class MuseRed:
                              label, date_obs, len(flist), DPR_TYPE, ins_mode)
 
             output_dir = os.path.join(self.reduced_path, recipe.output_dir,
-                                      f'{date_obs.isoformat()}.{ins_mode}')
+                                      f'{date_obs}.{ins_mode}')
 
             calib = self.get_calib_frames(
                 recipe, date_obs, ins_mode, day_off=1,
@@ -478,8 +478,8 @@ class MuseRed:
                         **recipe.dump()
                     }, ['date_obs', 'recipe_name', 'OBJECT'])
 
-    def process_calib(self, recipe_name, night_list=None,
-                      skip_processed=False, **kwargs):
+    def process_calib(self, recipe_name, night_list=None, skip_processed=False,
+                      **kwargs):
         """Run a calibration recipe."""
 
         # create the cpl.Recipe object
@@ -497,4 +497,24 @@ class MuseRed:
         night_list = list(sorted(night_list))
 
         self.run_recipe(recipe_cls, night_list, by_night=True,
+                        skip_processed=skip_processed, **kwargs)
+
+    def process_exp(self, recipe_name, explist=None, skip_processed=False,
+                    **kwargs):
+        """Run a science recipe."""
+
+        # create the cpl.Recipe object
+        from .recipes.science import get_recipe_cls
+        recipe_name = 'muse_' + recipe_name
+        recipe_cls = get_recipe_cls(recipe_name)
+
+        # get the list of dates to process
+        if explist is None:
+            # explist = [parse_datetime(exp) for exp in explist]
+            # else:
+            whereclause = (self.rawc.DPR_TYPE == recipe_cls.DPR_TYPE)
+            explist = self.select_column('DATE_OBS', whereclause=whereclause)
+        explist = list(sorted(explist))
+
+        self.run_recipe(recipe_cls, explist,
                         skip_processed=skip_processed, **kwargs)
