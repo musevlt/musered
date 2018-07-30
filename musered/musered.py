@@ -53,6 +53,7 @@ class StaticCalib:
                 if date is None:
                     file = item
                     break
+                date = parse_date(date)
                 start_date = val.get('start_date', datetime.date.min)
                 end_date = val.get('end_date', datetime.date.max)
                 if start_date < date < end_date:
@@ -151,7 +152,7 @@ class MuseRed:
         # count files per night and per type
         for table, datecol, countcol, title in (
                 (self.raw, 'night', 'OBJECT', 'Raw'),
-                (self.reduced, 'date_obs', 'recipe_name', 'Processed')):
+                (self.reduced, 'DATE_OBS', 'recipe_name', 'Processed')):
 
             print(f'\n{title} data:\n')
             if datecol not in table.columns:
@@ -200,7 +201,7 @@ class MuseRed:
     def info_exp(self, date_obs):
         """Print information about a given exposure or night."""
         res = defaultdict(list)
-        for r in self.reduced.find(date_obs=date_obs):
+        for r in self.reduced.find(DATE_OBS=date_obs):
             res[r['recipe_name']].append(r)
 
         res = list(res.values())
@@ -290,9 +291,30 @@ class MuseRed:
         # cleanup cached attributes
         del self.nights
 
-        for name in ('night', 'DATE_OBS'):
+        for name in ('night', 'DATE_OBS', 'DPR_TYPE'):
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
+
+        # Update reduced table (DATE_OBS column)
+        if 'date_obs' in self.reduced.columns:
+            rows = list(self.reduced.find())
+            for row in rows:
+                row['DATE_OBS'] = row['date_obs'].isoformat()
+                row.move_to_end('DATE_OBS', last=False)
+                del row['id']
+                del row['date_obs']
+            self.reduced.drop()
+
+            # self.db = load_db(self.conf['db'])
+            red = self.db.create_table('reduced')
+            red.insert_many(rows)
+            self.logger.info('updated reduced table')
+
+        if 'DATE_OBS' in self.reduced.columns:
+            for name in ('OBJECT', 'DATE_OBS'):
+                if not self.reduced.has_index([name]):
+                    self.reduced.create_index([name])
+
 
     def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""
@@ -322,14 +344,16 @@ class MuseRed:
 
     def find_calib(self, night, OBJECT, ins_mode, nrequired=24, day_off=0):
         """Return calibration files for a given night, type, and mode."""
-        res = self.reduced.find_one(date_obs=night, INS_MODE=ins_mode,
+        res = self.reduced.find_one(DATE_OBS=night, INS_MODE=ins_mode,
                                     OBJECT=OBJECT)
         if res is None and day_off != 0:
+            if isinstance(night, str):
+                night = parse_date(night)
             for off, direction in itertools.product(range(1, day_off + 1),
                                                     (1, -1)):
                 off = datetime.timedelta(days=off * direction)
-                res = self.reduced.find_one(
-                    date_obs=night + off, INS_MODE=ins_mode, OBJECT=OBJECT)
+                res = self.reduced.find_one(DATE_OBS=(night + off).isoformat(),
+                                            INS_MODE=ins_mode, OBJECT=OBJECT)
                 if res is not None:
                     self.logger.warning('Using %s from night %s',
                                         OBJECT, night + off)
@@ -412,7 +436,7 @@ class MuseRed:
 
         if skip_processed:
             processed = self.select_column(
-                'date_obs', table='reduced', distinct=True,
+                'DATE_OBS', table='reduced', distinct=True,
                 whereclause=(self.reduced.table.c.recipe_name == recipe_name))
             self.logger.debug('processed: ' +
                               ', '.join(map(str, sorted(processed))))
@@ -469,14 +493,14 @@ class MuseRed:
                     self.reduced.upsert({
                         'date_run': date_run,
                         'recipe_name': recipe_name,
-                        'date_obs': date_obs,
+                        'DATE_OBS': date_obs,
                         'path': output_dir,
                         'OBJECT': out_frame,
                         'INS_MODE': ins_mode,
                         'user_time': results.stat.user_time,
                         'sys_time': results.stat.sys_time,
                         **recipe.dump()
-                    }, ['date_obs', 'recipe_name', 'OBJECT'])
+                    }, ['DATE_OBS', 'recipe_name', 'OBJECT'])
 
     def process_calib(self, recipe_name, night_list=None, skip_processed=False,
                       **kwargs):
