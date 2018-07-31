@@ -24,8 +24,9 @@ except ImportError:
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='Settings file, default to settings.yml')
 @click.option('--pdb', is_flag=True, help='Run pdb if an exception occurs')
+@click.option('--debug', is_flag=True, help='Debug log level + pdb')
 @click.pass_context
-def cli(ctx, loglevel, settings, pdb):
+def cli(ctx, loglevel, settings, pdb, debug):
     """Main MuseRed command.
 
     See the help of the sub-commands for more details.
@@ -43,6 +44,10 @@ def cli(ctx, loglevel, settings, pdb):
         sys.exit(1)
 
     ctx.obj = mr = MuseRed(settings)
+
+    if debug:
+        loglevel = 'debug'
+        pdb = True
 
     if loglevel is not None:
         mr.set_loglevel(loglevel)
