@@ -19,27 +19,30 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, no_update_db):
         params = {**params, 'username': username}
 
     from astroquery.eso import Eso
-    eso = Eso()
 
     if help_query:
-        eso.query_instrument('muse', help=True)
+        Eso.query_instrument('muse', help=True)
         return
 
-    eso.login(**params)
-    os.makedirs(mr.raw_path, exist_ok=True)
+    Eso.login(**params)
+
+    # customize astroquery's cache location, to have it on the same device
+    # as the final path
+    Eso.cache_location = os.path.join(mr.raw_path, '.cache')
+    os.makedirs(Eso.cache_location, exist_ok=True)
 
     for ds in dataset:
         if ds not in mr.datasets:
             logger.error("dataset '%s' not found", ds)
             sys.exit(1)
 
-        table = eso.query_instrument(
+        table = Eso.query_instrument(
             'muse', column_filters=mr.datasets[ds]['archive_filter'])
         logger.info('Found %d exposures', len(table))
         logger.debug('\n'.join(table['DP.ID']))
         print(table)
         if not dry_run:
-            eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
+            Eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
                               with_calib='raw')
 
     if not dry_run and not no_update_db:
