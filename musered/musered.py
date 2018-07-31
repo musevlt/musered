@@ -425,6 +425,11 @@ class MuseRed:
 
         self.logger.info('Found ILLUM : %s (Temp diff: %.3f, Time diff: '
                          '%.2f min.)', res[0], res[1], res[2] * 24 * 60)
+        if res[1] > 1:
+            self.logger.warning('ILLUM with Temp difference > 1°, '
+                                'not using it')
+            return None
+
         return res[3]
 
     def run_recipe(self, recipe_cls, date_list, skip=False, calib=False,
