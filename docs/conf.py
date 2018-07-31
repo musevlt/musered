@@ -52,7 +52,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'numpydoc',
     'sphinx_automodapi.automodapi',
-    'sphinx_automodapi.smart_resolver'
+    'sphinx_automodapi.smart_resolver',
+    'sphinx_click.ext'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
