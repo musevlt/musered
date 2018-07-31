@@ -20,23 +20,23 @@ except ImportError:
 
 @click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
 @click.version_option(version=__version__)
-@click.option('--loglevel', help='Log level (debug, info, warning, etc.)')
+@click.option('--loglevel', help='log level (debug, info, warning, etc.)')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
-              help='Settings file, default to settings.yml')
-@click.option('--pdb', is_flag=True, help='Run pdb if an exception occurs')
-@click.option('--debug', is_flag=True, help='Debug log level + pdb')
+              help='settings file, default to settings.yml')
+@click.option('--pdb', is_flag=True, help='run pdb if an exception occurs')
+@click.option('--debug', is_flag=True, help='debug log level + pdb')
 @click.pass_context
 def cli(ctx, loglevel, settings, pdb, debug):
     """Main MuseRed command.
 
     See the help of the sub-commands for more details.
 
-    By default musered tries to read a settings file (settings.yml) in the
-    current directory. This file can also be set with --settings, or with the
-    MUSERED_SETTINGS environment variable.
+    By default musered tries to read a settings file (``settings.yml``) in the
+    current directory. This file can also be set with ``--settings``, or with
+    the ``MUSERED_SETTINGS`` environment variable.
 
     The logging level can be set in the settings file, and overridden with
-    --loglevel.
+    ``--loglevel``.
 
     """
     if not os.path.isfile(settings):
@@ -76,9 +76,9 @@ def update_db(mr, force):
 
 
 @click.argument('dateobs', nargs=-1)
-@click.option('--datasets', is_flag=True, help='List datasets')
-@click.option('--nights', is_flag=True, help='List nights')
-@click.option('--exps', is_flag=True, help='List exposures')
+@click.option('--datasets', is_flag=True, help='list datasets')
+@click.option('--nights', is_flag=True, help='list nights')
+@click.option('--exps', is_flag=True, help='list exposures')
 @click.pass_obj
 def info(mr, dateobs, datasets, nights, exps):
     """Print info about raw and reduced data, or night or exposure."""
@@ -99,13 +99,13 @@ def info(mr, dateobs, datasets, nights, exps):
 
 
 @click.argument('night', nargs=-1)
-@click.option('--skip', is_flag=True, help='Skip already processed nights')
-@click.option('--bias', is_flag=True, help='Run muse_bias')
-@click.option('--dark', is_flag=True, help='Run muse_dark')
-@click.option('--flat', is_flag=True, help='Run muse_flat')
-@click.option('--wavecal', is_flag=True, help='Run muse_wavecal')
-@click.option('--lsf', is_flag=True, help='Run muse_lsf')
-@click.option('--twilight', is_flag=True, help='Run muse_twilight')
+@click.option('--skip', is_flag=True, help='skip already processed nights')
+@click.option('--bias', is_flag=True, help='run muse_bias')
+@click.option('--dark', is_flag=True, help='run muse_dark')
+@click.option('--flat', is_flag=True, help='run muse_flat')
+@click.option('--wavecal', is_flag=True, help='run muse_wavecal')
+@click.option('--lsf', is_flag=True, help='run muse_lsf')
+@click.option('--twilight', is_flag=True, help='run muse_twilight')
 @click.pass_obj
 def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
     """Process calibrations (bias, dark, flat, etc.) for NIGHT.
@@ -132,9 +132,9 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
 
 
 @click.argument('exp', nargs=-1)
-@click.option('--skip', is_flag=True, help='Skip already processed exposures')
-@click.option('--scibasic', is_flag=True, help='Run muse_scibasic')
-@click.option('--standard', is_flag=True, help='Run muse_standard')
+@click.option('--skip', is_flag=True, help='rkip already processed exposures')
+@click.option('--scibasic', is_flag=True, help='run muse_scibasic')
+@click.option('--standard', is_flag=True, help='run muse_standard')
 @click.pass_obj
 def process_exp(mr, exp, skip, scibasic, standard):
     """Run recipes for science exposures.

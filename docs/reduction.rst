@@ -98,6 +98,7 @@ The currently available steps and the related command-line options are:
 - ``muse_flat``: ``--flat``
 - ``muse_wavecal``: ``--wavecal``
 - ``muse_lsf``: ``--lsf``
+- ``muse_twilight``: ``--twilight``
 
 By default, when no option is given, all steps except ``muse_dark`` are run.
 The ``MASTER_DARK`` frames are also excluded from the inputs of the other
@@ -111,3 +112,20 @@ Or to run ``muse_flat`` recipe for all nights, skipping already processed
 nights::
 
     $ musered process_calib --flat --skip
+
+
+scibasic
+^^^^^^^^
+
+::
+
+    $ musered process_exp --scibasic
+
+
+Standard
+^^^^^^^^
+
+Reduces a standard exposure including both the ``muse_scibasic`` and the
+``muse_standard`` steps::
+
+    $ musered process_exp --standard
