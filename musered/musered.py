@@ -98,6 +98,7 @@ class MuseRed:
         self.reduced = self.db.create_table('reduced')
 
         self.rawc = self.raw.table.c
+        self.redc = self.reduced.table.c
         self.execute = self.db.executable.execute
 
         self.static_calib = StaticCalib(self.conf['muse_calib_path'],
@@ -246,6 +247,14 @@ class MuseRed:
             select = select.distinct(col)
         return [x[0] for x in self.execute(select)]
 
+    def select_dates(self, dpr_type, table='raw', column='DATE_OBS', **kwargs):
+        """Select the list of dates to process."""
+        tbl = self.raw if table == 'raw' else self.reduced
+        wc = (tbl.table.c.DPR_TYPE == dpr_type)
+        explist = self.select_column(column, whereclause=wc, table=table,
+                                     **kwargs)
+        return list(sorted(explist))
+
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
         flist = []
@@ -303,23 +312,8 @@ class MuseRed:
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
 
-        # Update reduced table (DATE_OBS column)
-        if 'date_obs' in self.reduced.columns:
-            rows = list(self.reduced.find())
-            for row in rows:
-                row['DATE_OBS'] = row['date_obs'].isoformat()
-                row.move_to_end('DATE_OBS', last=False)
-                del row['id']
-                del row['date_obs']
-            self.reduced.drop()
-
-            # self.db = load_db(self.conf['db'])
-            red = self.db.create_table('reduced')
-            red.insert_many(rows)
-            self.logger.info('updated reduced table')
-
         if 'DATE_OBS' in self.reduced.columns:
-            for name in ('OBJECT', 'DATE_OBS'):
+            for name in ('DATE_OBS', 'DPR_TYPE'):
                 if not self.reduced.has_index([name]):
                     self.reduced.create_index([name])
 
@@ -433,9 +427,30 @@ class MuseRed:
                          '%.2f min.)', res[0], res[1], res[2] * 24 * 60)
         return res[3]
 
-    def run_recipe(self, recipe_cls, date_list, skip_processed=False,
-                   calib=False, **kwargs):
-        DPR_TYPE = recipe_cls.DPR_TYPE
+    def run_recipe(self, recipe_cls, date_list, skip=False, calib=False,
+                   recipe_kwargs=None, use_reduced=False, **kwargs):
+        """Main method used to run a recipe.
+
+        Parameters
+        ----------
+        recipe_cls : cls
+            Must be a subclass of `musered.Recipe`.
+        date_list : list of str
+            List of dates (nights or exposure names) to process.
+        skip : bool
+            If True, dates already processed are skipped (default: False).
+        calib : bool
+            If True, process Calibration data, grouped by "night" (though this
+            is also for day calibration !). This changes the columns used for
+            queries.
+        recipe_kwargs : dict
+            Additional arguments passed to the `musered.Recipe` instantiation.
+        use_reduced : bool
+            If True, find data in the reduced table, otherwise on raw.
+        **kwargs
+            Additional arguments passed to `musered.Recipe.run`.
+
+        """
         recipe_name = recipe_cls.recipe_name
         if calib:
             label = datecol = namecol = 'night'
@@ -444,49 +459,63 @@ class MuseRed:
             datecol = 'DATE_OBS'
             namecol = 'name'
 
-        self.logger.info('Running %s for %d %ss',
-                         recipe_name, len(date_list), label)
-        self.logger.debug(f'{label}s: ' + ', '.join(map(str, date_list)))
+        log = self.logger
+        log.info('Running %s for %d %ss', recipe_name, len(date_list), label)
+        log.debug(f'{label}s: ' + ', '.join(map(str, date_list)))
 
-        if skip_processed:
+        if skip:
             processed = self.select_column(
                 'DATE_OBS', table='reduced', distinct=True,
-                whereclause=(self.reduced.table.c.recipe_name == recipe_name))
-            self.logger.debug('processed: ' +
-                              ', '.join(map(str, sorted(processed))))
+                whereclause=(self.redc.recipe_name == recipe_name))
+            log.debug('processed: ' + ', '.join(map(str, sorted(processed))))
             if len(processed) == len(date_list):
-                self.logger.info('Already processed, nothing to do')
+                log.info('Already processed, nothing to do')
                 return
-            else:
-                self.logger.info('%d %ss already processed',
-                                 len(processed), label)
+            elif len(processed) > 0:
+                log.info('%d %ss already processed', len(processed), label)
 
-        # Instantiate the recipe object
+        # Instantiate the recipe object.
+        # Use parameters from the settings, common first, and then from
+        # recipe_name.init, and from recipe_kwargs
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
-        recipe = recipe_cls(**self.conf['recipes']['common'],
-                            **recipe_conf.get('init', {}))
+        recipe_kw = {**self.conf['recipes']['common'],
+                     **recipe_conf.get('init', {})}
+        if recipe_kwargs is not None:
+            recipe_kw.update(recipe_kwargs)
+        recipe = recipe_cls(**recipe_kw)
 
+        table = self.reduced if use_reduced else self.raw
         for date_obs in date_list:
-            if skip_processed and date_obs in processed:
-                self.logger.debug('%s already processed', date_obs)
+            if skip and date_obs in processed:
+                log.debug('%s already processed', date_obs)
                 continue
 
-            res = list(self.raw.find(**{datecol: date_obs,
-                                        'DPR_TYPE': DPR_TYPE}))
-            flist = [o['path'] for o in res]
+            DPR_TYPE = recipe.DPR_TYPE
+            res = list(table.find(**{datecol: date_obs, 'DPR_TYPE': DPR_TYPE}))
+            if use_reduced:
+                if len(res) != 1:
+                    raise RuntimeError('could not find exposures')
+                flist = sorted(glob(f"{res[0]['path']}/{DPR_TYPE}*.fits"))
+                ins_mode = res[0]['INS_MODE']
+            else:
+                flist = [o['path'] for o in res]
+                ins_mode = set(o['INS_MODE'] for o in res)
+                if len(ins_mode) > 1:
+                    raise ValueError(f'{label} with multiple INS.MODE, '
+                                     'not supported yet')
+                ins_mode = ins_mode.pop()
+
             night = res[0]['night']
-            ins_mode = set(o['INS_MODE'] for o in res)
-            if len(ins_mode) > 1:
-                raise ValueError(f'{label} with multiple INS.MODE, '
-                                 'not supported yet')
-            ins_mode = ins_mode.pop()
-            self.logger.info('%s %s : %d %s files, mode=%s',
-                             label, date_obs, len(flist), DPR_TYPE, ins_mode)
+            log.info('%s %s : %d %s files, mode=%s',
+                     label, date_obs, len(flist), DPR_TYPE, ins_mode)
 
             if recipe.use_drs_output:
                 outn = f'{date_obs}.{ins_mode}' if calib else date_obs
-                kwargs['output_dir'] = os.path.join(self.reduced_path,
-                                                    recipe.output_dir, outn)
+                output_dir = os.path.join(self.reduced_path,
+                                          recipe.output_dir, outn)
+                kwargs['output_dir'] = output_dir
+            else:
+                output_dir = recipe.output_dir
 
             calib_frames = self.get_calib_frames(
                 recipe, night, ins_mode, day_off=3,
@@ -498,62 +527,80 @@ class MuseRed:
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
 
             params = recipe_conf.get('params')
-            results = recipe.run(flist, name=res[0][namecol], params=params,
-                                 **calib_frames, **kwargs)
+            recipe.run(flist, name=res[0][namecol], params=params,
+                       **calib_frames, **kwargs)
 
-            self.logger.debug('Output frames : %s', recipe.output_frames)
             date_run = datetime.datetime.now().isoformat()
-
-            output_dir = recipe.output_dir
+            out_frames = []
             for out_frame in recipe.output_frames:
                 # save in database for each output frame, but check before that
                 # files were created for each frame (some are optional)
                 if any(iglob(f"{output_dir}/{out_frame}*.fits")):
+                    out_frames.append(out_frame)
                     self.reduced.upsert({
                         'date_run': date_run,
+                        'night': night,
                         'recipe_name': recipe_name,
+                        'name': res[0][namecol],
                         'DATE_OBS': date_obs,
                         'path': output_dir,
-                        'OBJECT': out_frame,
+                        'DPR_TYPE': out_frame,
+                        'OBJECT': res[0]['OBJECT'],
                         'INS_MODE': ins_mode,
-                        'user_time': results.stat.user_time,
-                        'sys_time': results.stat.sys_time,
                         **recipe.dump()
-                    }, ['DATE_OBS', 'recipe_name', 'OBJECT'])
+                    }, ['DATE_OBS', 'recipe_name', 'DPR_TYPE'])
 
-    def process_calib(self, recipe_name, night_list=None, skip_processed=False,
+            if len(out_frames) == 0:
+                raise RuntimeError('could not find output files')
+            log.info('Processed data (%s) available in %s',
+                     ', '.join(out_frames), output_dir)
+
+    def process_calib(self, recipe_name, night_list=None, skip=False,
                       **kwargs):
         """Run a calibration recipe."""
 
-        # create the cpl.Recipe object
         from .recipes.calib import get_recipe_cls
         recipe_name = 'muse_' + recipe_name
         recipe_cls = get_recipe_cls(recipe_name)
 
         # get the list of nights to process
         if night_list is None:
-            whereclause = (self.rawc.DPR_TYPE == recipe_cls.DPR_TYPE)
-            night_list = self.select_column('night', distinct=True,
-                                            whereclause=whereclause)
-        night_list = list(sorted(night_list))
+            night_list = self.select_dates(recipe_cls.DPR_TYPE, column='night',
+                                           distinct=True)
 
-        self.run_recipe(recipe_cls, night_list, calib=True,
-                        skip_processed=skip_processed, **kwargs)
+        self.run_recipe(recipe_cls, night_list, calib=True, skip=skip,
+                        **kwargs)
 
-    def process_exp(self, recipe_name, explist=None, skip_processed=False,
-                    **kwargs):
+    def process_exp(self, recipe_name, explist=None, skip=False, **kwargs):
         """Run a science recipe."""
 
-        # create the cpl.Recipe object
         from .recipes.science import get_recipe_cls
-        recipe_name = 'muse_' + recipe_name
-        recipe_cls = get_recipe_cls(recipe_name)
+        recipe_cls = get_recipe_cls('muse_' + recipe_name)
 
         # get the list of dates to process
         if explist is None:
-            whereclause = (self.rawc.DPR_TYPE == recipe_cls.DPR_TYPE)
-            explist = self.select_column('DATE_OBS', whereclause=whereclause)
-        explist = list(sorted(explist))
+            table = 'raw' if recipe_name in ('scibasic', ) else 'reduced'
+            explist = self.select_dates(recipe_cls.DPR_TYPE, table=table)
 
-        self.run_recipe(recipe_cls, explist,
-                        skip_processed=skip_processed, **kwargs)
+        self.run_recipe(recipe_cls, explist, skip=skip, **kwargs)
+
+    def process_standard(self, explist=None, skip=False, **kwargs):
+        """Reduce a standard exposure, running both muse_scibasic and
+        muse_standard.
+        """
+        from .recipes.science import get_recipe_cls
+        recipe_sci = get_recipe_cls('muse_scibasic')
+        recipe_std = get_recipe_cls('muse_standard')
+
+        # get the list of dates to process
+        if explist is None:
+            explist = self.select_dates('STD')
+
+        # run muse_scibasic with specific parameters (tag: STD)
+        recipe_kw = {'tag': 'STD', 'output_dir': recipe_std.output_dir}
+        self.run_recipe(recipe_sci, explist, skip=skip,
+                        recipe_kwargs=recipe_kw, **kwargs)
+
+        # run muse_standard
+        self.run_recipe(recipe_std, explist, skip=skip, use_reduced=True,
+                        **kwargs)

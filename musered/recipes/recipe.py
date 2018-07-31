@@ -27,6 +27,7 @@ class Recipe:
 
     recipe_name = None
     DPR_TYPE = None
+    DPR_TYPES = {}
     output_dir = None
     default_params = None
     n_inputs_min = 1
@@ -50,6 +51,10 @@ class Recipe:
                 raise ValueError(f'invalid tag {tag} for {self.recipe_name}, '
                                  'should be in {self._recipe.tags}')
             self._recipe.tag = tag
+
+        if self.DPR_TYPE is None:
+            self.DPR_TYPE = self.DPR_TYPES.get(self._recipe.tag,
+                                               self._recipe.tag)
 
         if output_dir is not None:
             self.output_dir = output_dir
@@ -94,6 +99,8 @@ class Recipe:
     def dump(self):
         return {
             'tottime': self.timeit,
+            'user_time': self.results.stat.user_time,
+            'sys_time': self.results.stat.sys_time,
             'nbwarn': self.nbwarn,
             'log_file': self.log_file,
             'params': self.dump_params(),
@@ -117,16 +124,16 @@ class Recipe:
 
     def save_results(self, results, name=None):
         ifukey = 'ESO DRS MUSE PIXTABLE LIMITS IFU LOW'
-        for tag in results.tags:
-            if isinstance(results[tag], list):
-                for p in results[tag]:
+        for frame in self.output_frames:
+            if isinstance(results[frame], list):
+                for p in results[frame]:
                     chan = p[0].header.get(ifukey)
-                    outn = (f'{tag}-{name}-{chan:02d}.fits' if (name and chan)
-                            else p[0].header['PIPEFILE'])
+                    outn = (f'{frame}-{name}-{chan:02d}.fits'
+                            if (name and chan) else p[0].header['PIPEFILE'])
                     self.write_fits(p, os.path.join(self.output_dir, outn))
             else:
-                p = results[tag]
-                outn = f'{tag}-{name}.fits' if name else p.header['PIPEFILE']
+                p = results[frame]
+                outn = f'{frame}-{name}.fits' if name else p.header['PIPEFILE']
                 self.write_fits(p, os.path.join(self.output_dir, outn))
 
     def _run(self, raw, **kwargs):
@@ -135,6 +142,7 @@ class Recipe:
     def run(self, flist, *args, name=None, params=None, **kwargs):
         t0 = time.time()
         info = self.logger.info
+        self.results = None
 
         if isinstance(flist, str):
             flist = [flist]
@@ -146,8 +154,8 @@ class Recipe:
             raise ValueError(f'need at least {self.n_inputs_min} exposures')
 
         if params is not None:
-            for name, value in params.items():
-                self.param[name] = value
+            for key, value in params.items():
+                self.param[key] = value
 
         date = datetime.datetime.now().isoformat()
         cpl.esorex.log.filename = self.log_file = os.path.join(
@@ -177,6 +185,7 @@ class Recipe:
         if self._recipe.output_dir is None:
             self.save_results(results, name=name)
 
+        self.results = results
         self.nbwarn = len(results.log.warning)
         self.timeit = (time.time() - t0) / 60
         info('%s successfully run, %d warnings', self.recipe_name, self.nbwarn)

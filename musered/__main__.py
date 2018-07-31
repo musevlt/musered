@@ -118,33 +118,36 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
 
     run_all = not any([bias, dark, flat, wavecal, lsf, twilight])
     if bias or run_all:
-        mr.process_calib('bias', night_list=night, skip_processed=skip)
+        mr.process_calib('bias', night_list=night, skip=skip)
     if dark:
-        mr.process_calib('dark', night_list=night, skip_processed=skip)
+        mr.process_calib('dark', night_list=night, skip=skip)
     if flat or run_all:
-        mr.process_calib('flat', night_list=night, skip_processed=skip)
+        mr.process_calib('flat', night_list=night, skip=skip)
     if wavecal or run_all:
-        mr.process_calib('wavecal', night_list=night, skip_processed=skip)
+        mr.process_calib('wavecal', night_list=night, skip=skip)
     if lsf or run_all:
-        mr.process_calib('lsf', night_list=night, skip_processed=skip)
+        mr.process_calib('lsf', night_list=night, skip=skip)
     if twilight or run_all:
-        mr.process_calib('twilight', night_list=night, skip_processed=skip)
+        mr.process_calib('twilight', night_list=night, skip=skip)
 
 
 @click.argument('exp', nargs=-1)
 @click.option('--skip', is_flag=True, help='Skip already processed exposures')
 @click.option('--scibasic', is_flag=True, help='Run muse_scibasic')
+@click.option('--standard', is_flag=True, help='Run muse_standard')
 @click.pass_obj
-def process_exp(mr, exp, skip, scibasic):
+def process_exp(mr, exp, skip, scibasic, standard):
     """Run recipes for science exposures.
 
     """
     if len(exp) == 0:
         exp = None
 
-    run_all = not any([scibasic])
+    run_all = not any([scibasic, standard])
     if scibasic or run_all:
-        mr.process_exp('scibasic', explist=exp, skip_processed=skip)
+        mr.process_exp('scibasic', explist=exp, skip=skip)
+    if standard or run_all:
+        mr.process_standard(explist=exp, skip=skip)
 
 
 for cmd in (info, retrieve_data, update_db, process_calib, process_exp):
