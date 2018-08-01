@@ -176,6 +176,9 @@ def query_count_to_table(db, tablename, exclude_obj=None, where=None):
         rows[date][obj] = count
         keys.add(obj)
 
+    if len(rows) == 0:
+        return
+
     # set default counts
     for row, key in itertools.product(rows.values(), keys):
         row.setdefault(key, 0)

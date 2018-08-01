@@ -109,12 +109,14 @@ class MuseRed:
             print(f'\nProcessed calib data:\n')
             t = query_count_to_table(self.db, 'reduced',
                                      where=self.redc.DPR_CATG == 'CALIB')
-            t.pprint(max_lines=-1)
+            if t:
+                t.pprint(max_lines=-1)
 
             print(f'\nProcessed science data:\n')
             t = query_count_to_table(self.db, 'reduced',
                                      where=self.redc.DPR_CATG == 'SCIENCE')
-            t.pprint(max_lines=-1)
+            if t:
+                t.pprint(max_lines=-1)
 
     def info_exp(self, date_obs):
         """Print information about a given exposure or night."""
@@ -275,10 +277,10 @@ class MuseRed:
         params.setdefault('log_dir', conf['log_dir'])
         params.setdefault('temp_dir', os.path.join(self.reduced_path, 'tmp'))
 
-    def find_calib(self, night, OBJECT, ins_mode, nrequired=24, day_off=0):
+    def find_calib(self, night, dpr_type, ins_mode, nrequired=24, day_off=0):
         """Return calibration files for a given night, type, and mode."""
         res = self.reduced.find_one(DATE_OBS=night, INS_MODE=ins_mode,
-                                    OBJECT=OBJECT)
+                                    DPR_TYPE=dpr_type)
         if res is None and day_off != 0:
             if isinstance(night, str):
                 night = parse_date(night)
@@ -286,18 +288,19 @@ class MuseRed:
                                                     (1, -1)):
                 off = datetime.timedelta(days=off * direction)
                 res = self.reduced.find_one(DATE_OBS=(night + off).isoformat(),
-                                            INS_MODE=ins_mode, OBJECT=OBJECT)
+                                            INS_MODE=ins_mode,
+                                            DPR_TYPE=dpr_type)
                 if res is not None:
                     self.logger.warning('Using %s from night %s',
-                                        OBJECT, night + off)
+                                        dpr_type, night + off)
                     break
 
         if res is None:
-            raise ValueError(f'could not find {OBJECT} for night {night}')
+            raise ValueError(f'could not find {dpr_type} for night {night}')
 
-        flist = sorted(glob(f"{res['path']}/{OBJECT}*.fits"))
+        flist = sorted(glob(f"{res['path']}/{dpr_type}*.fits"))
         if len(flist) != nrequired:
-            raise ValueError(f'found {len(flist)} {OBJECT} files '
+            raise ValueError(f'found {len(flist)} {dpr_type} files '
                              f'instead of {nrequired}')
         return flist
 
