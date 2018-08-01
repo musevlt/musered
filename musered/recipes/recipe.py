@@ -17,11 +17,21 @@ class Recipe:
         Name of output directory.
     use_drs_output : bool
         If True, output files are saved by the DRS, else files are saved by
-        mydrs with custom names.
+        musered with custom names (experimental!).
     temp_dir : str
         Base directory for temporary directories where the recipe is executed.
         The working dir is created as a subdir with a random file name. If set
         to None (default), the system temp dir is used.
+    log_dir : str
+        Directory for log files.
+    version : str
+        Version of the recipe. By default the latest version is used.
+    nifu : int
+        IFU to handle. If set to 0, all IFUs are processed serially. If set
+        to -1 (default), all IFUs are processed in parallel.
+    tag : str
+        Tag used by the recipe, default to cpl.Recipe.tag. Can be used to
+        change the type of processed input for e.g. muse_scibasic.
 
     """
 
@@ -36,7 +46,7 @@ class Recipe:
     muse_scibasic. If None, cpl.Recipe.tag is used."""
 
     output_dir = None
-    """Output directory."""
+    """Default output directory."""
 
     default_params = None
     """Default parameters."""
@@ -114,10 +124,12 @@ class Recipe:
         return self._recipe.output[self._recipe.tag]
 
     def dump_params(self):
+        """Dump non-default parameters to a JSON string."""
         params = {p.name: p.value for p in self.param if p.value is not None}
         return json.dumps(params)
 
     def dump(self):
+        """Dump recipe results, stats, parameters in a dict."""
         return {
             'tottime': self.timeit,
             'user_time': self.results.stat.user_time,
@@ -127,7 +139,7 @@ class Recipe:
             'params': self.dump_params(),
         }
 
-    def write_fits(self, name_or_hdulist, filename):
+    def _write_fits(self, name_or_hdulist, filename):
         if type(name_or_hdulist) is list:
             # Not isinstance because HDUList inherits from list
             self.logger.error('Got a list of frames: %s', name_or_hdulist)
@@ -151,16 +163,21 @@ class Recipe:
                     chan = p[0].header.get(ifukey)
                     outn = (f'{frame}-{name}-{chan:02d}.fits'
                             if (name and chan) else p[0].header['PIPEFILE'])
-                    self.write_fits(p, os.path.join(self.output_dir, outn))
+                    self._write_fits(p, os.path.join(self.output_dir, outn))
             else:
                 p = results[frame]
                 outn = f'{frame}-{name}.fits' if name else p.header['PIPEFILE']
-                self.write_fits(p, os.path.join(self.output_dir, outn))
+                self._write_fits(p, os.path.join(self.output_dir, outn))
 
     def _run(self, raw, **kwargs):
         return self._recipe(raw=raw, **kwargs)
 
     def run(self, flist, *args, name=None, params=None, **kwargs):
+        """Run the recipe.
+
+        Subclasses should implement ._run in they need to customize this.
+
+        """
         t0 = time.time()
         info = self.logger.info
         self.results = None
