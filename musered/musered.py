@@ -520,8 +520,13 @@ class MuseRed:
 
         # get the list of dates to process
         if explist is None:
-            table = 'raw' if recipe_name in ('scibasic', ) else 'reduced'
-            explist = self.select_dates(recipe_cls.DPR_TYPE, table=table)
+            if recipe_name in ('scibasic', ):
+                table = 'raw'
+                dpr_type = 'OBJECT'
+            else:
+                table = 'reduced'
+                dpr_type = recipe_cls.DPR_TYPE
+            explist = self.select_dates(dpr_type, table=table)
 
         self.run_recipe(recipe_cls, explist, skip=skip, **kwargs)
 
@@ -529,9 +534,9 @@ class MuseRed:
         """Reduce a standard exposure, running both muse_scibasic and
         muse_standard.
         """
-        from .recipes.science import get_recipe_cls
-        recipe_sci = get_recipe_cls('muse_scibasic')
-        recipe_std = get_recipe_cls('muse_standard')
+        from .recipes.science import classes
+        recipe_sci = classes['muse_scibasic']
+        recipe_std = classes['muse_standard']
 
         # get the list of dates to process
         if explist is None:
