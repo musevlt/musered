@@ -26,14 +26,35 @@ class Recipe:
     """
 
     recipe_name = None
+    """Name of the recipe."""
+
     DPR_TYPE = None
+    """Type of data to process (DPR.TYPE). If None, cpl.Recipe.tag is used."""
+
     DPR_TYPES = {}
+    """Same as DPR_TYPE but when a recipe can process multiples types, e.g.
+    muse_scibasic. If None, cpl.Recipe.tag is used."""
+
     output_dir = None
+    """Output directory."""
+
     default_params = None
+    """Default parameters."""
+
     n_inputs_min = 1
+    """Minimum number of input files, as required by the DRS."""
+
+    n_inputs_rec = None
+    """Recommended number of input files, typically for calibration files."""
+
     use_illum = None
+    """If True, the recipe should use an ILLUM exposure."""
+
     env = None
+    """Default environment variables."""
+
     exclude_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
+    """Frames that must be excluded by default."""
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
                  log_dir='.', version=None, nifu=-1, tag=None):
@@ -152,6 +173,10 @@ class Recipe:
 
         if len(flist) < self.n_inputs_min:
             raise ValueError(f'need at least {self.n_inputs_min} exposures')
+
+        if self.n_inputs_rec and len(flist) != self.n_inputs_rec:
+            self.logger.warning('Got %d files though the recommended number '
+                                'is %d', len(flist), self.n_inputs_rec)
 
         if params is not None:
             for key, value in params.items():
