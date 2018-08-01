@@ -512,6 +512,7 @@ class MuseRed:
                         'DATE_OBS': date_obs,
                         'path': output_dir,
                         'DPR_TYPE': out_frame,
+                        'DPR_CATG': res[0]['DPR_CATG'],
                         'OBJECT': res[0]['OBJECT'],
                         'INS_MODE': ins_mode,
                         **recipe.dump()
