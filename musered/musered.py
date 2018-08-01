@@ -307,7 +307,8 @@ class MuseRed:
                              for key, val in hdr['ESO QC*'].items()}
                     if len(cards) == 0:
                         break  # no QC params
-                    rows.append({**keys, **cards})
+                    rows.append({**keys, 'filename': os.path.basename(f),
+                                 **cards})
 
             if len(rows) == 0:
                 self.logger.info('found no QC params')
@@ -315,7 +316,6 @@ class MuseRed:
 
             table.insert_many(rows)
             self.logger.info('inserted %d rows', len(rows))
-
 
     def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""

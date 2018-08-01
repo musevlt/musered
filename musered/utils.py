@@ -112,7 +112,7 @@ def normalize_keyword(key):
     """Normalize FITS keywords to use it as a database column name."""
     if key.startswith('ESO '):
         key = key[4:]
-    return key.replace('-', '_')
+    return key.replace(' ', '_').replace('-', '_')
 
 def isnotebook():  # pragma: no cover
     try:
