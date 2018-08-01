@@ -6,19 +6,16 @@ import numpy as np
 import operator
 import os
 import textwrap
-from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from glob import glob, iglob
 from mpdaf.log import setup_logging
 from sqlalchemy import sql, func
 
-from .settings import RAW_FITS_KEYWORDS, STATIC_FRAMES
 from .static_calib import StaticCalib
-from .utils import (load_yaml_config, load_db, get_exp_name, parse_date,
-                    parse_datetime, normalize_keyword, NOON, ONEDAY,
-                    ProgressBar)
+from .utils import (load_yaml_config, load_db, parse_date, parse_raw_keywords,
+                    parse_qc_keywords, ProgressBar)
 
 
 class MuseRed:
@@ -212,42 +209,13 @@ class MuseRed:
                     flist.append(os.path.join(root, f))
         self.logger.info('found %d FITS files', len(flist))
 
-        keywords = [k.split('/')[0].strip()
-                    for k in RAW_FITS_KEYWORDS.splitlines() if k]
-
         # get the list of files already in the database
         try:
-            arcfiles = self.select_column('ARCFILE')
+            arcf = self.select_column('ARCFILE')
         except Exception:
-            arcfiles = []
+            arcf = []
 
-        nskip = 0
-        rows = []
-        for f in ProgressBar(flist):
-            hdr = fits.getheader(f, ext=0)
-            if not force and hdr['ARCFILE'] in arcfiles:
-                nskip += 1
-                continue
-
-            row = OrderedDict([('name', get_exp_name(f)),
-                               ('filename', os.path.basename(f)),
-                               ('path', f)])
-
-            if 'DATE-OBS' in hdr:
-                date = parse_datetime(hdr['DATE-OBS'])
-                row['night'] = date.date()
-                # Same as MuseWise
-                if date.time() < NOON:
-                    row['night'] -= ONEDAY
-                row['night'] = row['night'].isoformat()
-            else:
-                row['night'] = None
-
-            for key in keywords:
-                row[normalize_keyword(key)] = hdr.get(key)
-
-            rows.append(row)
-
+        rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf)
         self.raw.insert_many(rows)
         self.logger.info('inserted %d rows, skipped %d', len(rows), nskip)
 
@@ -300,15 +268,9 @@ class MuseRed:
                 keys = {k: item[k] for k in ('DATE_OBS', 'INS_MODE')}
                 keys['reduced_id'] = item['id']
                 keys['date_parsed'] = now
-
-                for f in sorted(iglob(f"{item['path']}/{dpr_type}*.fits")):
-                    hdr = fits.getheader(f)
-                    cards = {normalize_keyword(key): val
-                             for key, val in hdr['ESO QC*'].items()}
-                    if len(cards) == 0:
-                        break  # no QC params
-                    rows.append({**keys, 'filename': os.path.basename(f),
-                                 **cards})
+                flist = sorted(iglob(f"{item['path']}/{dpr_type}*.fits"))
+                for row in parse_qc_keywords(flist):
+                    rows.append({**keys, **row})
 
             if len(rows) == 0:
                 self.logger.info('found no QC params')
@@ -377,7 +339,7 @@ class MuseRed:
         nrequired = {'TWILIGHT_CUBE': 1}
 
         for frame in set(recipe.calib_frames) - exclude_frames:
-            if frame in STATIC_FRAMES:
+            if frame in self.static_calib.STATIC_FRAMES:
                 frames[frame] = self.static_calib.get(frame, date=night)
             else:
                 frames[frame] = self.find_calib(

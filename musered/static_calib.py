@@ -5,6 +5,7 @@ from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 
+from .settings import STATIC_FRAMES
 from .utils import parse_date
 
 
@@ -23,6 +24,9 @@ class StaticCalib:
         Settings dictionary.
 
     """
+
+    STATIC_FRAMES = STATIC_FRAMES
+
     def __init__(self, path, conf):
         self.path = path
         self.conf = conf

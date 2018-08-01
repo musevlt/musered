@@ -6,11 +6,15 @@ import numpy as np
 import re
 import yaml
 
+from astropy.io import fits
 from astropy.table import Table, MaskedColumn
+from collections import OrderedDict
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, pool
 from pprint import pprint
+
+from .settings import RAW_FITS_KEYWORDS
 
 EXP_PATTERN = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}'
 DATETIME_PATTERN = '%Y-%m-%dT%H:%M:%S.%f'
@@ -113,6 +117,55 @@ def normalize_keyword(key):
     if key.startswith('ESO '):
         key = key[4:]
     return key.replace(' ', '_').replace('-', '_')
+
+
+def parse_raw_keywords(flist, force=False, processed=None):
+    nskip = 0
+    rows = []
+    processed = processed or []
+
+    keywords = [k.split('/')[0].strip()
+                for k in RAW_FITS_KEYWORDS.splitlines() if k]
+
+    for f in ProgressBar(flist):
+        hdr = fits.getheader(f, ext=0)
+        if not force and hdr['ARCFILE'] in processed:
+            nskip += 1
+            continue
+
+        row = OrderedDict([('name', get_exp_name(f)),
+                           ('filename', os.path.basename(f)),
+                           ('path', f)])
+
+        if 'DATE-OBS' in hdr:
+            date = parse_datetime(hdr['DATE-OBS'])
+            row['night'] = date.date()
+            # Same as MuseWise
+            if date.time() < NOON:
+                row['night'] -= ONEDAY
+            row['night'] = row['night'].isoformat()
+        else:
+            row['night'] = None
+
+        for key in keywords:
+            row[normalize_keyword(key)] = hdr.get(key)
+
+        rows.append(row)
+
+    return rows, nskip
+
+
+def parse_qc_keywords(flist):
+    rows = []
+    for f in sorted(flist):
+        hdr = fits.getheader(f)
+        cards = {normalize_keyword(key): val
+                 for key, val in hdr['ESO QC*'].items()}
+        if len(cards) == 0:
+            break  # no QC params
+        rows.append({'filename': os.path.basename(f), **cards})
+    return rows
+
 
 def isnotebook():  # pragma: no cover
     try:
