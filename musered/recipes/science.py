@@ -1,9 +1,11 @@
 from .recipe import Recipe
 
-__all__ = ('SCIBASIC', )
+
+class ScienceRecipe(Recipe):
+    """Mother class for science recipes."""
 
 
-class SCIBASIC(Recipe):
+class SCIBASIC(ScienceRecipe):
 
     recipe_name = 'muse_scibasic'
     output_dir = 'scibasic'
@@ -12,21 +14,15 @@ class SCIBASIC(Recipe):
     default_params = {'saveimage': False}
 
 
-class STANDARD(Recipe):
+class STANDARD(ScienceRecipe):
 
     recipe_name = 'muse_standard'
     DPR_TYPE = 'PIXTABLE_STD'
     output_dir = 'STD'
-    exclude_frames = ('TELLURIC_REGIONS', ) + Recipe.exclude_frames
+    exclude_frames = ('TELLURIC_REGIONS', ) + ScienceRecipe.exclude_frames
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
 
-_classes = {cls.recipe_name: cls
-            for cls in (SCIBASIC, STANDARD)}
+classes = {cls.recipe_name: cls for cls in ScienceRecipe.__subclasses__()}
 
-
-def get_recipe_cls(recipe_name):
-    if recipe_name not in _classes:
-        raise ValueError(f'invalid recipe_name {recipe_name}')
-
-    return _classes[recipe_name]
+__all__ = tuple(cls.__name__ for cls in ScienceRecipe.__subclasses__())

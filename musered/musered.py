@@ -500,9 +500,9 @@ class MuseRed:
                       **kwargs):
         """Run a calibration recipe."""
 
-        from .recipes.calib import get_recipe_cls
+        from .recipes.calib import classes
         recipe_name = 'muse_' + recipe_name
-        recipe_cls = get_recipe_cls(recipe_name)
+        recipe_cls = classes[recipe_name]
 
         # get the list of nights to process
         if night_list is None:
@@ -515,8 +515,8 @@ class MuseRed:
     def process_exp(self, recipe_name, explist=None, skip=False, **kwargs):
         """Run a science recipe."""
 
-        from .recipes.science import get_recipe_cls
-        recipe_cls = get_recipe_cls('muse_' + recipe_name)
+        from .recipes.science import classes
+        recipe_cls = classes['muse_' + recipe_name]
 
         # get the list of dates to process
         if explist is None:

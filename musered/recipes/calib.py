@@ -1,9 +1,11 @@
 from .recipe import Recipe
 
-__all__ = ('BIAS', 'DARK', 'FLAT', 'WAVECAL', 'LSF', 'SKYFLAT')
+
+class CalibRecipe(Recipe):
+    """Mother class for calibration recipes."""
 
 
-class BIAS(Recipe):
+class BIAS(CalibRecipe):
 
     recipe_name = 'muse_bias'
     DPR_TYPE = 'BIAS'
@@ -11,14 +13,14 @@ class BIAS(Recipe):
     n_inputs_rec = 11
 
 
-class DARK(Recipe):
+class DARK(CalibRecipe):
 
     recipe_name = 'muse_dark'
     DPR_TYPE = 'DARK'
     n_inputs_min = 3
 
 
-class FLAT(Recipe):
+class FLAT(CalibRecipe):
 
     recipe_name = 'muse_flat'
     DPR_TYPE = 'FLAT,LAMP'
@@ -27,21 +29,21 @@ class FLAT(Recipe):
     n_inputs_rec = 11
 
 
-class WAVECAL(Recipe):
+class WAVECAL(CalibRecipe):
 
     recipe_name = 'muse_wavecal'
     DPR_TYPE = 'WAVE'
     n_inputs_rec = 15
-    exclude_frames = ('MASTER_FLAT', ) + Recipe.exclude_frames
+    exclude_frames = ('MASTER_FLAT', ) + CalibRecipe.exclude_frames
 
 
-class LSF(Recipe):
+class LSF(CalibRecipe):
 
     recipe_name = 'muse_lsf'
     DPR_TYPE = 'WAVE'
 
 
-class SKYFLAT(Recipe):
+class SKYFLAT(CalibRecipe):
 
     recipe_name = 'muse_twilight'
     DPR_TYPE = 'FLAT,SKY'
@@ -50,12 +52,6 @@ class SKYFLAT(Recipe):
     use_illum = True
 
 
-_classes = {cls.recipe_name: cls
-            for cls in (BIAS, DARK, FLAT, WAVECAL, LSF, SKYFLAT)}
+classes = {cls.recipe_name: cls for cls in CalibRecipe.__subclasses__()}
 
-
-def get_recipe_cls(recipe_name):
-    if recipe_name not in _classes:
-        raise ValueError(f'invalid recipe_name {recipe_name}')
-
-    return _classes[recipe_name]
+__all__ = tuple(cls.__name__ for cls in CalibRecipe.__subclasses__())
