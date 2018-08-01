@@ -9,10 +9,8 @@ import yaml
 from astropy.io import fits
 from astropy.table import Table, MaskedColumn
 from collections import OrderedDict
-from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, pool
-from pprint import pprint
 
 from .settings import RAW_FITS_KEYWORDS
 
@@ -81,19 +79,6 @@ def load_table(db, name, indexes=None):
     if indexes:
         t.add_index(indexes)
     return t
-
-
-def pprint_record(records):
-    """Pretty print for a list of records from a dataset query."""
-    for rec in records:
-        pprint(dict(list(rec.items())))
-
-
-def select_distinct(db, tablename, column):
-    """Returns the distinct values for 'column' from 'tablename'."""
-    table = db[tablename].table
-    return sorted(o[column] for o in db.query(
-        select([getattr(table.c, column)]).distinct(column)))
 
 
 def get_exp_name(filename):
