@@ -148,6 +148,24 @@ class MuseRed:
             - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
             """))
 
+    def info_raw(self, date_obs):
+        """Print information about raw exposures."""
+        rows = list(self.raw.find(night=date_obs))
+        t = Table(rows=rows, names=rows[0].keys())
+        t.keep_columns([
+            'ARCFILE', 'DATE_OBS', 'EXPTIME', 'OBJECT',
+            # 'DPR_CATG', 'DPR_TYPE',
+            'INS_DROT_POSANG', 'INS_MODE', 'INS_TEMP7_VAL',
+            'OCS_SGS_AG_FWHMX_MED', 'OCS_SGS_AG_FWHMY_MED',
+            'OCS_SGS_FWHM_MED', 'OCS_SGS_FWHM_RMS',
+            'TEL_AIRM_END', 'TEL_AIRM_START',
+        ])
+        for col in t.columns.values():
+            col.name = (col.name.replace('TEL_', '').replace('OCS_SGS_', '')
+                        .replace('INS_', ''))
+        t.sort('ARCFILE')
+        t.pprint(max_lines=-1, max_width=-1)
+
     def info_qc(self, dpr_type, date_list=None):
         if dpr_type not in self.db:
             self.update_qc(dpr_types=[dpr_type])

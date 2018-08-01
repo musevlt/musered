@@ -88,9 +88,10 @@ def update_qc(mr, type, recipe):
 @click.option('--datasets', is_flag=True, help='list datasets')
 @click.option('--nights', is_flag=True, help='list nights')
 @click.option('--exps', is_flag=True, help='list exposures')
+@click.option('--raw', is_flag=True, help='list raw exposures for a night')
 @click.option('--qc', help='show QC keywords')
 @click.pass_obj
-def info(mr, dateobs, datasets, nights, exps, qc):
+def info(mr, dateobs, datasets, nights, exps, raw, qc):
     """Print info about raw and reduced data, or night or exposure."""
 
     if any([datasets, nights, exps]):
@@ -100,6 +101,8 @@ def info(mr, dateobs, datasets, nights, exps, qc):
             mr.list_nights()
         if exps:
             mr.list_exposures()
+    elif raw:
+        mr.info_raw(dateobs)
     elif qc:
         mr.info_qc(qc, date_list=dateobs)
     else:
