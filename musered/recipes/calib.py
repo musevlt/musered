@@ -24,6 +24,7 @@ class FLAT(CalibRecipe):
 
     recipe_name = 'muse_flat'
     DPR_TYPE = 'FLAT,LAMP'
+    # save the TRACE_SAMPLES files
     default_params = {'samples': True}
     n_inputs_min = 3
     n_inputs_rec = 11
@@ -34,6 +35,7 @@ class WAVECAL(CalibRecipe):
     recipe_name = 'muse_wavecal'
     DPR_TYPE = 'WAVE'
     n_inputs_rec = 15
+    # Don't use MASTER_FLAT
     exclude_frames = ('MASTER_FLAT', ) + CalibRecipe.exclude_frames
 
 

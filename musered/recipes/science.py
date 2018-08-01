@@ -10,7 +10,7 @@ class SCIBASIC(ScienceRecipe):
     recipe_name = 'muse_scibasic'
     output_dir = 'scibasic'
     use_illum = True
-    env = {'MUSE_PIXTABLE_SAVE_AS_IMAGE': 1}
+    # Don't save the pre-processed CCD-based image
     default_params = {'saveimage': False}
 
 
@@ -19,7 +19,9 @@ class STANDARD(ScienceRecipe):
     recipe_name = 'muse_standard'
     DPR_TYPE = 'PIXTABLE_STD'
     output_dir = 'STD'
+    # TELLURIC_REGIONS is not needed, use the DRS default values instead
     exclude_frames = ('TELLURIC_REGIONS', ) + ScienceRecipe.exclude_frames
+    # Save the V,R,I images
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
 
