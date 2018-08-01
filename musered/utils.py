@@ -1,5 +1,6 @@
 import dataset
 import datetime
+import itertools
 import logging
 import os
 import numpy as np
@@ -8,9 +9,9 @@ import yaml
 
 from astropy.io import fits
 from astropy.table import Table, MaskedColumn
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from sqlalchemy.engine import Engine
-from sqlalchemy import event, pool
+from sqlalchemy import event, pool, sql, func
 
 from .settings import RAW_FITS_KEYWORDS
 
@@ -150,6 +151,49 @@ def parse_qc_keywords(flist):
             break  # no QC params
         rows.append({'filename': os.path.basename(f), **cards})
     return rows
+
+
+def query_count_to_table(db, tablename, exclude_obj=None, where=None):
+    datecol = 'night' if tablename == 'raw' else 'DATE_OBS'
+    countcol = 'OBJECT' if tablename == 'raw' else 'recipe_name'
+    c = db[tablename].table.c
+
+    whereclause = [c[datecol].isnot(None), c[countcol].isnot(None)]
+    if where is not None:
+        whereclause.append(where)
+
+    query = (sql.select([c[datecol], c[countcol], func.count()])
+             .where(sql.and_(*whereclause))
+             .group_by(c[datecol], c[countcol]))
+
+    # reorganize rows to have types (in columns) per night (rows)
+    rows = defaultdict(dict)
+    keys = set()
+    for date, obj, count in db.executable.execute(query):
+        if exclude_obj and obj in exclude_obj:
+            continue
+        rows[date]['date'] = date
+        rows[date][obj] = count
+        keys.add(obj)
+
+    # set default counts
+    for row, key in itertools.product(rows.values(), keys):
+        row.setdefault(key, 0)
+
+    t = Table(rows=list(rows.values()), masked=True)
+    # move date column to the beginning
+    t.columns.move_to_end('date', last=False)
+    for col in t.columns.values()[1:]:
+        col[col == 0] = np.ma.masked
+
+    # if only_one:
+    #     for col in t.columns.values()[1:]:
+    #         # shorten recipe names
+    #         col.name = col.name.replace('muse_', '')
+    #         # here it would print the number of frames for a recipe,
+    #         # which is not the goal. replace with 1...
+    #         # col[col > 0] = 1
+    return t
 
 
 def isnotebook():  # pragma: no cover

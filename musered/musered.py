@@ -6,16 +6,15 @@ import numpy as np
 import operator
 import os
 import textwrap
-from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
 from mpdaf.log import setup_logging
-from sqlalchemy import sql, func
+from sqlalchemy import sql
 
 from .static_calib import StaticCalib
 from .utils import (load_yaml_config, load_db, parse_date, parse_raw_keywords,
-                    parse_qc_keywords, ProgressBar)
+                    parse_qc_keywords, query_count_to_table, ProgressBar)
 
 
 class MuseRed:
@@ -91,59 +90,30 @@ class MuseRed:
     def info(self):
         """Print a summary of the raw and reduced data."""
         print(f'{self.raw.count()} files\n')
-
         self.list_datasets()
 
-        # uninteresting objects to exclude from the report
-        excludes = ('Astrometric calibration (ASTROMETRY)', )
+        # count files per night and per type, raw data, then reduced
+        print(f'\nRaw data:\n')
+        if 'night' not in self.raw.columns:
+            print('Nothing yet.')
+        else:
+            # uninteresting objects to exclude from the report
+            excludes = ('Astrometric calibration (ASTROMETRY)', )
+            t = query_count_to_table(self.db, 'raw', exclude_obj=excludes)
+            t.pprint(max_lines=-1)
 
-        # count files per night and per type
-        for table, datecol, countcol, title in (
-                (self.raw, 'night', 'OBJECT', 'Raw'),
-                (self.reduced, 'DATE_OBS', 'recipe_name', 'Processed')):
+        if 'DATE_OBS' not in self.reduced.columns:
+            print(f'\nProcessed data:\n')
+            print('Nothing yet.')
+        else:
+            print(f'\nProcessed calib data:\n')
+            t = query_count_to_table(self.db, 'reduced',
+                                     where=self.redc.DPR_CATG == 'CALIB')
+            t.pprint(max_lines=-1)
 
-            print(f'\n{title} data:\n')
-            if datecol not in table.columns:
-                print('Nothing yet.')
-                return
-
-            col = table.table.columns
-            query = (sql.select([col[datecol], col[countcol],
-                                 func.count(col[datecol])])
-                     .where(sql.and_(
-                         col[datecol].isnot(None),
-                         col[countcol].isnot(None)
-                     ))
-                     .group_by(col[datecol], col[countcol]))
-
-            # reorganize rows to have types (in columns) per night (rows)
-            rows = defaultdict(dict)
-            keys = set()
-            for date, obj, count in self.execute(query):
-                if obj in excludes:
-                    continue
-                rows[date]['date'] = date
-                rows[date][obj] = count
-                keys.add(obj)
-
-            # set default counts
-            for row, key in itertools.product(rows.values(), keys):
-                row.setdefault(key, 0)
-
-            t = Table(rows=list(rows.values()), masked=True)
-            # move date column to the beginning
-            t.columns.move_to_end('date', last=False)
-            for col in t.columns.values()[1:]:
-                col[col == 0] = np.ma.masked
-
-            if title == 'Processed':
-                for col in t.columns.values()[1:]:
-                    # shorten recipe names
-                    col.name = col.name.replace('muse_', '')
-                    # here it would print the number of time a recipe was run,
-                    # which is not the goal. replace with 1...
-                    col[col > 0] = 1
-
+            print(f'\nProcessed science data:\n')
+            t = query_count_to_table(self.db, 'reduced',
+                                     where=self.redc.DPR_CATG == 'SCIENCE')
             t.pprint(max_lines=-1)
 
     def info_exp(self, date_obs):
