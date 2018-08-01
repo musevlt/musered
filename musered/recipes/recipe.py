@@ -66,6 +66,9 @@ class Recipe:
     exclude_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
     """Frames that must be excluded by default."""
 
+    QC_keywords = {}
+    """QC keywords to show, for each frame."""
+
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
                  log_dir='.', version=None, nifu=-1, tag=None):
         self.nbwarn = 0

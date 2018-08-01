@@ -6,12 +6,14 @@ import numpy as np
 import operator
 import os
 import textwrap
+from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
 from mpdaf.log import setup_logging
 from sqlalchemy import sql
 
+from .recipes import recipe_classes
 from .static_calib import StaticCalib
 from .utils import (load_yaml_config, load_db, parse_date, parse_raw_keywords,
                     parse_qc_keywords, query_count_to_table, ProgressBar)
@@ -146,6 +148,24 @@ class MuseRed:
             - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
             """))
 
+    def info_qc(self, dpr_type, date_list=None):
+        if dpr_type not in self.db:
+            self.update_qc(dpr_types=[dpr_type])
+
+        if not date_list:
+            date_list = self.select_dates(dpr_type, table=dpr_type,
+                                          distinct=True)
+
+        table = self.db[dpr_type]
+        recipe_cls = recipe_classes[table.find_one()['recipe_name']]
+        cols = ['filename', 'DATE_OBS', 'INS_MODE']
+        cols.extend(recipe_cls.QC_keywords.get(dpr_type, []))
+
+        for date_obs in date_list:
+            t = Table(rows=[[row[k] for k in cols] for row in
+                            table.find(DATE_OBS=date_obs)], names=cols)
+            t.pprint(max_lines=-1)
+
     def set_loglevel(self, level):
         logger = logging.getLogger('musered')
         level = level.upper()
@@ -239,6 +259,7 @@ class MuseRed:
             for item in ProgressBar(items):
                 keys = {k: item[k] for k in ('DATE_OBS', 'INS_MODE')}
                 keys['reduced_id'] = item['id']
+                keys['recipe_name'] = item['recipe_name']
                 keys['date_parsed'] = now
                 flist = sorted(iglob(f"{item['path']}/{dpr_type}*.fits"))
                 for row in parse_qc_keywords(flist):
@@ -500,9 +521,7 @@ class MuseRed:
                       **kwargs):
         """Run a calibration recipe."""
 
-        from .recipes.calib import classes
-        recipe_name = 'muse_' + recipe_name
-        recipe_cls = classes[recipe_name]
+        recipe_cls = recipe_classes['muse_' + recipe_name]
 
         # get the list of nights to process
         if night_list is None:
@@ -515,8 +534,7 @@ class MuseRed:
     def process_exp(self, recipe_name, explist=None, skip=False, **kwargs):
         """Run a science recipe."""
 
-        from .recipes.science import classes
-        recipe_cls = classes['muse_' + recipe_name]
+        recipe_cls = recipe_classes['muse_' + recipe_name]
 
         # get the list of dates to process
         if explist is None:
@@ -534,9 +552,8 @@ class MuseRed:
         """Reduce a standard exposure, running both muse_scibasic and
         muse_standard.
         """
-        from .recipes.science import classes
-        recipe_sci = classes['muse_scibasic']
-        recipe_std = classes['muse_standard']
+        recipe_sci = recipe_classes['muse_scibasic']
+        recipe_std = recipe_classes['muse_standard']
 
         # get the list of dates to process
         if explist is None:

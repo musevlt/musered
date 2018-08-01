@@ -25,6 +25,6 @@ class STANDARD(ScienceRecipe):
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
 
-classes = {cls.recipe_name: cls for cls in ScienceRecipe.__subclasses__()}
+sci_classes = {cls.recipe_name: cls for cls in ScienceRecipe.__subclasses__()}
 
 __all__ = tuple(cls.__name__ for cls in ScienceRecipe.__subclasses__())
