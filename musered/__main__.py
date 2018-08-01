@@ -75,6 +75,15 @@ def update_db(mr, force):
     mr.update_db(force=force)
 
 
+@click.option('--type', multiple=True, help='type of file to parse (DPR.TYPE)')
+@click.option('--recipe', help='recipe for which files are parsed')
+@click.pass_obj
+def update_qc(mr, type, recipe):
+    """Create or update the database containing QC keywords."""
+    logger.info('Updating the QC tables')
+    mr.update_qc(dpr_types=type, recipe_name=recipe)
+
+
 @click.argument('dateobs', nargs=-1)
 @click.option('--datasets', is_flag=True, help='list datasets')
 @click.option('--nights', is_flag=True, help='list nights')
@@ -150,7 +159,8 @@ def process_exp(mr, exp, skip, scibasic, standard):
         mr.process_standard(explist=exp, skip=skip)
 
 
-for cmd in (info, retrieve_data, update_db, process_calib, process_exp):
+for cmd in (info, retrieve_data, update_db, update_qc, process_calib,
+            process_exp):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 

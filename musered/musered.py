@@ -16,8 +16,9 @@ from sqlalchemy import sql, func
 
 from .settings import RAW_FITS_KEYWORDS, STATIC_FRAMES
 from .static_calib import StaticCalib
-from .utils import (load_yaml_config, load_db, get_exp_name,
-                    parse_date, parse_datetime, NOON, ONEDAY, ProgressBar)
+from .utils import (load_yaml_config, load_db, get_exp_name, parse_date,
+                    parse_datetime, normalize_keyword, NOON, ONEDAY,
+                    ProgressBar)
 
 
 class MuseRed:
@@ -243,9 +244,7 @@ class MuseRed:
                 row['night'] = None
 
             for key in keywords:
-                col = key[4:] if key.startswith('ESO ') else key
-                col = col.replace(' ', '_').replace('-', '_')
-                row[col] = hdr.get(key)
+                row[normalize_keyword(key)] = hdr.get(key)
 
             rows.append(row)
 
@@ -263,6 +262,60 @@ class MuseRed:
             for name in ('DATE_OBS', 'DPR_TYPE'):
                 if not self.reduced.has_index([name]):
                     self.reduced.create_index([name])
+
+    def update_qc(self, dpr_types=None, recipe_name=None):
+        """Create or update the tables containing QC keywords."""
+        if recipe_name is not None:
+            if not recipe_name.startswith('muse_'):
+                recipe_name = 'muse_' + recipe_name
+            # select all types for a given recipe
+            dpr_types = self.select_column(
+                'DPR_TYPE', table='reduced', distinct=True,
+                whereclause=(self.redc.recipe_name == recipe_name))
+        elif not dpr_types:
+            # select all types
+            dpr_types = self.select_column('DPR_TYPE', table='reduced',
+                                           distinct=True)
+
+        # Remove types for which there is no QC params
+        excludes = ('TWILIGHT_CUBE', 'TRACE_SAMPLES', 'STD_FLUXES',
+                    'STD_TELLURIC')
+        for exc in excludes:
+            if exc in dpr_types:
+                dpr_types.remove(exc)
+
+        now = datetime.datetime.now()
+        for dpr_type in dpr_types:
+            self.logger.info('Parsing %s files', dpr_type)
+
+            if dpr_type in self.db.tables:
+                self.logger.info('Dropping existing table')
+                self.db[dpr_type].drop()
+            table = self.db.create_table(dpr_type)
+            # TODO: skip already parsed files
+
+            rows = []
+            items = list(self.reduced.find(DPR_TYPE=dpr_type))
+            for item in ProgressBar(items):
+                keys = {k: item[k] for k in ('DATE_OBS', 'INS_MODE')}
+                keys['reduced_id'] = item['id']
+                keys['date_parsed'] = now
+
+                for f in sorted(iglob(f"{item['path']}/{dpr_type}*.fits")):
+                    hdr = fits.getheader(f)
+                    cards = {normalize_keyword(key): val
+                             for key, val in hdr['ESO QC*'].items()}
+                    if len(cards) == 0:
+                        break  # no QC params
+                    rows.append({**keys, **cards})
+
+            if len(rows) == 0:
+                self.logger.info('found no QC params')
+                continue
+
+            table.insert_many(rows)
+            self.logger.info('inserted %d rows', len(rows))
+
 
     def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""

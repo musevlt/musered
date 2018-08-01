@@ -108,6 +108,12 @@ def parse_date(exp):
     return datetime.datetime.strptime(exp, DATE_PATTERN).date()
 
 
+def normalize_keyword(key):
+    """Normalize FITS keywords to use it as a database column name."""
+    if key.startswith('ESO '):
+        key = key[4:]
+    return key.replace('-', '_')
+
 def isnotebook():  # pragma: no cover
     try:
         shell = get_ipython().__class__.__name__
