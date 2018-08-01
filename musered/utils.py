@@ -19,7 +19,7 @@ from .settings import RAW_FITS_KEYWORDS
 EXP_PATTERN = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}'
 DATETIME_PATTERN = '%Y-%m-%dT%H:%M:%S.%f'
 DATE_PATTERN = '%Y-%m-%d'
-NOON = datetime.time(16, 0, 0)
+NOON = datetime.time(18, 30, 0)
 ONEDAY = datetime.timedelta(days=1)
 
 
