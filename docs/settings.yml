@@ -51,7 +51,7 @@ static_calib:
     badpix_table_pre_2015apr.fits:
       start_date: 2014-09-17
       end_date: 2015-05-10
-  ASTROMETRY_TABLE:
+  ASTROMETRY_WCS:
     astrometry_wcs_wfm_gto17.fits: *GTO17
     astrometry_wcs_wfm_gto24.fits: *GTO24
     astrometry_wcs_wfm_gto25.fits: *GTO25
@@ -77,12 +77,23 @@ retrieve_data:
 recipes:
   common:
     temp_dir: '{workdir}/reduced/{version}/tmp'
+
   muse_wavecal:
     # This can be used to change the frames excluded by default
     # exclude_frames: [MASTER_FLAT, MASTER_DARK, NONLINEARITY_GAIN]
     params:
       saveimages: True
+
   # muse_scibasic:
   #   init:
   #     use_drs_output: False
   #     output_dir: '{workdir}/reduced/{version}/SCIBASIC'
+
+  muse_scipost_rec:
+    # Special version of scipost to produce images for the recentering step
+    # (OFFSET_LIST). For this we don't need sky-subtraction.
+    init:
+      output_dir: 'scipost-rec'
+    params:
+      skymethod: 'none'
+      skymodel_fraction: 0.5

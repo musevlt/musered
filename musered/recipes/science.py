@@ -25,6 +25,17 @@ class STANDARD(ScienceRecipe):
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
 
+class SCIPOST(ScienceRecipe):
+
+    recipe_name = 'muse_scipost'
+    output_dir = 'scipost'
+    # exclude optional frames
+    exclude_frames = (('SKY_CONTINUUM', 'OUTPUT_WCS', 'OFFSET_LIST',
+                       'SKY_MASK') + ScienceRecipe.exclude_frames)
+    # Save the V,R,I images
+    default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
+
+
 sci_classes = {cls.recipe_name: cls for cls in ScienceRecipe.__subclasses__()}
 
 __all__ = tuple(cls.__name__ for cls in ScienceRecipe.__subclasses__())

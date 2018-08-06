@@ -318,7 +318,7 @@ class MuseRed:
 
     def find_calib(self, night, dpr_type, ins_mode, nrequired=24, day_off=0):
         """Return calibration files for a given night, type, and mode."""
-        res = self.reduced.find_one(DATE_OBS=night, INS_MODE=ins_mode,
+        res = self.reduced.find_one(night=night, INS_MODE=ins_mode,
                                     DPR_TYPE=dpr_type)
         if res is None and day_off != 0:
             if isinstance(night, str):
@@ -326,7 +326,7 @@ class MuseRed:
             for off, direction in itertools.product(range(1, day_off + 1),
                                                     (1, -1)):
                 off = datetime.timedelta(days=off * direction)
-                res = self.reduced.find_one(DATE_OBS=(night + off).isoformat(),
+                res = self.reduced.find_one(night=(night + off).isoformat(),
                                             INS_MODE=ins_mode,
                                             DPR_TYPE=dpr_type)
                 if res is not None:
@@ -343,14 +343,16 @@ class MuseRed:
                              f'instead of {nrequired}')
         return flist
 
-    def get_calib_frames(self, recipe, night, ins_mode, day_off=0,
-                         exclude_frames=None):
+    def get_calib_frames(self, recipe, night, ins_mode, exclude_frames=None):
         """Return a dict with all calibration frames for a recipe."""
         frames = {}
         exclude_frames = set(exclude_frames or recipe.exclude_frames)
-        nrequired = {'TWILIGHT_CUBE': 1}
+        # FIXME: find better way to manage nrequired and day_offsets
+        nrequired = {'TWILIGHT_CUBE': 1, 'STD_TELLURIC': 1, 'STD_RESPONSE': 1}
+        day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5}
 
         for frame in set(recipe.calib_frames) - exclude_frames:
+            day_off = day_offsets.get(frame, 3)
             if frame in self.static_calib.STATIC_FRAMES:
                 frames[frame] = self.static_calib.get(frame, date=night)
             else:
@@ -407,7 +409,8 @@ class MuseRed:
         return res[3]
 
     def run_recipe(self, recipe_cls, date_list, skip=False, calib=False,
-                   recipe_kwargs=None, use_reduced=False, **kwargs):
+                   params_name=None, recipe_kwargs=None, use_reduced=False,
+                   **kwargs):
         """Main method used to run a recipe.
 
         Parameters
@@ -422,6 +425,11 @@ class MuseRed:
             If True, process Calibration data, grouped by "night" (though this
             is also for day calibration !). This changes the columns used for
             queries.
+        params_name : str
+            By default the recipe name is obtained from the recipe class, but
+            this parameter allows to change the name, which can be useful to
+            have different parameters, and outputs stored under a different
+            name.
         recipe_kwargs : dict
             Additional arguments passed to the `musered.Recipe` instantiation.
         use_reduced : bool
@@ -430,7 +438,7 @@ class MuseRed:
             Additional arguments passed to `musered.Recipe.run`.
 
         """
-        recipe_name = recipe_cls.recipe_name
+        recipe_name = params_name or recipe_cls.recipe_name
         if calib:
             label = datecol = namecol = 'night'
         else:
@@ -497,7 +505,7 @@ class MuseRed:
                 output_dir = recipe.output_dir
 
             calib_frames = self.get_calib_frames(
-                recipe, night, ins_mode, day_off=3,
+                recipe, night, ins_mode,
                 exclude_frames=recipe_conf.get('exclude_frames'))
 
             if recipe.use_illum:
@@ -564,7 +572,9 @@ class MuseRed:
                 dpr_type = recipe_cls.DPR_TYPE
             explist = self.select_dates(dpr_type, table=table)
 
-        self.run_recipe(recipe_cls, explist, skip=skip, **kwargs)
+        use_reduced = recipe_name not in ('scibasic', )
+        self.run_recipe(recipe_cls, explist, skip=skip,
+                        use_reduced=use_reduced, **kwargs)
 
     def process_standard(self, explist=None, skip=False, **kwargs):
         """Reduce a standard exposure, running both muse_scibasic and

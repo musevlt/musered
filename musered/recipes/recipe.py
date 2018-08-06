@@ -124,7 +124,12 @@ class Recipe:
     @property
     def output_frames(self):
         """Return the list of output frames."""
-        return self._recipe.output[self._recipe.tag]
+        frames = []
+        if self.recipe_name == 'muse_scipost':
+            # special case for scipost, for which some output frames are
+            # missing from cpl's generated list
+            frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'PIXTABLE_REDUCED']
+        return frames + self._recipe.output[self._recipe.tag]
 
     def dump_params(self):
         """Dump non-default parameters to a JSON string."""

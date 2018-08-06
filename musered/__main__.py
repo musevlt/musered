@@ -150,19 +150,21 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
 @click.option('--skip', is_flag=True, help='rkip already processed exposures')
 @click.option('--scibasic', is_flag=True, help='run muse_scibasic')
 @click.option('--standard', is_flag=True, help='run muse_standard')
+@click.option('--scipost', is_flag=True, help='run muse_scipost')
+@click.option('--params', help='name of the parameters block')
 @click.pass_obj
-def process_exp(mr, exp, skip, scibasic, standard):
-    """Run recipes for science exposures.
-
-    """
+def process_exp(mr, exp, skip, scibasic, standard, scipost, params):
+    """Run recipes for science exposures."""
     if len(exp) == 0:
         exp = None
 
-    run_all = not any([scibasic, standard])
+    run_all = not any([scibasic, standard, scipost])
     if scibasic or run_all:
-        mr.process_exp('scibasic', explist=exp, skip=skip)
+        mr.process_exp('scibasic', explist=exp, skip=skip, params_name=params)
     if standard or run_all:
         mr.process_standard(explist=exp, skip=skip)
+    if scipost or run_all:
+        mr.process_exp('scipost', explist=exp, skip=skip, params_name=params)
 
 
 for cmd in (info, retrieve_data, update_db, update_qc, process_calib,
