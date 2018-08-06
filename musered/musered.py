@@ -346,26 +346,31 @@ class MuseRed:
     def get_calib_frames(self, recipe, night, ins_mode, frames=None):
         """Return a dict with all calibration frames for a recipe."""
 
+        framedict = {}
+
         # Build the list of frames that must be found for the recipe
         frameset = set(recipe.calib_frames)
         # Remove frames excluded by default
         frameset.difference_update(recipe.exclude_frames)
         if frames is not None:
-            if 'exclude' in frames:
-                frameset.difference_update(frames['exclude'])
-            if 'include' in frames:
-                frameset.update(frames['include'])
+            for key, val in frames.items():
+                if key == 'exclude':  # Remove frames to exclude
+                    frameset.difference_update(val)
+                elif key == 'include':  # Add frames to include
+                    frameset.update(val)
+                else:  # Otherwise add frame directly to the framedict
+                    framedict[key] = val
         self.logger.info('Using frames: %s', frameset)
 
-        # FIXME: find better way to manage day_offsets
-        day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5}
+        # FIXME: find better way to manage day_offsets ?
+        day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5,
+                       'TWILIGHT_CUBE': 3}
 
-        framedict = {}
         for frame in frameset:
-            day_off = day_offsets.get(frame, 3)
             if frame in self.static_calib.STATIC_FRAMES:
                 framedict[frame] = self.static_calib.get(frame, date=night)
             else:
+                day_off = day_offsets.get(frame, 1)
                 framedict[frame] = self.find_calib(night, frame, ins_mode,
                                                    day_off=day_off)
 

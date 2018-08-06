@@ -28,6 +28,7 @@ class STANDARD(ScienceRecipe):
 class SCIPOST(ScienceRecipe):
 
     recipe_name = 'muse_scipost'
+    DPR_TYPE = 'PIXTABLE_OBJECT'
     output_dir = 'scipost'
     # exclude optional frames
     exclude_frames = (('SKY_CONTINUUM', 'OUTPUT_WCS', 'OFFSET_LIST',

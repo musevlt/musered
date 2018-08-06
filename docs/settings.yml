@@ -93,11 +93,13 @@ recipes:
 
   muse_scipost_rec:
     # Special version of scipost to produce images for the recentering step
-    # (OFFSET_LIST). For this we don't need sky-subtraction.
+    # (OFFSET_LIST). For this we don't need sky-subtraction nor raman
+    # correction.
     frames:
       exclude: [RAMAN_LINES]
     init:
       output_dir: 'scipost-rec'
     params:
+      dlambda: 5
       skymethod: 'none'
-      skymodel_fraction: 0.5
+      # skymodel_fraction: 0.5
