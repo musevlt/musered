@@ -80,7 +80,9 @@ recipes:
 
   muse_wavecal:
     # This can be used to change the frames excluded by default
-    # exclude_frames: [MASTER_FLAT, MASTER_DARK, NONLINEARITY_GAIN]
+    # frames:
+    #   exclude: [MASTER_DARK]
+    #   include: [MASTER_FLAT]
     params:
       saveimages: True
 
@@ -92,6 +94,8 @@ recipes:
   muse_scipost_rec:
     # Special version of scipost to produce images for the recentering step
     # (OFFSET_LIST). For this we don't need sky-subtraction.
+    frames:
+      exclude: [RAMAN_LINES]
     init:
       output_dir: 'scipost-rec'
     params:

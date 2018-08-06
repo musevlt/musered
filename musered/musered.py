@@ -343,24 +343,35 @@ class MuseRed:
                              f'instead of {nrequired}')
         return flist
 
-    def get_calib_frames(self, recipe, night, ins_mode, exclude_frames=None):
+    def get_calib_frames(self, recipe, night, ins_mode, frames=None):
         """Return a dict with all calibration frames for a recipe."""
-        frames = {}
-        exclude_frames = set(exclude_frames or recipe.exclude_frames)
+
+        # Build the list of frames that must be found for the recipe
+        frameset = set(recipe.calib_frames)
+        # Remove frames excluded by default
+        frameset.difference_update(recipe.exclude_frames)
+        if frames is not None:
+            if 'exclude' in frames:
+                frameset.difference_update(frames['exclude'])
+            if 'include' in frames:
+                frameset.update(frames['include'])
+        self.logger.info('Using frames: %s', frameset)
+
         # FIXME: find better way to manage nrequired and day_offsets
         nrequired = {'TWILIGHT_CUBE': 1, 'STD_TELLURIC': 1, 'STD_RESPONSE': 1}
         day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5}
 
-        for frame in set(recipe.calib_frames) - exclude_frames:
+        framedict = {}
+        for frame in frameset:
             day_off = day_offsets.get(frame, 3)
             if frame in self.static_calib.STATIC_FRAMES:
-                frames[frame] = self.static_calib.get(frame, date=night)
+                framedict[frame] = self.static_calib.get(frame, date=night)
             else:
-                frames[frame] = self.find_calib(
+                framedict[frame] = self.find_calib(
                     night, frame, ins_mode, day_off=day_off,
                     nrequired=nrequired.get(frame, 24))
 
-        return frames
+        return framedict
 
     def find_illum(self, night, ref_temp, ref_mjd_date):
         """Find the best ILLUM exposure for the night.
@@ -505,8 +516,7 @@ class MuseRed:
                 output_dir = recipe.output_dir
 
             calib_frames = self.get_calib_frames(
-                recipe, night, ins_mode,
-                exclude_frames=recipe_conf.get('exclude_frames'))
+                recipe, night, ins_mode, frames=recipe_conf.get('frames'))
 
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
