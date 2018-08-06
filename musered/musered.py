@@ -316,7 +316,7 @@ class MuseRed:
         params.setdefault('log_dir', conf['log_dir'])
         params.setdefault('temp_dir', os.path.join(self.reduced_path, 'tmp'))
 
-    def find_calib(self, night, dpr_type, ins_mode, nrequired=24, day_off=0):
+    def find_calib(self, night, dpr_type, ins_mode, day_off=0):
         """Return calibration files for a given night, type, and mode."""
         res = self.reduced.find_one(night=night, INS_MODE=ins_mode,
                                     DPR_TYPE=dpr_type)
@@ -338,9 +338,9 @@ class MuseRed:
             raise ValueError(f'could not find {dpr_type} for night {night}')
 
         flist = sorted(glob(f"{res['path']}/{dpr_type}*.fits"))
-        if len(flist) != nrequired:
+        if len(flist) not in (1, 24):
             raise ValueError(f'found {len(flist)} {dpr_type} files '
-                             f'instead of {nrequired}')
+                             f'instead of (1, 24)')
         return flist
 
     def get_calib_frames(self, recipe, night, ins_mode, frames=None):
@@ -357,8 +357,7 @@ class MuseRed:
                 frameset.update(frames['include'])
         self.logger.info('Using frames: %s', frameset)
 
-        # FIXME: find better way to manage nrequired and day_offsets
-        nrequired = {'TWILIGHT_CUBE': 1, 'STD_TELLURIC': 1, 'STD_RESPONSE': 1}
+        # FIXME: find better way to manage day_offsets
         day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5}
 
         framedict = {}
@@ -367,9 +366,8 @@ class MuseRed:
             if frame in self.static_calib.STATIC_FRAMES:
                 framedict[frame] = self.static_calib.get(frame, date=night)
             else:
-                framedict[frame] = self.find_calib(
-                    night, frame, ins_mode, day_off=day_off,
-                    nrequired=nrequired.get(frame, 24))
+                framedict[frame] = self.find_calib(night, frame, ins_mode,
+                                                   day_off=day_off)
 
         return framedict
 
