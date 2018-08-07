@@ -44,9 +44,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     zip_safe=False,
-    install_requires=['numpy', 'matplotlib', 'astropy', 'python-cpl', 'tqdm',
-                      'mpdaf', 'sqlalchemy', 'dataset', 'PyYAML', 'click',
-                      'astroquery>0.3.8', 'secretstorage<3.0'],
+    install_requires=['mpdaf', 'python-cpl', 'tqdm', 'dataset', 'PyYAML',
+                      'click', 'astroquery>0.3.8', 'secretstorage<3.0'],
     extras_require={
         'all': ['click_completion', 'click-repl'],
     },
