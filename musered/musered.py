@@ -13,13 +13,13 @@ from mpdaf.log import setup_logging
 from sqlalchemy import sql
 
 from .recipes import recipe_classes
-from .reporter import TextReporter
+from .reporter import Reporter
 from .static_calib import StaticCalib
 from .utils import (load_yaml_config, load_db, parse_date, parse_raw_keywords,
                     parse_qc_keywords, ProgressBar)
 
 
-class MuseRed(TextReporter):
+class MuseRed(Reporter):
     """The main class handling all MuseRed's logic.
 
     This class manages the database, and use the settings file, to provide all

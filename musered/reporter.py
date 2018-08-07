@@ -5,69 +5,94 @@ from collections import defaultdict
 from .recipes import recipe_classes
 from .utils import query_count_to_table
 
+try:
+    from IPython.display import display, HTML
+except ImportError:
+    IPYTHON = False
+else:
+    IPYTHON = True
 
-class TextReporter:
+
+class TextFormatter:
+    show_title = print
+    show_text = print
+
+    def show_table(self, t, **kwargs):
+        kwargs.setdefault('max_lines', -1)
+        t.pprint(**kwargs)
+
+
+class HTMLFormatter:
+    def show_title(self, text):
+        display(HTML(f'<h2>{text}</h2>'))
+
+    def show_text(self, text):
+        from IPython.display import display, HTML
+        display(HTML(f'<p>{text}</p>'))
+
+    def show_table(self, t, **kwargs):
+        from IPython.display import display, HTML
+        kwargs.setdefault('max_width', -1)
+        display(HTML(t._base_repr_(html=True, **kwargs)))
+
+
+class Reporter:
 
     def __init__(self, report_format='txt'):
         assert report_format in ('txt', 'html')
-        self.report_format = report_format
-
-    def show_table(self, t, max_lines=-1, **kwargs):
-        if self.report_format == 'txt':
-            t.pprint(max_lines=max_lines, **kwargs)
-        elif self.report_format == 'html':
-            from IPython.display import display
-            display(t)
+        self.format = report_format
+        self.fmt = (HTMLFormatter if self.format == 'html' and IPYTHON
+                    else TextFormatter)()
 
     def list_datasets(self):
         """Print the list of datasets."""
-        print('Datasets:')
+        self.fmt.show_title('Datasets:')
         for name in self.datasets:
-            print(f'- {name}')
+            self.fmt.show_text(f'- {name}')
 
     def list_nights(self):
         """Print the list of nights."""
-        print('Nights:')
+        self.fmt.show_title('Nights:')
         for x in sorted(self.nights):
-            print(f'- {x}')
+            self.fmt.show_text(f'- {x}')
 
     def list_exposures(self):
         """Print the list of exposures."""
-        print('Exposures:')
+        self.fmt.show_title('Exposures:')
         for name, explist in sorted(self.exposures.items()):
-            print(f'- {name}')
-            print('  - ' + '\n  - '.join(explist))
+            self.fmt.show_text(f'- {name}')
+            self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
     def info(self):
         """Print a summary of the raw and reduced data."""
-        print(f'{self.raw.count()} files\n')
+        self.fmt.show_text(f'{self.raw.count()} files\n')
         self.list_datasets()
 
         # count files per night and per type, raw data, then reduced
-        print(f'\nRaw data:\n')
+        self.fmt.show_title(f'\nRaw data:\n')
         if 'night' not in self.raw.columns:
-            print('Nothing yet.')
+            self.fmt.show_text('Nothing yet.')
         else:
             # uninteresting objects to exclude from the report
             excludes = ('Astrometric calibration (ASTROMETRY)', )
             t = query_count_to_table(self.db, 'raw', exclude_obj=excludes)
-            self.show_table(t)
+            self.fmt.show_table(t)
 
         if 'DATE_OBS' not in self.reduced.columns:
-            print(f'\nProcessed data:\n')
-            print('Nothing yet.')
+            self.fmt.show_title(f'\nProcessed data:\n')
+            self.fmt.show_text('Nothing yet.')
         else:
-            print(f'\nProcessed calib data:\n')
+            self.fmt.show_title(f'\nProcessed calib data:\n')
             t = query_count_to_table(self.db, 'reduced',
                                      where=self.redc.DPR_CATG == 'CALIB')
             if t:
-                self.show_table(t)
+                self.fmt.show_table(t)
 
-            print(f'\nProcessed science data:\n')
+            self.fmt.show_title(f'\nProcessed science data:\n')
             t = query_count_to_table(self.db, 'reduced',
                                      where=self.redc.DPR_CATG == 'SCIENCE')
             if t:
-                self.show_table(t)
+                self.fmt.show_table(t)
 
     def info_exp(self, date_obs):
         """Print information about a given exposure or night."""
@@ -97,7 +122,7 @@ class TextReporter:
             - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
             """))
 
-    def info_raw(self, date_obs):
+    def info_raw(self, date_obs, **kwargs):
         """Print information about raw exposures."""
         rows = list(self.raw.find(night=date_obs))
         t = Table(rows=rows, names=rows[0].keys())
@@ -113,9 +138,9 @@ class TextReporter:
             col.name = (col.name.replace('TEL_', '').replace('OCS_SGS_', '')
                         .replace('INS_', ''))
         t.sort('ARCFILE')
-        self.show_table(t, max_lines=-1)
+        self.fmt.show_table(t, max_width=-1, **kwargs)
 
-    def info_qc(self, dpr_type, date_list=None):
+    def info_qc(self, dpr_type, date_list=None, **kwargs):
         if dpr_type not in self.db:
             self.update_qc(dpr_types=[dpr_type])
 
@@ -131,4 +156,4 @@ class TextReporter:
         for date_obs in date_list:
             t = Table(rows=[[row[k] for k in cols] for row in
                             table.find(DATE_OBS=date_obs)], names=cols)
-            self.show_table(t)
+            self.fmt.show_table(t, **kwargs)
