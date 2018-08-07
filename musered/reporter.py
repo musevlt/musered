@@ -1,6 +1,11 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import textwrap
+from astropy.io import fits
 from astropy.table import Table
 from collections import defaultdict
+from glob import iglob
+from mpdaf.obj import Image
 
 from .recipes import recipe_classes
 from .utils import query_count_to_table
@@ -157,3 +162,24 @@ class Reporter:
             t = Table(rows=[[row[k] for k in cols] for row in
                             table.find(DATE_OBS=date_obs)], names=cols)
             self.fmt.show_table(t, **kwargs)
+
+    def show_images(self, recipe_name, dataset=None, filt='white', ncols=4,
+                    figsize=4, **kwargs):
+        dataset = dataset or list(self.datasets.keys())[0]
+        res = list(self.reduced.find(OBJECT=dataset, DPR_TYPE='IMAGE_FOV',
+                                     recipe_name=recipe_name))
+        for r in res:
+            r['flist'] = [
+                f for f in iglob(f"{r['path']}/IMAGE_FOV*.fits")
+                if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
+
+        nrows = int(np.ceil(len(res) / ncols))
+        fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True,
+                                 figsize=(figsize*ncols, figsize*nrows))
+
+        for r, ax in zip(res, axes.flat):
+            im = Image(r['flist'][0])
+            im.plot(ax=ax, title=r['name'], **kwargs)
+
+        for ax in axes.flat[len(res):]:
+            ax.axis('off')
