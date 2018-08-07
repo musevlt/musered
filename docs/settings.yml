@@ -103,3 +103,13 @@ recipes:
       dlambda: 5
       skymethod: 'none'
       # skymodel_fraction: 0.5
+
+  muse_scipost:
+    # scipost using offsets (OFFSET_LIST computed with the drs method) and
+    # other options (raman, skysub)
+    OFFSET_LIST: drs
+    init:
+      output_dir: 'scipost'
+    params:
+      skymethod: 'model'
+      skymodel_fraction: 0.2

@@ -317,11 +317,12 @@ class MuseRed:
         params.setdefault('log_dir', conf['log_dir'])
         params.setdefault('temp_dir', os.path.join(self.reduced_path, 'tmp'))
 
-    def find_calib(self, night, dpr_type, ins_mode, day_off=0):
+    def find_calib(self, night, dpr_type, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
         res = self.reduced.find_one(night=night, INS_MODE=ins_mode,
                                     DPR_TYPE=dpr_type)
-        if res is None and day_off != 0:
+
+        if res is None and day_off is not None:
             if isinstance(night, str):
                 night = parse_date(night)
             for off, direction in itertools.product(range(1, day_off + 1),
@@ -479,7 +480,7 @@ class MuseRed:
         # Instantiate the recipe object.
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
         recipe = self._instantiate_recipe(recipe_cls, params_name=recipe_name,
-                                          **recipe_kwargs)
+                                          kwargs=recipe_kwargs)
 
         table = self.reduced if use_reduced else self.raw
         for date_obs in date_list:
@@ -517,6 +518,17 @@ class MuseRed:
             calib_frames = self.get_calib_frames(
                 recipe, night, ins_mode, frames=recipe_conf.get('frames'))
 
+            if 'OFFSET_LIST' in recipe_conf:
+                off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
+                                            OBJECT=res[0]['OBJECT'],
+                                            name=recipe_conf['OFFSET_LIST'])
+                kwargs['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
+                log.info('Using OFFSET_LIST: %s', kwargs['OFFSET_LIST'])
+
+            if 'OUTPUT_WCS' in recipe_conf:
+                kwargs['OUTPUT_WCS'] = recipe_conf['OUTPUT_WCS']
+                log.info('Using OUTPUT_WCS: %s', kwargs['OUTPUT_WCS'])
+
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
                 ref_date = np.mean([o['MJD_OBS'] for o in res])
@@ -549,21 +561,18 @@ class MuseRed:
         self.run_recipe(recipe_cls, night_list, calib=True, skip=skip,
                         **kwargs)
 
-    def process_exp(self, recipe_name, explist=None, skip=False, **kwargs):
+    def process_exp(self, recipe_name, explist=None, dataset=None, skip=False,
+                    **kwargs):
         """Run a science recipe."""
-
-        recipe_cls = recipe_classes['muse_' + recipe_name]
 
         # get the list of dates to process
         if explist is None:
-            if recipe_name in ('scibasic', ):
-                table = 'raw'
-                dpr_type = 'OBJECT'
+            if dataset:
+                explist = self.exposures[dataset]
             else:
-                table = 'reduced'
-                dpr_type = recipe_cls.DPR_TYPE
-            explist = self.select_dates(dpr_type, table=table)
+                explist = list(itertools.chain(*self.exposures.values()))
 
+        recipe_cls = recipe_classes['muse_' + recipe_name]
         use_reduced = recipe_name not in ('scibasic', )
         self.run_recipe(recipe_cls, explist, skip=skip,
                         use_reduced=use_reduced, **kwargs)
@@ -629,14 +638,14 @@ class MuseRed:
         else:
             return recipe_conf
 
-    def _instantiate_recipe(self, recipe_cls, params_name=None, **kwargs):
+    def _instantiate_recipe(self, recipe_cls, params_name=None, kwargs=None):
         """Instantiate the recipe object.  Use parameters from the settings,
         common first, and then from recipe_name.init, and from kwargs.
         """
         recipe_name = params_name or recipe_cls.recipe_name
         recipe_kw = {**self.conf['recipes']['common'],
                      **self._get_recipe_conf(recipe_name, 'init')}
-        if kwargs:
+        if kwargs is not None:
             recipe_kw.update(kwargs)
         return recipe_cls(**recipe_kw)
 

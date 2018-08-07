@@ -152,19 +152,21 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
 @click.option('--standard', is_flag=True, help='run muse_standard')
 @click.option('--scipost', is_flag=True, help='run muse_scipost')
 @click.option('--params', help='name of the parameters block')
+@click.option('--dataset', help='process exposures for a given dataset')
 @click.pass_obj
-def process_exp(mr, exp, skip, scibasic, standard, scipost, params):
+def process_exp(mr, exp, skip, scibasic, standard, scipost, params, dataset):
     """Run recipes for science exposures."""
     if len(exp) == 0:
         exp = None
 
+    kwargs = dict(explist=exp, skip=skip, params_name=params)
     run_all = not any([scibasic, standard, scipost])
     if scibasic or run_all:
-        mr.process_exp('scibasic', explist=exp, skip=skip, params_name=params)
+        mr.process_exp('scibasic', dataset=dataset, **kwargs)
     if standard or run_all:
-        mr.process_standard(explist=exp, skip=skip)
+        mr.process_standard(**kwargs)
     if scipost or run_all:
-        mr.process_exp('scipost', explist=exp, skip=skip, params_name=params)
+        mr.process_exp('scipost', dataset=dataset, **kwargs)
 
 
 @click.argument('dataset')
