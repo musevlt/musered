@@ -211,9 +211,11 @@ class Recipe:
         cpl.esorex.log.filename = self.log_file = os.path.join(
             self.log_dir, f"{self.recipe_name}-{date}.log")
 
+        if 'output_dir' in kwargs:
+            self.output_dir = kwargs['output_dir']
+
         info('- Log file           : %s', self.log_file)
-        info('- Output directory   : %s', kwargs.get('output_dir',
-                                                     self.output_dir))
+        info('- Output directory   : %s', self.output_dir)
         info('- Non-default params :')
         for p in self.param:
             # FIXME: check params passed in kwargs

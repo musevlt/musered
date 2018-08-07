@@ -477,14 +477,9 @@ class MuseRed:
                 log.info('%d %ss already processed', len(processed), label)
 
         # Instantiate the recipe object.
-        # Use parameters from the settings, common first, and then from
-        # recipe_name.init, and from recipe_kwargs
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
-        recipe_kw = {**self.conf['recipes']['common'],
-                     **recipe_conf.get('init', {})}
-        if recipe_kwargs is not None:
-            recipe_kw.update(recipe_kwargs)
-        recipe = recipe_cls(**recipe_kw)
+        recipe = self._instantiate_recipe(recipe_cls, params_name=recipe_name,
+                                          **recipe_kwargs)
 
         table = self.reduced if use_reduced else self.raw
         for date_obs in date_list:
@@ -513,11 +508,11 @@ class MuseRed:
 
             if recipe.use_drs_output:
                 outn = f'{date_obs}.{ins_mode}' if calib else date_obs
-                output_dir = os.path.join(self.reduced_path,
-                                          recipe.output_dir, outn)
-                kwargs['output_dir'] = output_dir
+                kwargs['output_dir'] = os.path.join(self.reduced_path,
+                                                    recipe.output_dir, outn)
             else:
-                output_dir = recipe.output_dir
+                kwargs['output_dir'] = os.path.join(self.reduced_path,
+                                                    recipe.output_dir)
 
             calib_frames = self.get_calib_frames(
                 recipe, night, ins_mode, frames=recipe_conf.get('frames'))
@@ -530,32 +525,15 @@ class MuseRed:
             params = recipe_conf.get('params')
             recipe.run(flist, name=res[0][namecol], params=params,
                        **calib_frames, **kwargs)
-
-            date_run = datetime.datetime.now().isoformat()
-            out_frames = []
-            for out_frame in recipe.output_frames:
-                # save in database for each output frame, but check before that
-                # files were created for each frame (some are optional)
-                if any(iglob(f"{output_dir}/{out_frame}*.fits")):
-                    out_frames.append(out_frame)
-                    self.reduced.upsert({
-                        'date_run': date_run,
-                        'night': night,
-                        'recipe_name': recipe_name,
-                        'name': res[0][namecol],
-                        'DATE_OBS': date_obs,
-                        'path': output_dir,
-                        'DPR_TYPE': out_frame,
-                        'DPR_CATG': res[0]['DPR_CATG'],
-                        'OBJECT': res[0]['OBJECT'],
-                        'INS_MODE': ins_mode,
-                        **recipe.dump()
-                    }, ['DATE_OBS', 'recipe_name', 'DPR_TYPE'])
-
-            if len(out_frames) == 0:
-                raise RuntimeError('could not find output files')
-            log.info('Processed data (%s) available in %s',
-                     ', '.join(out_frames), output_dir)
+            self._save_reduced(
+                recipe, keys=('DATE_OBS', 'recipe_name', 'DPR_TYPE'), **{
+                    'night': night,
+                    'name': res[0][namecol],
+                    'DATE_OBS': date_obs,
+                    'DPR_CATG': res[0]['DPR_CATG'],
+                    'OBJECT': res[0]['OBJECT'],
+                    'INS_MODE': ins_mode,
+                })
 
     def process_calib(self, recipe_name, night_list=None, skip=False,
                       **kwargs):
@@ -622,7 +600,6 @@ class MuseRed:
             raise ValueError(f'unknown method {method}')
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        recipe_name = recipe_cls.recipe_name
         name = name or method
 
         # get the list of dates to process
@@ -631,45 +608,58 @@ class MuseRed:
                  for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")
                  if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
-        self.logger.info('Running %s', recipe_name)
+        self.logger.info('Running %s', recipe_cls.recipe_name)
         self.logger.info('%d files', len(flist))
         self.logger.debug('- ' + '\n- '.join(flist))
 
         # Instantiate the recipe object.
-        # Use parameters from the settings, common first, and then from
-        # recipe_name.init, and from recipe_kwargs
-        recipe_conf = self.conf['recipes'].get(recipe_name, {})
-        recipe_kw = {**self.conf['recipes']['common'],
-                     **recipe_conf.get('init', {})}
-        recipe = recipe_cls(**recipe_kw)
-        output_dir = os.path.join(self.reduced_path, recipe.output_dir, name)
-        kwargs['output_dir'] = output_dir
-
-        params = recipe_conf.get('params')
+        recipe = self._instantiate_recipe(recipe_cls)
+        kwargs['output_dir'] = os.path.join(self.reduced_path,
+                                            recipe.output_dir, name)
+        params = self._get_recipe_conf(recipe_cls.recipe_name, 'params')
         recipe.run(flist, params=params, **kwargs)
+        self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
+                           name=name, OBJECT=dataset)
 
+    def _get_recipe_conf(self, recipe_name, item=None):
+        """Get config dict foldr a recipe."""
+        recipe_conf = self.conf['recipes'].get(recipe_name, {})
+        if item is not None:
+            return recipe_conf.get(item, {})
+        else:
+            return recipe_conf
+
+    def _instantiate_recipe(self, recipe_cls, params_name=None, **kwargs):
+        """Instantiate the recipe object.  Use parameters from the settings,
+        common first, and then from recipe_name.init, and from kwargs.
+        """
+        recipe_name = params_name or recipe_cls.recipe_name
+        recipe_kw = {**self.conf['recipes']['common'],
+                     **self._get_recipe_conf(recipe_name, 'init')}
+        if kwargs:
+            recipe_kw.update(kwargs)
+        return recipe_cls(**recipe_kw)
+
+    def _save_reduced(self, recipe, keys, DPR_CATG='SCIENCE', **kwargs):
+        """Save info in database for each output frame, but check before that
+        files were created for each frame (some are optional).
+        """
         date_run = datetime.datetime.now().isoformat()
         out_frames = []
         for out_frame in recipe.output_frames:
-            # save in database for each output frame, but check before that
-            # files were created for each frame (some are optional)
-            if any(iglob(f"{output_dir}/{out_frame}*.fits")):
+            if any(iglob(f"{recipe.output_dir}/{out_frame}*.fits")):
                 out_frames.append(out_frame)
                 self.reduced.upsert({
                     'date_run': date_run,
-                    # 'night': None,
-                    'recipe_name': recipe_name,
-                    'name': name,
-                    # 'DATE_OBS': date_obs,
-                    'path': output_dir,
+                    'recipe_name': recipe.recipe_name,
+                    'path': recipe.output_dir,
                     'DPR_TYPE': out_frame,
-                    'DPR_CATG': 'SCIENCE',
-                    'OBJECT': dataset,
-                    # 'INS_MODE': ins_mode,
+                    'DPR_CATG': DPR_CATG,
+                    **kwargs,
                     **recipe.dump()
-                }, ['name', 'recipe_name', 'DPR_TYPE'])
+                }, keys)
 
         if len(out_frames) == 0:
             raise RuntimeError('could not find output files')
         self.logger.info('Processed data (%s) available in %s',
-                         ', '.join(out_frames), output_dir)
+                         ', '.join(out_frames), recipe.output_dir)
