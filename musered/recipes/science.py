@@ -37,6 +37,14 @@ class SCIPOST(ScienceRecipe):
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
 
+class EXPALIGN(ScienceRecipe):
+
+    recipe_name = 'muse_exp_align'
+    DPR_TYPE = 'IMAGE_FOV'
+    output_dir = 'exp_align'
+    n_inputs_min = 2
+
+
 sci_classes = {cls.recipe_name: cls for cls in ScienceRecipe.__subclasses__()}
 
 __all__ = tuple(cls.__name__ for cls in ScienceRecipe.__subclasses__())

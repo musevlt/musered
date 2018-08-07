@@ -6,6 +6,7 @@ import numpy as np
 import operator
 import os
 import textwrap
+from astropy.io import fits
 from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
@@ -608,3 +609,67 @@ class MuseRed:
         # run muse_standard
         self.run_recipe(recipe_std, explist, skip=skip, use_reduced=True,
                         **kwargs)
+
+    def compute_offsets(self, dataset, method='drs', filt='white',
+                        name=None, **kwargs):
+        """Compute offsets between exposures."""
+
+        if method == 'drs':
+            recipe_cls = recipe_classes['muse_exp_align']
+        elif method == 'imphot':
+            raise NotImplementedError
+        else:
+            raise ValueError(f'unknown method {method}')
+
+        DPR_TYPE = recipe_cls.DPR_TYPE
+        recipe_name = recipe_cls.recipe_name
+        name = name or method
+
+        # get the list of dates to process
+        flist = [f
+                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE)
+                 for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")
+                 if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
+
+        self.logger.info('Running %s', recipe_name)
+        self.logger.info('%d files', len(flist))
+        self.logger.debug('- ' + '\n- '.join(flist))
+
+        # Instantiate the recipe object.
+        # Use parameters from the settings, common first, and then from
+        # recipe_name.init, and from recipe_kwargs
+        recipe_conf = self.conf['recipes'].get(recipe_name, {})
+        recipe_kw = {**self.conf['recipes']['common'],
+                     **recipe_conf.get('init', {})}
+        recipe = recipe_cls(**recipe_kw)
+        output_dir = os.path.join(self.reduced_path, recipe.output_dir, name)
+        kwargs['output_dir'] = output_dir
+
+        params = recipe_conf.get('params')
+        recipe.run(flist, params=params, **kwargs)
+
+        date_run = datetime.datetime.now().isoformat()
+        out_frames = []
+        for out_frame in recipe.output_frames:
+            # save in database for each output frame, but check before that
+            # files were created for each frame (some are optional)
+            if any(iglob(f"{output_dir}/{out_frame}*.fits")):
+                out_frames.append(out_frame)
+                self.reduced.upsert({
+                    'date_run': date_run,
+                    # 'night': None,
+                    'recipe_name': recipe_name,
+                    'name': name,
+                    # 'DATE_OBS': date_obs,
+                    'path': output_dir,
+                    'DPR_TYPE': out_frame,
+                    'DPR_CATG': 'SCIENCE',
+                    'OBJECT': dataset,
+                    # 'INS_MODE': ins_mode,
+                    **recipe.dump()
+                }, ['name', 'recipe_name', 'DPR_TYPE'])
+
+        if len(out_frames) == 0:
+            raise RuntimeError('could not find output files')
+        self.logger.info('Processed data (%s) available in %s',
+                         ', '.join(out_frames), output_dir)
