@@ -124,12 +124,16 @@ class Recipe:
     @property
     def output_frames(self):
         """Return the list of output frames."""
-        frames = []
+        frames = self._recipe.output[self._recipe.tag]
         if self.recipe_name == 'muse_scipost':
             # special case for scipost, for which some output frames are
-            # missing from cpl's generated list
-            frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'PIXTABLE_REDUCED']
-        return frames + self._recipe.output[self._recipe.tag]
+            # missing from cpl's generated list. This was fixed in the DRS and
+            # should appear in version > v2.5.2
+            if 'DATACUBE_FINAL' not in frames:
+                frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'OBJECT_RESAMPLED',
+                          'PIXTABLE_REDUCED', 'PIXTABLE_POSITIONED',
+                          'PIXTABLE_COMBINED'] + frames
+        return frames
 
     def dump_params(self):
         """Dump non-default parameters to a JSON string."""
