@@ -113,3 +113,4 @@ recipes:
     params:
       skymethod: 'model'
       skymodel_fraction: 0.2
+      save: 'cube,skymodel,individual,raman'
