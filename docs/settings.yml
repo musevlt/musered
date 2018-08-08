@@ -116,4 +116,5 @@ recipes:
       save: 'cube,skymodel,individual,raman'
 
   muse_exp_combine:
-    OFFSET_LIST: drs
+    # OFFSET_LIST: drs
+    OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'

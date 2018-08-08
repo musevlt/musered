@@ -451,10 +451,13 @@ class MuseRed(Reporter):
         recipe_conf = self._get_recipe_conf(recipe_cls.recipe_name)
 
         if 'OFFSET_LIST' in recipe.calib and 'OFFSET_LIST' in recipe_conf:
-            off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
-                                        OBJECT=OBJECT,
-                                        name=recipe_conf['OFFSET_LIST'])
-            kwargs['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
+            if os.path.isfile(recipe_conf['OFFSET_LIST']):
+                kwargs['OFFSET_LIST'] = recipe_conf['OFFSET_LIST']
+            else:
+                off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
+                                            OBJECT=OBJECT,
+                                            name=recipe_conf['OFFSET_LIST'])
+                kwargs['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
             self.logger.info('Using OFFSET_LIST: %s', kwargs['OFFSET_LIST'])
 
         if 'OUTPUT_WCS' in recipe.calib and 'OUTPUT_WCS' in recipe_conf:
@@ -467,7 +470,6 @@ class MuseRed(Reporter):
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
                            name=name, OBJECT=OBJECT)
-
 
     def process_calib(self, recipe_name, night_list=None, skip=False,
                       **kwargs):
@@ -546,7 +548,7 @@ class MuseRed(Reporter):
 
         if method == 'drs':
             recipe_cls = recipe_classes['muse_exp_combine']
-        elif method == 'imphot':
+        elif method == 'mpdaf':
             raise NotImplementedError
         else:
             raise ValueError(f'unknown method {method}')
