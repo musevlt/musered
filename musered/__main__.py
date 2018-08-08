@@ -180,8 +180,17 @@ def compute_offsets(mr, dataset, method, filter):
     mr.compute_offsets(dataset, method=method, filt=filter, name=None)
 
 
+@click.argument('dataset')
+@click.option('--method', default='drs',
+              help='method to use: drs (default) or imphot (not implemented)')
+@click.pass_obj
+def exp_combine(mr, dataset, method):
+    """Compute offsets between exposures."""
+    mr.exp_combine(dataset, method=method, name=None)
+
+
 for cmd in (info, retrieve_data, update_db, update_qc, process_calib,
-            process_exp, compute_offsets):
+            process_exp, compute_offsets, exp_combine):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
 

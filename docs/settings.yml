@@ -114,3 +114,6 @@ recipes:
       skymethod: 'model'
       skymodel_fraction: 0.2
       save: 'cube,skymodel,individual,raman'
+
+  muse_exp_combine:
+    OFFSET_LIST: drs

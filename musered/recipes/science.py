@@ -45,6 +45,16 @@ class EXPALIGN(ScienceRecipe):
     n_inputs_min = 2
 
 
+class EXPCOMBINE(ScienceRecipe):
+
+    recipe_name = 'muse_exp_combine'
+    DPR_TYPE = 'PIXTABLE_REDUCED'
+    output_dir = 'exp_combine'
+    n_inputs_min = 2
+    # Save the V,R,I images
+    default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
+
+
 sci_classes = {cls.recipe_name: cls for cls in ScienceRecipe.__subclasses__()}
 
 __all__ = tuple(cls.__name__ for cls in ScienceRecipe.__subclasses__())

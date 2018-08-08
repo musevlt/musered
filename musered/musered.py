@@ -315,7 +315,7 @@ class MuseRed(Reporter):
     def run_recipe(self, recipe_cls, date_list, skip=False, calib=False,
                    params_name=None, recipe_kwargs=None, use_reduced=False,
                    **kwargs):
-        """Main method used to run a recipe.
+        """Main method used to run a recipe on a list of exposures/nights.
 
         Parameters
         ----------
@@ -514,6 +514,49 @@ class MuseRed(Reporter):
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
         params = self._get_recipe_conf(recipe_cls.recipe_name, 'params')
         recipe.run(flist, params=params, **kwargs)
+        self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
+                           name=name, OBJECT=dataset)
+
+    def exp_combine(self, dataset, method='drs', name=None, **kwargs):
+        """Combine exposures."""
+
+        if method == 'drs':
+            recipe_cls = recipe_classes['muse_exp_combine']
+        elif method == 'imphot':
+            raise NotImplementedError
+        else:
+            raise ValueError(f'unknown method {method}')
+
+        DPR_TYPE = recipe_cls.DPR_TYPE
+        name = name or method
+
+        # get the list of dates to process
+        flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
+                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE)]
+
+        self.logger.info('Running %s', recipe_cls.recipe_name)
+        self.logger.info('%d files', len(flist))
+        self.logger.debug('- ' + '\n- '.join(flist))
+
+        # Instantiate the recipe object.
+        recipe = self._instantiate_recipe(recipe_cls)
+        kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
+
+        recipe_conf = self._get_recipe_conf(recipe_cls.recipe_name)
+        if 'OFFSET_LIST' in recipe_conf:
+            off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
+                                        OBJECT=dataset,
+                                        name=recipe_conf['OFFSET_LIST'])
+            kwargs['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
+            self.logger.info('Using OFFSET_LIST: %s', kwargs['OFFSET_LIST'])
+
+        if 'OUTPUT_WCS' in recipe_conf:
+            kwargs['OUTPUT_WCS'] = recipe_conf['OUTPUT_WCS']
+            self.logger.info('Using OUTPUT_WCS: %s', kwargs['OUTPUT_WCS'])
+
+        kwargs['FILTER_LIST'] = self.static_calib.get('FILTER_LIST')
+
+        recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
                            name=name, OBJECT=dataset)
 
