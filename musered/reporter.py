@@ -163,23 +163,34 @@ class Reporter:
                             table.find(DATE_OBS=date_obs)], names=cols)
             self.fmt.show_table(t, **kwargs)
 
-    def show_images(self, recipe_name, dataset=None, filt='white', ncols=4,
-                    figsize=4, **kwargs):
+    def show_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
+                    filt='white', ncols=4, figsize=4, **kwargs):
         dataset = dataset or list(self.datasets.keys())[0]
-        res = list(self.reduced.find(OBJECT=dataset, DPR_TYPE='IMAGE_FOV',
+        res = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                      recipe_name=recipe_name))
-        for r in res:
-            r['flist'] = [
-                f for f in iglob(f"{r['path']}/IMAGE_FOV*.fits")
-                if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
-        nrows = int(np.ceil(len(res) / ncols))
+        filters = [filt] if isinstance(filt, str) else filt
+        filtkey = 'ESO DRS MUSE FILTER NAME'
+
+        flist = []
+        for r in res:
+            for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits"):
+                try:
+                    filtr = fits.getval(f, filtkey)
+                except KeyError:
+                    filtr = None
+                if filtr and filters and filtr not in filters:
+                    continue
+                flist.append((r['DATE_OBS'], filtr, f))
+
+        nrows = int(np.ceil(len(flist) / ncols))
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True,
                                  figsize=(figsize*ncols, figsize*nrows))
 
-        for r, ax in zip(res, axes.flat):
-            im = Image(r['flist'][0])
-            im.plot(ax=ax, title=r['name'], **kwargs)
+        for r, ax in zip(sorted(flist), axes.flat):
+            im = Image(r[2])
+            title = f'{r[0]} ({r[1]})' if r[1] else r[0]
+            im.plot(ax=ax, title=title, **kwargs)
 
-        for ax in axes.flat[len(res):]:
+        for ax in axes.flat[len(flist):]:
             ax.axis('off')
