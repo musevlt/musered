@@ -10,6 +10,7 @@ from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
 from mpdaf.log import setup_logging
+from os.path import join
 from sqlalchemy import sql
 
 from .recipes import recipe_classes
@@ -104,7 +105,7 @@ class MuseRed(Reporter):
         for root, dirs, files in os.walk(self.raw_path):
             for f in files:
                 if f.endswith(('.fits', '.fits.fz')):
-                    flist.append(os.path.join(root, f))
+                    flist.append(join(root, f))
         self.logger.info('found %d FITS files', len(flist))
 
         # get the list of files already in the database
@@ -190,7 +191,7 @@ class MuseRed(Reporter):
         if conf['esorex_msg_format'] is not None:
             cpl.esorex.log.format = conf['esorex_msg_format']
 
-        conf.setdefault('log_dir', os.path.join(self.reduced_path, 'logs'))
+        conf.setdefault('log_dir', join(self.reduced_path, 'logs'))
         os.makedirs(conf['log_dir'], exist_ok=True)
 
         # terminal logging: disable cpl's logger as it uses the root logger.
@@ -202,7 +203,7 @@ class MuseRed(Reporter):
         # default params for recipes
         params = self.conf['recipes'].setdefault('common', {})
         params.setdefault('log_dir', conf['log_dir'])
-        params.setdefault('temp_dir', os.path.join(self.reduced_path, 'tmp'))
+        params.setdefault('temp_dir', join(self.reduced_path, 'tmp'))
 
     def find_calib(self, night, dpr_type, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
@@ -368,6 +369,8 @@ class MuseRed(Reporter):
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
         recipe = self._instantiate_recipe(recipe_cls, params_name=recipe_name,
                                           kwargs=recipe_kwargs)
+        # save recipe's output dir as we will modify it later
+        output_dir = recipe.output_dir
 
         table = self.reduced if use_reduced else self.raw
         for date_obs in date_list:
@@ -395,12 +398,10 @@ class MuseRed(Reporter):
                      label, date_obs, len(flist), DPR_TYPE, ins_mode)
 
             if recipe.use_drs_output:
-                outn = f'{date_obs}.{ins_mode}' if calib else date_obs
-                kwargs['output_dir'] = os.path.join(self.reduced_path,
-                                                    recipe.output_dir, outn)
+                out = f'{date_obs}.{ins_mode}' if calib else date_obs
+                kwargs['output_dir'] = join(self.reduced_path, output_dir, out)
             else:
-                kwargs['output_dir'] = os.path.join(self.reduced_path,
-                                                    recipe.output_dir)
+                kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
             calib_frames = self.get_calib_frames(
                 recipe, night, ins_mode, frames=recipe_conf.get('frames'))
@@ -510,8 +511,7 @@ class MuseRed(Reporter):
 
         # Instantiate the recipe object.
         recipe = self._instantiate_recipe(recipe_cls)
-        kwargs['output_dir'] = os.path.join(self.reduced_path,
-                                            recipe.output_dir, name)
+        kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
         params = self._get_recipe_conf(recipe_cls.recipe_name, 'params')
         recipe.run(flist, params=params, **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
