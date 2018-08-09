@@ -1,5 +1,5 @@
-Settings file
-=============
+Settings file example
+=====================
 
 The settings file uses the `YAML language <http://yaml.org/>`__, see also this
 `YAML syntax <https://pyyaml.org/wiki/PyYAMLDocumentation#yaml-syntax>`__ reference.

@@ -13,6 +13,13 @@ revision: '1'
 
 loglevel: info
 
+# Definition of datasets.
+datasets:
+  IC4406:
+    archive_filter:
+      # "column_filters" passed to astroquery.Eso.query_instrument
+      obs_targ_name: IC4406
+
 # python-cpl settings, esorex like.
 cpl:
   # recipes directory (and version if needed)
@@ -59,13 +66,6 @@ static_calib:
     geometry_table_wfm_gto17.fits: *GTO17
     geometry_table_wfm_gto24.fits: *GTO24
     geometry_table_wfm_gto25.fits: *GTO25
-
-# Definition of datasets.
-datasets:
-  IC4406:
-    archive_filter:
-      # "column_filters" passed to astroquery.Eso.query_instrument
-      obs_targ_name: IC4406
 
 # Parameters for the retrieve_data command (passed to astroquery.Eso.login)
 retrieve_data:

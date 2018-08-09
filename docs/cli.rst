@@ -6,12 +6,11 @@ it supposes that the command is run in the directory containing the settings
 file, named ``settings.yml``. Otherwise this settings file can be specified
 with ``--settings``.
 
-See also the :doc:`cli` documentation.
-
 It is also possible to setup completion (using `click-completion`_, TODO:
 explain), or to run the subcommands in a REPL with ``musered repl`` (after
 installing `click-repl`_).
 
+.. contents::
 
 .. _click-completion: https://github.com/click-contrib/click-completion
 .. _click-repl: https://github.com/click-contrib/click-repl
