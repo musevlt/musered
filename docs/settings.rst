@@ -7,5 +7,4 @@ The settings file uses the `YAML language <http://yaml.org/>`__, see also this
 This file contains all the settings for the paths, recipe parameters, logging,
 etc.
 
-.. literalinclude:: settings.yml
-
+.. literalinclude:: _static/settings.yml
