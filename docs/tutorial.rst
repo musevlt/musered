@@ -94,10 +94,7 @@ Inspecting the database
 -----------------------
 
 The `musered info` command provides several ways to inspect the content of the
-database and the state of the reduction. We give a few examples below, 
-
-
-::
+database and the state of the reduction. We give a few examples below::
 
     $ musered info --datasets --nights --exps
     INFO Musered version 0.1.dev73
@@ -123,6 +120,23 @@ database and the state of the reduction. We give a few examples below,
 
 Running recipes
 ---------------
+
+Configuration
+^^^^^^^^^^^^^
+
+The parameters for each recipe can be specified in the ``recipes`` block in the
+settings file. By default this is not needed as the default parameters from the
+DRS are used, and MuseRed finds automatically the calibration frames. The
+``common`` block can be used to set parameters for all recipes (for instance for
+the temporary directory), and the example below shows how to set
+``--saveimages=true`` for the ``muse_wavecal`` recipe:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: recipes:
+   :end-at: saveimages
+
+By default the parameters for a recipe must be set in a block with the recipe
+name, but this can be specified with ``--params``.
 
 Calibrations
 ^^^^^^^^^^^^
@@ -154,19 +168,96 @@ nights::
 
     $ musered process_calib --flat --skip
 
-
 scibasic
 ^^^^^^^^
 
-::
+Running ``muse_scibasic`` is straightforward and can be done on all exposures
+with::
 
     $ musered process_exp --scibasic
 
+One can also give an exposure name to process a specific exposure.
 
-Standard
+standard
 ^^^^^^^^
 
 Reduces a standard exposure including both the ``muse_scibasic`` and the
 ``muse_standard`` steps::
 
     $ musered process_exp --standard
+
+scipost
+^^^^^^^
+
+``muse_scipost`` takes a lot of options and sometimes needs to be run multiple
+times with different sets of options. The command to run is::
+
+    $ musered process_exp --scipost
+
+To run it with different options, for instance to produce more quickly images
+for the offset computation, the parameters block can be specified with
+``--params``::
+
+    $ musered process_exp --scipost --params muse_scipost_rec
+
+This would use a ``muse_scipost_rec`` block in the settings file, where the
+Raman correction and the sky subtraction are deactivated:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: muse_scipost_rec
+   :end-at: skymethod
+
+Computing offsets
+^^^^^^^^^^^^^^^^^
+
+To compute the offsets between exposures, with the ``muse_exp_align`` recipe::
+
+    $ musered compute_offsets IC4406
+
+A method can be specified with ``--method`` but currently only the ``drs``
+method is implemented. This name must be used later to set the ``OFFSET_LIST``
+frame in the parameters.
+
+Creating recentered cubes
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+It can be useful to create individual cubes for each exposures, to verify the
+quality of each cube, measure the FWHM, or for doing some post-processing on the
+cubes. Now that we have computed offsets, we can use the ``OFFSET_LIST`` frame
+in the parameters, with also sky subtraction and saving additional outputs:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: muse_scipost
+   :end-at: save
+
+And run with::
+
+    $ musered process_exp --scipost
+
+Combining exposures
+^^^^^^^^^^^^^^^^^^^
+
+To combine the exposures, with the ``muse_exp_combine`` recipe::
+
+    $ musered exp_combine IC4406
+
+And with the parameters with the ``OFFSET_LIST`` frame:
+
+.. code-block:: yaml
+
+    muse_exp_combine:
+        OFFSET_LIST: drs
+
+Setting custom frames
+^^^^^^^^^^^^^^^^^^^^^
+
+It may happen that one need to set a custom ``OFFSET_LIST`` or ``OUTPUT_WCS``.
+This can be done by setting directly the file name. For example here the offsets
+computed by the DRS are not good, so we could compute manually better offsets
+and use something like:
+
+.. code-block:: yaml
+
+    muse_exp_combine:
+        OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+
