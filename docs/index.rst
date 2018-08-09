@@ -16,6 +16,7 @@ recipes from the MUSE pipeline on the calibrations and science exposures.
 
    installation
    tutorial
+   inspect
    settings
    cli
    api

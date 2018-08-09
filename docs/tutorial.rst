@@ -94,29 +94,7 @@ Inspecting the database
 -----------------------
 
 The `musered info` command provides several ways to inspect the content of the
-database and the state of the reduction. We give a few examples below::
-
-    $ musered info --datasets --nights --exps
-    INFO Musered version 0.1.dev73
-    Datasets:
-    - IC4406
-    Nights:
-    - 2017-04-23
-    - 2017-06-13
-    - 2017-06-15
-    - 2017-06-17
-    - 2017-06-18
-    - 2017-06-19
-    - 2017-10-26
-    Exposures:
-    - IC4406
-      - 2017-06-16T01:34:56.867
-      - 2017-06-16T01:43:32.868
-      - 2017-06-16T01:46:25.866
-      - 2017-06-16T01:49:19.866
-      - 2017-06-16T01:40:40.868
-      - 2017-06-16T01:37:47.867
-
+database and the state of the reduction. See :doc:`inspect` for more details.
 
 Running recipes
 ---------------
