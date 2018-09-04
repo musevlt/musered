@@ -6,6 +6,7 @@ from astropy.table import Table
 from collections import defaultdict
 from glob import iglob
 from mpdaf.obj import Image
+from sqlalchemy import sql
 
 from .recipes import recipe_classes
 from .utils import query_count_to_table
@@ -88,14 +89,23 @@ class Reporter:
             self.fmt.show_text('Nothing yet.')
         else:
             self.fmt.show_title(f'\nProcessed calib data:\n')
-            t = query_count_to_table(self.db, 'reduced',
-                                     where=self.redc.DPR_CATG == 'CALIB')
+            t = query_count_to_table(
+                self.db, 'reduced', where=sql.and_(
+                    self.redc.DPR_CATG == 'CALIB',
+                    self.redc.DPR_TYPE.notlike('%STD%')
+                ))
+            if t:
+                self.fmt.show_table(t)
+
+            self.fmt.show_title(f'\nProcessed standard:\n')
+            t = query_count_to_table(
+                self.db, 'reduced', where=self.redc.DPR_TYPE.like('%STD%'))
             if t:
                 self.fmt.show_table(t)
 
             self.fmt.show_title(f'\nProcessed science data:\n')
-            t = query_count_to_table(self.db, 'reduced',
-                                     where=self.redc.DPR_CATG == 'SCIENCE')
+            t = query_count_to_table(
+                self.db, 'reduced', where=self.redc.DPR_CATG == 'SCIENCE')
             if t:
                 self.fmt.show_table(t)
 
