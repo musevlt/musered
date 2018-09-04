@@ -103,6 +103,10 @@ class MuseRed(Reporter):
         """Create or update the database containing FITS keywords."""
         flist = []
         for root, dirs, files in os.walk(self.raw_path):
+            if root.endswith('.cache'):
+                # skip the cache directory
+                self.logger.debug('skipping %s', root)
+                continue
             for f in files:
                 if f.endswith(('.fits', '.fits.fz')):
                     flist.append(join(root, f))
