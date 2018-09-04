@@ -119,8 +119,13 @@ class MuseRed(Reporter):
             arcf = []
 
         rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf)
-        self.raw.insert_many(rows)
-        self.logger.info('inserted %d rows, skipped %d', len(rows), nskip)
+        if force:
+            self.raw.delete()
+            self.raw.insert_many(rows)
+            self.logger.info('updated %d rows', len(rows))
+        else:
+            self.raw.insert_many(rows)
+            self.logger.info('inserted %d rows, skipped %d', len(rows), nskip)
 
         # cleanup cached attributes
         del self.nights
