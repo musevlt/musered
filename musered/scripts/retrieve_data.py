@@ -1,4 +1,5 @@
 import click
+import inspect
 import logging
 import os
 import sys
@@ -8,9 +9,11 @@ import sys
 @click.option('--username', help='username for the ESO archive')
 @click.option('--help-query', is_flag=True, help="print query options")
 @click.option('--dry-run', is_flag=True, help="don't retrieve files")
+@click.option('--force', is_flag=True, help="request all objects")
 @click.option('--no-update-db', is_flag=True, help="don't update the database")
 @click.pass_obj
-def retrieve_data(mr, dataset, username, help_query, dry_run, no_update_db):
+def retrieve_data(mr, dataset, username, help_query, dry_run, force,
+                  no_update_db):
     """Retrieve files from DATASET from the ESO archive."""
 
     logger = logging.getLogger(__name__)
@@ -42,8 +45,13 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, no_update_db):
         logger.debug('\n'.join(table['DP.ID']))
         print(table)
         if not dry_run:
-            Eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
-                              with_calib='raw')
+            sig = inspect.signature(Eso.retrieve_data)
+            if 'request_all_objects' in sig.parameters:
+                Eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
+                                  with_calib='raw', request_all_objects=force)
+            else:
+                Eso.retrieve_data(table['DP.ID'], destination=mr.raw_path,
+                                  with_calib='raw')
 
     if not dry_run and not no_update_db:
         mr.update_db()
