@@ -16,8 +16,8 @@ from sqlalchemy import sql
 from .recipes import recipe_classes
 from .reporter import Reporter
 from .static_calib import StaticCalib
-from .utils import (load_yaml_config, load_db, parse_date, parse_raw_keywords,
-                    parse_qc_keywords, ProgressBar)
+from .utils import (load_yaml_config, load_db, load_table, parse_date,
+                    parse_raw_keywords, parse_qc_keywords, ProgressBar)
 
 
 class MuseRed(Reporter):
@@ -78,6 +78,11 @@ class MuseRed(Reporter):
         level = level.upper()
         logger.setLevel(level)
         logger.handlers[0].setLevel(level)
+
+    def get_table(self, name):
+        if name not in self.db.tables:
+            raise ValueError('unknown table')
+        return load_table(self.db, name)
 
     def select_column(self, name, notnull=True, distinct=False,
                       whereclause=None, table='raw'):
