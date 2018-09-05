@@ -113,7 +113,15 @@ def parse_raw_keywords(flist, force=False, processed=None):
     keywords = [k.split('/')[0].strip()
                 for k in RAW_FITS_KEYWORDS.splitlines() if k]
 
+    logger = logging.getLogger(__name__)
+
     for f in ProgressBar(flist):
+        with open(f, mode='rb') as fd:
+            if fd.read(30) != b'SIMPLE  =                    T':
+                logger.error('skipping invalid FITS file %s', f)
+                continue
+
+        logger.debug('parsing %s', f)
         hdr = fits.getheader(f, ext=0)
         if not force and hdr['ARCFILE'] in processed:
             nskip += 1
