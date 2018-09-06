@@ -126,7 +126,7 @@ class Reporter:
 
         for recipe in res:
             o = recipe[0]
-            frames = ', '.join(r['OBJECT'] for r in recipe)
+            frames = ', '.join(r['DPR_TYPE'] for r in recipe)
             print(textwrap.dedent(f"""\
             recipe: {o['recipe_name']}
             - date    : {o['date_run']}
