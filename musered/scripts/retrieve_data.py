@@ -29,6 +29,8 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, force,
 
     Eso.login(**params)
 
+    Eso.ROW_LIMIT = -1
+
     # customize astroquery's cache location, to have it on the same device
     # as the final path
     Eso.cache_location = os.path.join(mr.raw_path, '.cache')
@@ -39,8 +41,13 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, force,
             logger.error("dataset '%s' not found", ds)
             sys.exit(1)
 
+        conf = mr.datasets[ds]
         table = Eso.query_instrument(
-            'muse', column_filters=mr.datasets[ds]['archive_filter'])
+            'muse',
+            cache=conf.get('cache', False),
+            # columns=conf.get('columns', []),  # does not work
+            column_filters=conf['archive_filter']
+        )
         logger.info('Found %d exposures', len(table))
         logger.debug('\n'.join(table['DP.ID']))
         print(table)
