@@ -370,7 +370,7 @@ class MuseRed(Reporter):
 
         if skip:
             processed = self.select_column(
-                'DATE_OBS', table='reduced', distinct=True,
+                'name', table='reduced', distinct=True,
                 whereclause=(self.redc.recipe_name == recipe_name))
             log.debug('processed: ' + ', '.join(map(str, sorted(processed))))
             if len(processed) == len(date_list):
@@ -440,7 +440,7 @@ class MuseRed(Reporter):
             recipe.run(flist, name=date, params=params, **calib_frames,
                        **kwargs)
             self._save_reduced(
-                recipe, keys=('DATE_OBS', 'recipe_name', 'DPR_TYPE'), **{
+                recipe, keys=('name', 'recipe_name', 'DPR_TYPE'), **{
                     'night': night,
                     'name': res[0][namecol],
                     'recipe_name': recipe_name,

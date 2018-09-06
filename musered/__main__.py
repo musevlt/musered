@@ -114,7 +114,7 @@ def info(mr, dateobs, datasets, nights, exps, raw, qc):
 
 
 @click.argument('night', nargs=-1)
-@click.option('--skip', is_flag=True, help='skip already processed nights')
+@click.option('--force', is_flag=True, help='force re-processing nights')
 @click.option('--bias', is_flag=True, help='run muse_bias')
 @click.option('--dark', is_flag=True, help='run muse_dark')
 @click.option('--flat', is_flag=True, help='run muse_flat')
@@ -122,15 +122,17 @@ def info(mr, dateobs, datasets, nights, exps, raw, qc):
 @click.option('--lsf', is_flag=True, help='run muse_lsf')
 @click.option('--twilight', is_flag=True, help='run muse_twilight')
 @click.pass_obj
-def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
-    """Process calibrations (bias, dark, flat, etc.) for NIGHT.
+def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
+    """Process calibrations (bias, dark, flat, etc.) for given nights.
 
     By default, process calibrations for all nights, and all types except dark.
+    Already processed calibrations are skipped unless using ``--force``.
 
     """
     if len(night) == 0:
         night = None
 
+    skip = not force
     run_all = not any([bias, dark, flat, wavecal, lsf, twilight])
     if bias or run_all:
         mr.process_calib('bias', night_list=night, skip=skip)
@@ -147,19 +149,24 @@ def process_calib(mr, night, skip, bias, dark, flat, wavecal, lsf, twilight):
 
 
 @click.argument('exp', nargs=-1)
-@click.option('--skip', is_flag=True, help='rkip already processed exposures')
+@click.option('--force', is_flag=True, help='force re-processing exposures')
 @click.option('--scibasic', is_flag=True, help='run muse_scibasic')
 @click.option('--standard', is_flag=True, help='run muse_standard')
 @click.option('--scipost', is_flag=True, help='run muse_scipost')
 @click.option('--params', help='name of the parameters block')
 @click.option('--dataset', help='process exposures for a given dataset')
 @click.pass_obj
-def process_exp(mr, exp, skip, scibasic, standard, scipost, params, dataset):
-    """Run recipes for science exposures."""
+def process_exp(mr, exp, force, scibasic, standard, scipost, params, dataset):
+    """Run recipes for science exposures.
+
+    By default, run scibasic, standard, and scipost, for all exposures.
+    Already processed exposures are skipped unless using ``--force``.
+
+    """
     if len(exp) == 0:
         exp = None
 
-    kwargs = dict(explist=exp, skip=skip, params_name=params)
+    kwargs = dict(explist=exp, skip=not force, params_name=params)
     run_all = not any([scibasic, standard, scipost])
     if scibasic or run_all:
         mr.process_exp('scibasic', dataset=dataset, **kwargs)
