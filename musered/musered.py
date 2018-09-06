@@ -443,6 +443,7 @@ class MuseRed(Reporter):
                 recipe, keys=('DATE_OBS', 'recipe_name', 'DPR_TYPE'), **{
                     'night': night,
                     'name': res[0][namecol],
+                    'recipe_name': recipe_name,
                     'DATE_OBS': res[0][datecol],
                     'DPR_CATG': res[0]['DPR_CATG'],
                     'OBJECT': res[0]['OBJECT'],
@@ -595,18 +596,20 @@ class MuseRed(Reporter):
             recipe_kw.update(kwargs)
         return recipe_cls(**recipe_kw)
 
-    def _save_reduced(self, recipe, keys, DPR_CATG='SCIENCE', **kwargs):
+    def _save_reduced(self, recipe, keys, DPR_CATG='SCIENCE',
+                      recipe_name=None, **kwargs):
         """Save info in database for each output frame, but check before that
         files were created for each frame (some are optional).
         """
         date_run = datetime.datetime.now().isoformat()
+        recipe_name = recipe_name or recipe.recipe_name
         out_frames = []
         for out_frame in recipe.output_frames:
             if any(iglob(f"{recipe.output_dir}/{out_frame}*.fits")):
                 out_frames.append(out_frame)
                 self.reduced.upsert({
                     'date_run': date_run,
-                    'recipe_name': recipe.recipe_name,
+                    'recipe_name': recipe_name,
                     'path': recipe.output_dir,
                     'DPR_TYPE': out_frame,
                     'DPR_CATG': DPR_CATG,
