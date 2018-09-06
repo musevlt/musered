@@ -5,6 +5,8 @@ import logging
 import numpy as np
 import operator
 import os
+import shutil
+
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
@@ -192,6 +194,25 @@ class MuseRed(Reporter):
 
             table.insert_many(rows)
             self.logger.info('inserted %d rows', len(rows))
+
+    def clean(self, recipe_name, date_list=None, remove_files=True):
+        kwargs = dict(recipe_name=recipe_name)
+        if date_list:
+            if isinstance(date_list, str):
+                date_list = [date_list]
+            kwargs['name'] = date_list
+
+        count = len(list(self.reduced.distinct('name', **kwargs)))
+
+        if remove_files:
+            for item in self.reduced.distinct('path', **kwargs):
+                self.logger.info('Removing %s', item['path'])
+                shutil.rmtree(item['path'])
+
+        if self.reduced.delete(**kwargs):
+            self.logger.info('Deleted %d exposures/nights', count)
+        else:
+            self.logger.info('Nothing to delete')
 
     def init_cpl_params(self):
         """Load esorex.rc settings and override with the settings file."""

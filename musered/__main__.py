@@ -113,6 +113,15 @@ def info(mr, dateobs, datasets, nights, exps, raw, qc):
                 mr.info_exp(date)
 
 
+@click.argument('recipe_name')
+@click.argument('date', nargs=-1)
+@click.option('--keep-files', is_flag=True, help='do not delete files')
+@click.pass_obj
+def clean(mr, recipe_name, date, keep_files):
+    """Remove data and database entries for a given recipe and dates."""
+    mr.clean(recipe_name, date_list=date, remove_files=not keep_files)
+
+
 @click.argument('night', nargs=-1)
 @click.option('--force', is_flag=True, help='force re-processing nights')
 @click.option('--bias', is_flag=True, help='run muse_bias')
@@ -196,7 +205,7 @@ def exp_combine(mr, dataset, method):
     mr.exp_combine(dataset, method=method, name=None)
 
 
-for cmd in (info, retrieve_data, update_db, update_qc, process_calib,
+for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
             process_exp, compute_offsets, exp_combine):
     cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
     cli.add_command(cmd)
