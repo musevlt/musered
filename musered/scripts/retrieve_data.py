@@ -17,6 +17,10 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, force,
     """Retrieve files from DATASET from the ESO archive."""
 
     logger = logging.getLogger(__name__)
+    if len(dataset) == 0:
+        logger.error('You must provide at least one dataset')
+        sys.exit(1)
+
     params = mr.conf['retrieve_data']
     if username is not None:
         params = {**params, 'username': username}
