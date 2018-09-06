@@ -68,7 +68,7 @@ class MuseRed(Reporter):
             return {}
         out = defaultdict(list)
         for obj, name in self.execute(
-                sql.select([self.rawc.OBJECT, self.rawc.DATE_OBS])
+                sql.select([self.rawc.OBJECT, self.rawc.name])
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
             out[obj].append(name)
         return out
@@ -96,7 +96,7 @@ class MuseRed(Reporter):
             select = select.distinct(col)
         return [x[0] for x in self.execute(select)]
 
-    def select_dates(self, dpr_type, table='raw', column='DATE_OBS', **kwargs):
+    def select_dates(self, dpr_type, table='raw', column='name', **kwargs):
         """Select the list of dates to process."""
         tbl = self.raw if table == 'raw' else self.reduced
         wc = (tbl.table.c.DPR_TYPE == dpr_type)
@@ -135,12 +135,12 @@ class MuseRed(Reporter):
         # cleanup cached attributes
         del self.nights
 
-        for name in ('night', 'DATE_OBS', 'DPR_TYPE'):
+        for name in ('night', 'name', 'DATE_OBS', 'DPR_TYPE'):
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
 
         if 'DATE_OBS' in self.reduced.columns:
-            for name in ('DATE_OBS', 'DPR_TYPE'):
+            for name in ('name', 'DATE_OBS', 'DPR_TYPE'):
                 if not self.reduced.has_index([name]):
                     self.reduced.create_index([name])
 
@@ -178,7 +178,7 @@ class MuseRed(Reporter):
             rows = []
             items = list(self.reduced.find(DPR_TYPE=dpr_type))
             for item in ProgressBar(items):
-                keys = {k: item[k] for k in ('DATE_OBS', 'INS_MODE')}
+                keys = {k: item[k] for k in ('name', 'DATE_OBS', 'INS_MODE')}
                 keys['reduced_id'] = item['id']
                 keys['recipe_name'] = item['recipe_name']
                 keys['date_parsed'] = now
@@ -387,13 +387,13 @@ class MuseRed(Reporter):
         output_dir = recipe.output_dir
 
         table = self.reduced if use_reduced else self.raw
-        for date_obs in date_list:
-            if skip and date_obs in processed:
-                log.debug('%s already processed', date_obs)
+        for date in date_list:
+            if skip and date in processed:
+                log.debug('%s already processed', date)
                 continue
 
             DPR_TYPE = recipe.DPR_TYPE
-            res = list(table.find(**{datecol: date_obs, 'DPR_TYPE': DPR_TYPE}))
+            res = list(table.find(**{namecol: date, 'DPR_TYPE': DPR_TYPE}))
             if use_reduced:
                 if len(res) != 1:
                     raise RuntimeError('could not find exposures')
@@ -409,10 +409,10 @@ class MuseRed(Reporter):
 
             night = res[0]['night']
             log.info('%s %s : %d %s files, mode=%s',
-                     label, date_obs, len(flist), DPR_TYPE, ins_mode)
+                     label, date, len(flist), DPR_TYPE, ins_mode)
 
             if recipe.use_drs_output:
-                out = f'{date_obs}.{ins_mode}' if calib else date_obs
+                out = f'{date}.{ins_mode}' if calib else date
                 kwargs['output_dir'] = join(self.reduced_path, output_dir, out)
             else:
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
@@ -437,13 +437,13 @@ class MuseRed(Reporter):
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
 
             params = recipe_conf.get('params')
-            recipe.run(flist, name=res[0][namecol], params=params,
-                       **calib_frames, **kwargs)
+            recipe.run(flist, name=date, params=params, **calib_frames,
+                       **kwargs)
             self._save_reduced(
                 recipe, keys=('DATE_OBS', 'recipe_name', 'DPR_TYPE'), **{
                     'night': night,
                     'name': res[0][namecol],
-                    'DATE_OBS': date_obs,
+                    'DATE_OBS': res[0][datecol],
                     'DPR_CATG': res[0]['DPR_CATG'],
                     'OBJECT': res[0]['OBJECT'],
                     'INS_MODE': ins_mode,
@@ -524,7 +524,7 @@ class MuseRed(Reporter):
 
         # get the list of dates to process
         if explist is None:
-            explist = self.select_dates('STD')
+            explist = self.select_dates('STD', column='name')
 
         # run muse_scibasic with specific parameters (tag: STD)
         recipe_kw = {'tag': 'STD', 'output_dir': recipe_std.output_dir}

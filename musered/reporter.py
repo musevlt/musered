@@ -84,7 +84,7 @@ class Reporter:
             t = query_count_to_table(self.db, 'raw', exclude_obj=excludes)
             self.fmt.show_table(t)
 
-        if 'DATE_OBS' not in self.reduced.columns:
+        if len(self.reduced.columns) == 0:
             self.fmt.show_title(f'\nProcessed data:\n')
             self.fmt.show_text('Nothing yet.')
         else:
@@ -109,19 +109,19 @@ class Reporter:
             if t:
                 self.fmt.show_table(t)
 
-    def info_exp(self, date_obs):
+    def info_exp(self, expname):
         """Print information about a given exposure or night."""
         res = defaultdict(list)
-        for r in self.reduced.find(DATE_OBS=date_obs):
+        for r in self.reduced.find(name=expname):
             res[r['recipe_name']].append(r)
 
         res = list(res.values())
         res.sort(key=lambda x: x[0]['date_run'])
 
         print(textwrap.dedent(f"""
-        ==================
-         {date_obs}
-        ==================
+        =========================
+         {expname}
+        =========================
         """))
 
         for recipe in res:
@@ -137,12 +137,12 @@ class Reporter:
             - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
             """))
 
-    def info_raw(self, date_obs, **kwargs):
-        """Print information about raw exposures."""
-        rows = list(self.raw.find(night=date_obs))
+    def info_raw(self, night, **kwargs):
+        """Print information about raw exposures for a given night."""
+        rows = list(self.raw.find(night=night))
         t = Table(rows=rows, names=rows[0].keys())
         t.keep_columns([
-            'ARCFILE', 'DATE_OBS', 'EXPTIME', 'OBJECT',
+            'name', 'EXPTIME', 'OBJECT',
             # 'DPR_CATG', 'DPR_TYPE',
             'INS_DROT_POSANG', 'INS_MODE', 'INS_TEMP7_VAL',
             'OCS_SGS_AG_FWHMX_MED', 'OCS_SGS_AG_FWHMY_MED',
@@ -152,7 +152,7 @@ class Reporter:
         for col in t.columns.values():
             col.name = (col.name.replace('TEL_', '').replace('OCS_SGS_', '')
                         .replace('INS_', ''))
-        t.sort('ARCFILE')
+        t.sort('name')
         self.fmt.show_table(t, max_width=-1, **kwargs)
 
     def info_qc(self, dpr_type, date_list=None, **kwargs):
@@ -191,7 +191,7 @@ class Reporter:
                     filtr = None
                 if filtr and filters and filtr not in filters:
                     continue
-                flist.append((r['DATE_OBS'], filtr, f))
+                flist.append((r['name'], filtr, f))
 
         nrows = int(np.ceil(len(flist) / ncols))
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True,

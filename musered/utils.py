@@ -162,7 +162,7 @@ def parse_qc_keywords(flist):
 
 
 def query_count_to_table(db, tablename, exclude_obj=None, where=None):
-    datecol = 'night' if tablename == 'raw' else 'DATE_OBS'
+    datecol = 'night' if tablename == 'raw' else 'name'
     countcol = 'OBJECT' if tablename == 'raw' else 'recipe_name'
     c = db[tablename].table.c
 
