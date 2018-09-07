@@ -177,11 +177,11 @@ def query_count_to_table(db, tablename, exclude_obj=None, where=None):
     # reorganize rows to have types (in columns) per night (rows)
     rows = defaultdict(dict)
     keys = set()
-    for date, obj, count in db.executable.execute(query):
+    for name, obj, count in db.executable.execute(query):
         if exclude_obj and obj in exclude_obj:
             continue
-        rows[date]['date'] = date
-        rows[date][obj] = count
+        rows[name]['name'] = name
+        rows[name][obj] = count
         keys.add(obj)
 
     if len(rows) == 0:
@@ -192,8 +192,8 @@ def query_count_to_table(db, tablename, exclude_obj=None, where=None):
         row.setdefault(key, 0)
 
     t = Table(rows=list(rows.values()), masked=True)
-    # move date column to the beginning
-    t.columns.move_to_end('date', last=False)
+    # move name column to the beginning
+    t.columns.move_to_end('name', last=False)
     for col in t.columns.values()[1:]:
         col[col == 0] = np.ma.masked
 

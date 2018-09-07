@@ -561,6 +561,11 @@ class MuseRed(Reporter):
                         name=None, **kwargs):
         """Compute offsets between exposures."""
 
+        recipe_conf = self._get_recipe_conf('muse_exp_align')
+        from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
+        method = recipe_conf.get('method', method)
+        filt = recipe_conf.get('filt', filt)
+
         if method == 'drs':
             recipe_cls = recipe_classes['muse_exp_align']
         elif method == 'imphot':
@@ -569,11 +574,12 @@ class MuseRed(Reporter):
             raise ValueError(f'unknown method {method}')
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or method
+        name = name or f'OFFSET_LIST_{method}'
 
         # get the list of dates to process
         flist = [f
-                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE)
+                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                            recipe_name=from_recipe)
                  for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")
                  if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 

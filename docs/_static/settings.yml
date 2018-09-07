@@ -91,29 +91,35 @@ recipes:
   #     use_drs_output: False
   #     output_dir: '{workdir}/reduced/{version}/SCIBASIC'
 
-  muse_scipost_rec:
-    # Special version of scipost to produce images for the recentering step
-    # (OFFSET_LIST). For this we don't need sky-subtraction nor raman
-    # correction.
-    frames:
-      exclude: [RAMAN_LINES]
-    init:
-      output_dir: 'scipost-rec'
-    params:
-      dlambda: 5
-      skymethod: 'none'
-      # skymodel_fraction: 0.5
+  # Example of a special version of scipost to produce images for the
+  # recentering step. For this we don't need sky-subtraction nor raman
+  # correction. Can be run with --params muse_scipost_rec
+  # muse_scipost_rec:
+  #   frames:
+  #     exclude: [RAMAN_LINES]
+  #   init:
+  #     output_dir: 'scipost-rec'
+  #   params:
+  #     dlambda: 5
+  #     skymethod: 'none'
 
   muse_scipost:
     # scipost using offsets (OFFSET_LIST computed with the drs method) and
-    # other options (raman, skysub)
-    OFFSET_LIST: drs
+    # other options (raman, skysub, autocalib)
+    # OFFSET_LIST: OFFSET_LIST_drs
     init:
       output_dir: 'scipost'
     params:
+      autocalib: 'deepfield'
       skymethod: 'model'
-      skymodel_fraction: 0.2
-      save: 'cube,skymodel,individual,raman'
+      skymodel_fraction: 0.5
+      save: 'cube,skymodel,individual,raman,autocal'
+
+  muse_exp_align:
+    # these are the default values
+    from_recipe: muse_scipost
+    method: drs
+    filt: white
 
   muse_exp_combine:
     # OFFSET_LIST: drs
