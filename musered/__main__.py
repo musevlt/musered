@@ -142,19 +142,14 @@ def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
         night = None
 
     skip = not force
+    # if no option was given, run all steps
     run_all = not any([bias, dark, flat, wavecal, lsf, twilight])
-    if bias or run_all:
-        mr.process_calib('bias', night_list=night, skip=skip)
-    if dark:
-        mr.process_calib('dark', night_list=night, skip=skip)
-    if flat or run_all:
-        mr.process_calib('flat', night_list=night, skip=skip)
-    if wavecal or run_all:
-        mr.process_calib('wavecal', night_list=night, skip=skip)
-    if lsf or run_all:
-        mr.process_calib('lsf', night_list=night, skip=skip)
-    if twilight or run_all:
-        mr.process_calib('twilight', night_list=night, skip=skip)
+
+    for step in ('bias', 'dark', 'flat', 'wavecal', 'lsf', 'twilight'):
+        if force:
+            mr.clean(f'muse_{step}', date_list=night, remove_files=False)
+        if locals()[step] or (step != 'dark' and run_all):
+            mr.process_calib(step, night_list=night, skip=skip)
 
 
 @click.argument('exp', nargs=-1)
@@ -177,11 +172,20 @@ def process_exp(mr, exp, force, scibasic, standard, scipost, params, dataset):
 
     kwargs = dict(explist=exp, skip=not force, params_name=params)
     run_all = not any([scibasic, standard, scipost])
+
     if scibasic or run_all:
+        if force:
+            mr.clean(f'muse_scibasic', date_list=exp, remove_files=False)
         mr.process_exp('scibasic', dataset=dataset, **kwargs)
+
     if standard or run_all:
+        if force:
+            mr.clean(f'muse_scibasic', date_list=exp, remove_files=False)
         mr.process_standard(**kwargs)
+
     if scipost or run_all:
+        if force:
+            mr.clean(f'muse_scibasic', date_list=exp, remove_files=False)
         mr.process_exp('scipost', dataset=dataset, **kwargs)
 
 
