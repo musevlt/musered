@@ -38,6 +38,9 @@ class Recipe:
     recipe_name = None
     """Name of the recipe."""
 
+    recipe_name_drs = None
+    """Real name of the recipe for the DRS, in case it is renamed in musex."""
+
     DPR_TYPE = None
     """Type of data to process (DPR.TYPE). If None, cpl.Recipe.tag is used."""
 
@@ -78,11 +81,12 @@ class Recipe:
         self.log_file = None
         self.use_drs_output = use_drs_output
 
-        self._recipe = cpl.Recipe(self.recipe_name, version=version)
+        recipe_name = self.recipe_name_drs or self.recipe_name
+        self._recipe = cpl.Recipe(recipe_name, version=version)
 
         if tag is not None:
             if tag not in self._recipe.tags:
-                raise ValueError(f'invalid tag {tag} for {self.recipe_name}, '
+                raise ValueError(f'invalid tag {tag} for {recipe_name}, '
                                  'should be in {self._recipe.tags}')
             self._recipe.tag = tag
 
@@ -113,7 +117,7 @@ class Recipe:
             for name, value in self.default_params.items():
                 self.param[name] = value
 
-        self.logger.info('%s recipe (DRS v%s from %s)', self.recipe_name,
+        self.logger.info('%s recipe (DRS v%s from %s)', recipe_name,
                          self._recipe.version[1], cpl.Recipe.path)
 
     @property

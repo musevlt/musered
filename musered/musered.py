@@ -196,6 +196,8 @@ class MuseRed(Reporter):
             self.logger.info('inserted %d rows', len(rows))
 
     def clean(self, recipe_name, date_list=None, remove_files=True):
+        if not recipe_name.startswith('muse_'):
+            recipe_name = 'muse_' + recipe_name
         kwargs = dict(recipe_name=recipe_name)
         if date_list:
             if isinstance(date_list, str):
@@ -301,6 +303,32 @@ class MuseRed(Reporter):
 
         return framedict
 
+    def get_additional_frames(self, recipe, OBJECT=None, params_name=None):
+        """Return a dict with additional frames."""
+
+        frames = {}
+        recipe_name = params_name or recipe.recipe_name
+        recipe_conf = self._get_recipe_conf(recipe_name)
+
+        if 'OFFSET_LIST' in recipe.calib and 'OFFSET_LIST' in recipe_conf:
+            if os.path.isfile(recipe_conf['OFFSET_LIST']):
+                frames['OFFSET_LIST'] = recipe_conf['OFFSET_LIST']
+            else:
+                off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
+                                            OBJECT=OBJECT,
+                                            name=recipe_conf['OFFSET_LIST'])
+                frames['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
+            self.logger.info('Using OFFSET_LIST: %s', frames['OFFSET_LIST'])
+
+        if 'OUTPUT_WCS' in recipe.calib and 'OUTPUT_WCS' in recipe_conf:
+            frames['OUTPUT_WCS'] = recipe_conf['OUTPUT_WCS']
+            self.logger.info('Using OUTPUT_WCS: %s', frames['OUTPUT_WCS'])
+
+        if 'FILTER_LIST' in recipe.calib:
+            frames['FILTER_LIST'] = self.static_calib.get('FILTER_LIST')
+
+        return frames
+
     def find_illum(self, night, ref_temp, ref_mjd_date):
         """Find the best ILLUM exposure for the night.
 
@@ -400,7 +428,7 @@ class MuseRed(Reporter):
             elif len(processed) > 0:
                 log.info('%d %ss already processed', len(processed), label)
 
-        # Instantiate the recipe object.
+        # Instantiate the recipe object
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
         recipe = self._instantiate_recipe(recipe_cls, params_name=recipe_name,
                                           kwargs=recipe_kwargs)
@@ -413,8 +441,13 @@ class MuseRed(Reporter):
                 log.debug('%s already processed', date)
                 continue
 
-            DPR_TYPE = recipe.DPR_TYPE
-            res = list(table.find(**{namecol: date, 'DPR_TYPE': DPR_TYPE}))
+            DPR_TYPE = recipe_conf.get('DPR_TYPE', recipe.DPR_TYPE)
+            select_args = {namecol: date, 'DPR_TYPE': DPR_TYPE}
+            if recipe_conf.get('from_recipe'):
+                select_args['recipe_name'] = recipe_conf.get('from_recipe')
+
+            res = list(table.find(**select_args))
+
             if use_reduced:
                 if len(res) != 1:
                     raise RuntimeError('could not find exposures')
@@ -438,19 +471,10 @@ class MuseRed(Reporter):
             else:
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
-            calib_frames = self.get_calib_frames(
-                recipe, night, ins_mode, frames=recipe_conf.get('frames'))
-
-            if 'OFFSET_LIST' in recipe_conf:
-                off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
-                                            OBJECT=res[0]['OBJECT'],
-                                            name=recipe_conf['OFFSET_LIST'])
-                kwargs['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
-                log.info('Using OFFSET_LIST: %s', kwargs['OFFSET_LIST'])
-
-            if 'OUTPUT_WCS' in recipe_conf:
-                kwargs['OUTPUT_WCS'] = recipe_conf['OUTPUT_WCS']
-                log.info('Using OUTPUT_WCS: %s', kwargs['OUTPUT_WCS'])
+            kwargs.update(self.get_calib_frames(
+                recipe, night, ins_mode, frames=recipe_conf.get('frames')))
+            kwargs.update(self.get_additional_frames(
+                recipe, OBJECT=res[0]['OBJECT'], params_name=params_name))
 
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
@@ -458,8 +482,7 @@ class MuseRed(Reporter):
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
 
             params = recipe_conf.get('params')
-            recipe.run(flist, name=date, params=params, **calib_frames,
-                       **kwargs)
+            recipe.run(flist, name=date, params=params, **kwargs)
             self._save_reduced(
                 recipe, keys=('name', 'recipe_name', 'DPR_TYPE'), **{
                     'night': night,
@@ -471,7 +494,8 @@ class MuseRed(Reporter):
                     'INS_MODE': ins_mode,
                 })
 
-    def run_recipe_simple(self, recipe_cls, name, OBJECT, flist, **kwargs):
+    def run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
+                          params_name=None, **kwargs):
         """Run a recipe once, simpler than run_recipe_loop.
 
         This is to run recipes like exp_align, exp_combine. Takes a list of
@@ -481,27 +505,12 @@ class MuseRed(Reporter):
         self.logger.info('%d files', len(flist))
         self.logger.debug('- ' + '\n- '.join(flist))
 
-        # Instantiate the recipe object.
+        # Instantiate the recipe object
         recipe = self._instantiate_recipe(recipe_cls)
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
+        kwargs.update(self.get_additional_frames(recipe, OBJECT=OBJECT,
+                                                 params_name=params_name))
         recipe_conf = self._get_recipe_conf(recipe_cls.recipe_name)
-
-        if 'OFFSET_LIST' in recipe.calib and 'OFFSET_LIST' in recipe_conf:
-            if os.path.isfile(recipe_conf['OFFSET_LIST']):
-                kwargs['OFFSET_LIST'] = recipe_conf['OFFSET_LIST']
-            else:
-                off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
-                                            OBJECT=OBJECT,
-                                            name=recipe_conf['OFFSET_LIST'])
-                kwargs['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
-            self.logger.info('Using OFFSET_LIST: %s', kwargs['OFFSET_LIST'])
-
-        if 'OUTPUT_WCS' in recipe.calib and 'OUTPUT_WCS' in recipe_conf:
-            kwargs['OUTPUT_WCS'] = recipe_conf['OUTPUT_WCS']
-            self.logger.info('Using OUTPUT_WCS: %s', kwargs['OUTPUT_WCS'])
-
-        if 'FILTER_LIST' in recipe.calib:
-            kwargs['FILTER_LIST'] = self.static_calib.get('FILTER_LIST')
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),

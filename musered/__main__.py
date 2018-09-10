@@ -157,10 +157,12 @@ def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
 @click.option('--scibasic', is_flag=True, help='run muse_scibasic')
 @click.option('--standard', is_flag=True, help='run muse_standard')
 @click.option('--scipost', is_flag=True, help='run muse_scipost')
+@click.option('--makecube', is_flag=True, help='run muse_scipost_make_cube')
 @click.option('--params', help='name of the parameters block')
 @click.option('--dataset', help='process exposures for a given dataset')
 @click.pass_obj
-def process_exp(mr, exp, force, scibasic, standard, scipost, params, dataset):
+def process_exp(mr, exp, force, scibasic, standard, scipost, makecube, params,
+                dataset):
     """Run recipes for science exposures.
 
     By default, run scibasic, standard, and scipost, for all exposures.
@@ -171,22 +173,27 @@ def process_exp(mr, exp, force, scibasic, standard, scipost, params, dataset):
         exp = None
 
     kwargs = dict(explist=exp, skip=not force, params_name=params)
-    run_all = not any([scibasic, standard, scipost])
+    run_all = not any([scibasic, standard, scipost, makecube])
 
     if scibasic or run_all:
         if force:
-            mr.clean(f'muse_scibasic', date_list=exp, remove_files=False)
+            mr.clean('scibasic', date_list=exp, remove_files=False)
         mr.process_exp('scibasic', dataset=dataset, **kwargs)
 
     if standard or run_all:
         if force:
-            mr.clean(f'muse_scibasic', date_list=exp, remove_files=False)
+            mr.clean('standard', date_list=exp, remove_files=False)
         mr.process_standard(**kwargs)
 
     if scipost or run_all:
         if force:
-            mr.clean(f'muse_scibasic', date_list=exp, remove_files=False)
+            mr.clean('scipost', date_list=exp, remove_files=False)
         mr.process_exp('scipost', dataset=dataset, **kwargs)
+
+    if makecube:
+        if force:
+            mr.clean('scipost_make_cube', date_list=exp, remove_files=False)
+        mr.process_exp('scipost_make_cube', dataset=dataset, **kwargs)
 
 
 @click.argument('dataset')
