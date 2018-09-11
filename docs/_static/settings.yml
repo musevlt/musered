@@ -116,10 +116,17 @@ recipes:
       save: 'cube,skymodel,individual,raman,autocal'
 
   muse_exp_align:
-    # these are the default values
     from_recipe: muse_scipost
+    # these are the default values, using the drs method
     method: drs
     filt: white
+    # and this is using imphot:
+    method: imphot
+    params:
+      hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
+      hst_filters_dir: '{workdir}/reduced/{version}/hst_filters'
+      hst_img_dir: '{workdir}/HST/XUDF'
+      hst_outdir: '{workdir}/reduced/{version}/imphot-hst-images'
 
   muse_scipost_make_cube:
     # scipost using offsets to produce recentered cubes

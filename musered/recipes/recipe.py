@@ -253,3 +253,89 @@ class Recipe:
         info('DRS user time: %s, sys: %s', results.stat.user_time,
              results.stat.sys_time)
         return results
+
+
+class PythonRecipe:
+
+    recipe_name = None
+    """Name of the recipe."""
+
+    DPR_TYPE = None
+    """Type of data to process (DPR.TYPE). If None, cpl.Recipe.tag is used."""
+
+    output_dir = None
+    """Default output directory."""
+
+    default_params = None
+    """Default parameters."""
+
+    output_frames = None
+    """Output frames."""
+
+    def __init__(self, output_dir=None, log_dir='.'):
+        self.nbwarn = 0
+        self.logger = logging.getLogger(__name__)
+        self.outfiles = []
+        self.log_dir = log_dir
+        self.log_file = None
+        self.calib = {}
+        self.param = {}
+
+        if output_dir is not None:
+            self.output_dir = output_dir
+        elif self.output_dir is None:
+            self.output_dir = self.output_frames[0]
+
+    def dump(self):
+        """Dump recipe results, stats, parameters in a dict."""
+        return {
+            'tottime': self.timeit,
+            # 'user_time': self.results.stat.user_time,
+            # 'sys_time': self.results.stat.sys_time,
+            'nbwarn': self.nbwarn,
+            'log_file': self.log_file,
+            'params': json.dumps(self.param),
+        }
+
+    def _run(self, *args, **kwargs):
+        raise NotImplementedError
+
+    def run(self, flist, *args, params=None, **kwargs):
+        """Run the recipe.
+
+        Subclasses should implement ._run in they need to customize this.
+
+        """
+        t0 = time.time()
+        info = self.logger.info
+        self.results = None
+
+        if isinstance(flist, str):
+            flist = [flist]
+
+        if len(flist) == 0:
+            raise ValueError('no exposure found')
+
+        date = datetime.datetime.now().isoformat()
+        self.log_file = os.path.join(
+            self.log_dir, f"{self.recipe_name}-{date}.log")
+
+        if 'output_dir' in kwargs:
+            self.output_dir = kwargs['output_dir']
+
+        info('- Log file           : %s', self.log_file)
+        info('- Output directory   : %s', self.output_dir)
+        info('- Non-default params :')
+        self.param = self.default_params.copy()
+        for key in self.param:
+            if key in params:
+                info('%15s = %s (%s)', key, params[key], self.param[key])
+                self.param[key] = params[key]
+
+        results = self._run(flist, *args, **kwargs)
+        self.results = results
+        # self.nbwarn = len(results.log.warning)
+        self.timeit = (time.time() - t0) / 60
+        info('%s successfully run, %d warnings', self.recipe_name, self.nbwarn)
+        info('Execution time %.2f minutes', self.timeit)
+        return results

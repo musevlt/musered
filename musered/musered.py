@@ -1,5 +1,6 @@
 import cpl
 import datetime
+import inspect
 import itertools
 import logging
 import numpy as np
@@ -303,11 +304,10 @@ class MuseRed(Reporter):
 
         return framedict
 
-    def get_additional_frames(self, recipe, OBJECT=None, params_name=None):
+    def get_additional_frames(self, recipe, recipe_name, OBJECT=None):
         """Return a dict with additional frames."""
 
         frames = {}
-        recipe_name = params_name or recipe.recipe_name
         recipe_conf = self._get_recipe_conf(recipe_name)
 
         if 'OFFSET_LIST' in recipe.calib and 'OFFSET_LIST' in recipe_conf:
@@ -430,7 +430,7 @@ class MuseRed(Reporter):
 
         # Instantiate the recipe object
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
-        recipe = self._instantiate_recipe(recipe_cls, params_name=recipe_name,
+        recipe = self._instantiate_recipe(recipe_cls, recipe_name,
                                           kwargs=recipe_kwargs)
         # save recipe's output dir as we will modify it later
         output_dir = recipe.output_dir
@@ -473,8 +473,8 @@ class MuseRed(Reporter):
 
             kwargs.update(self.get_calib_frames(
                 recipe, night, ins_mode, frames=recipe_conf.get('frames')))
-            kwargs.update(self.get_additional_frames(
-                recipe, OBJECT=res[0]['OBJECT'], params_name=params_name))
+            kwargs.update(self.get_additional_frames(recipe, recipe_name,
+                                                     OBJECT=res[0]['OBJECT']))
 
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
@@ -506,15 +506,16 @@ class MuseRed(Reporter):
         self.logger.debug('- ' + '\n- '.join(flist))
 
         # Instantiate the recipe object
-        recipe = self._instantiate_recipe(recipe_cls)
+        recipe_name = params_name or recipe_cls.recipe_name
+        recipe = self._instantiate_recipe(recipe_cls, recipe_name)
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
-        kwargs.update(self.get_additional_frames(recipe, OBJECT=OBJECT,
-                                                 params_name=params_name))
-        recipe_conf = self._get_recipe_conf(recipe_cls.recipe_name)
+        kwargs.update(self.get_additional_frames(recipe, recipe_name,
+                                                 OBJECT=OBJECT))
+        recipe_conf = self._get_recipe_conf(recipe_name)
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
-                           name=name, OBJECT=OBJECT)
+                           name=name, OBJECT=OBJECT, recipe_name=recipe_name)
 
     def process_calib(self, recipe_name, night_list=None, skip=False,
                       **kwargs):
@@ -578,7 +579,9 @@ class MuseRed(Reporter):
         if method == 'drs':
             recipe_cls = recipe_classes['muse_exp_align']
         elif method == 'imphot':
-            raise NotImplementedError
+            recipe_cls = recipe_classes['imphot']
+            # by default use params from the muse_exp_align block
+            kwargs.setdefault('params_name', 'muse_exp_align')
         else:
             raise ValueError(f'unknown method {method}')
 
@@ -589,8 +592,11 @@ class MuseRed(Reporter):
         flist = [f
                  for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                             recipe_name=from_recipe)
-                 for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")
-                 if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
+                 for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")]
+
+        if filt and method == 'drs':
+            flist = [f for f in flist
+                     if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
         self.run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
@@ -621,15 +627,19 @@ class MuseRed(Reporter):
         else:
             return recipe_conf
 
-    def _instantiate_recipe(self, recipe_cls, params_name=None, kwargs=None):
+    def _instantiate_recipe(self, recipe_cls, recipe_name, kwargs=None):
         """Instantiate the recipe object.  Use parameters from the settings,
         common first, and then from recipe_name.init, and from kwargs.
         """
-        recipe_name = params_name or recipe_cls.recipe_name
         recipe_kw = {**self.conf['recipes']['common'],
                      **self._get_recipe_conf(recipe_name, 'init')}
         if kwargs is not None:
             recipe_kw.update(kwargs)
+
+        # filter kwargs to match the signature
+        sig = inspect.signature(recipe_cls)
+        recipe_kw = {k: v for k, v in recipe_kw.items() if k in sig.parameters}
+
         return recipe_cls(**recipe_kw)
 
     def _save_reduced(self, recipe, keys, DPR_CATG='SCIENCE',
