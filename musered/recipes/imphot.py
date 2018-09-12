@@ -142,14 +142,15 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
         # grid as the MUSE cube.
         field = muse.primary_header['OBJECT']
         drot = muse.primary_header['ESO INS DROT POSANG']
-        logger.info(" Getting resampled HST image for %s (%s)", field, drot)
         hst_filename = join(hst_img_dir, hst_basename % filter_name.lower())
         resampled_filename = join(hst_outdir,
                                   f"hst_{filter_name}_for_{field}_{drot}.fits")
         if not force_hst_image and exists(resampled_filename):
+            logger.info(" Getting resampled HST image for %s-%s", field, drot)
             hst = Image(resampled_filename)
         else:
-            logger.info(" Creating %s", resampled_filename)
+            logger.info(" Computing resampled HST image %s",
+                        resampled_filename)
             hst = Image(hst_filename)
             imphot.regrid_hst_like_muse(hst, muse, inplace=True)
             imphot.rescale_hst_like_muse(hst, muse, inplace=True)

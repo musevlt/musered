@@ -568,7 +568,7 @@ class MuseRed(Reporter):
                              **kwargs)
 
     def compute_offsets(self, dataset, method='drs', filt='white',
-                        name=None, **kwargs):
+                        name=None, exps=None, **kwargs):
         """Compute offsets between exposures."""
 
         recipe_conf = self._get_recipe_conf('muse_exp_align')
@@ -589,9 +589,15 @@ class MuseRed(Reporter):
         name = name or f'OFFSET_LIST_{method}'
 
         # get the list of dates to process
+        if exps is not None:
+            query = self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                      recipe_name=from_recipe, name=exps)
+        else:
+            query = self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                      recipe_name=from_recipe)
+
         flist = [f
-                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                            recipe_name=from_recipe)
+                 for r in query
                  for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")]
 
         if filt and method == 'drs':

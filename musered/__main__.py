@@ -199,12 +199,15 @@ def process_exp(mr, exp, force, scibasic, standard, scipost, makecube, params,
 @click.argument('dataset')
 @click.option('--method', default='drs',
               help='method to use: drs (default) or imphot (not implemented)')
-@click.option('--filter', default='white', help='filter to use for the images:'
-              ' white (default), Johnson_V, Cousins_R, Cousins_I')
+@click.option('--filter', default='white', help='filter to use for the images'
+              ' (drs only): white (default), Johnson_V, Cousins_R, Cousins_I')
+@click.option('--exp', multiple=True,
+              help='exposure to process, by default all exposures are used')
 @click.pass_obj
-def compute_offsets(mr, dataset, method, filter):
+def compute_offsets(mr, dataset, method, filter, exp):
     """Compute offsets between exposures."""
-    mr.compute_offsets(dataset, method=method, filt=filter, name=None)
+    mr.compute_offsets(dataset, method=method, filt=filter, name=None,
+                       exps=exp)
 
 
 @click.argument('dataset')
