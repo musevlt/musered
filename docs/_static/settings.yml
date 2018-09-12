@@ -126,7 +126,7 @@ recipes:
       hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
       hst_filters_dir: '{workdir}/reduced/{version}/hst_filters'
       hst_img_dir: '{workdir}/HST/XUDF'
-      hst_outdir: '{workdir}/reduced/{version}/imphot-hst-images'
+      hst_resample_each: True
 
   muse_scipost_make_cube:
     # scipost using offsets to produce recentered cubes

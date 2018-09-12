@@ -589,7 +589,7 @@ class MuseRed(Reporter):
         name = name or f'OFFSET_LIST_{method}'
 
         # get the list of dates to process
-        if exps is not None:
+        if exps:
             query = self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                       recipe_name=from_recipe, name=exps)
         else:
