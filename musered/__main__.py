@@ -1,7 +1,9 @@
 import click
+import importlib
 import logging
 import os
 import sys
+import yaml
 
 from .musered import MuseRed
 from .scripts.retrieve_data import retrieve_data
@@ -18,7 +20,7 @@ except ImportError:
     pass
 
 
-@click.group(context_settings=CONTEXT_SETTINGS, invoke_without_command=True)
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=__version__)
 @click.option('--loglevel', help='log level (debug, info, warning, etc.)')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
@@ -221,8 +223,29 @@ def exp_combine(mr, dataset, method):
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
             process_exp, compute_offsets, exp_combine):
-    cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
-    cli.add_command(cmd)
+    cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
+
+# loading plugins
+cfg = os.path.join(click.get_app_dir('musered', force_posix=True),
+                   'plugins.yml')
+if os.path.exists(cfg):
+    with open(cfg) as f:
+        conf = yaml.load(f)
+    plugins = conf.get('plugins', {})
+    for path in plugins.get('paths'):
+        sys.path.insert(0, path)
+
+    try:
+        for line in plugins.get('commands'):
+            modname, cmdname = line.split(':')
+            mod = importlib.import_module(modname)
+            cmd = getattr(mod, cmdname)
+            cmd = click.command(context_settings=CONTEXT_SETTINGS)(cmd)
+            logger.debug('Loading command %s from %s', cmdname, modname)
+            cli.add_command(cmd)
+    finally:
+        for path in plugins.get('paths'):
+            sys.path.remove(path)
 
 try:
     from click_repl import register_repl
