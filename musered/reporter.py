@@ -62,6 +62,12 @@ class Reporter:
         for x in sorted(self.nights):
             self.fmt.show_text(f'- {x}')
 
+    def list_runs(self):
+        """Print the list of runs."""
+        self.fmt.show_title('Runs:')
+        for x in sorted(self.runs):
+            self.fmt.show_text(f'- {x}')
+
     def list_exposures(self):
         """Print the list of exposures."""
         self.fmt.show_title('Exposures:')
@@ -73,6 +79,8 @@ class Reporter:
         """Print a summary of the raw and reduced data."""
         self.fmt.show_text(f'{self.raw.count()} files\n')
         self.list_datasets()
+        print()
+        self.list_runs()
 
         # count files per night and per type, raw data, then reduced
         self.fmt.show_title(f'\nRaw data:\n')
@@ -140,6 +148,12 @@ class Reporter:
     def info_raw(self, night, **kwargs):
         """Print information about raw exposures for a given night."""
         rows = list(self.raw.find(night=night))
+        if len(rows) == 0:
+            rows = list(self.raw.find(run=night))
+        if len(rows) == 0:
+            self.logger.error('Could not find exposures for %s', night)
+            return
+
         t = Table(rows=rows, names=rows[0].keys())
         t.keep_columns([
             'name', 'EXPTIME', 'OBJECT',

@@ -65,6 +65,13 @@ class MuseRed(Reporter):
         return self.select_column('night', distinct=True)
 
     @lazyproperty
+    def runs(self):
+        """Return the list of runs for which data is available."""
+        if 'run' not in self.raw.columns:
+            return []
+        return self.select_column('run', distinct=True)
+
+    @lazyproperty
     def exposures(self):
         """Return a dict of science exposure per target."""
         if 'night' not in self.raw.columns:
@@ -127,6 +134,19 @@ class MuseRed(Reporter):
             arcf = []
 
         rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf)
+
+        runs = self.conf.get('runs', [])
+        for row in rows:
+            try:
+                dateobj = parse_date(row['night'])
+            except Exception:
+                continue
+
+            for run_name, run in runs.items():
+                if run['start_date'] < dateobj < run['end_date']:
+                    row['run'] = run_name
+                    break
+
         if force:
             self.raw.delete()
             self.raw.insert_many(rows)

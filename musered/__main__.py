@@ -57,7 +57,7 @@ def cli(ctx, loglevel, settings, pdb, debug):
             # this is for astroquery, but could be done better..
             logging.getLogger('astropy').setLevel('DEBUG')
 
-    logger.info('Musered version %s', __version__)
+    logger.debug('Musered version %s', __version__)
 
     if pdb:
         def run_pdb(type, value, tb):
@@ -89,18 +89,21 @@ def update_qc(mr, type, recipe):
 @click.argument('dateobs', nargs=-1)
 @click.option('--datasets', is_flag=True, help='list datasets')
 @click.option('--nights', is_flag=True, help='list nights')
+@click.option('--runs', is_flag=True, help='list runs')
 @click.option('--exps', is_flag=True, help='list exposures')
 @click.option('--raw', is_flag=True, help='list raw exposures for a night')
 @click.option('--qc', help='show QC keywords')
 @click.pass_obj
-def info(mr, dateobs, datasets, nights, exps, raw, qc):
+def info(mr, dateobs, datasets, nights, runs, exps, raw, qc):
     """Print info about raw and reduced data, or night or exposure."""
 
-    if any([datasets, nights, exps]):
+    if any([datasets, nights, exps, runs]):
         if datasets:
             mr.list_datasets()
         if nights:
             mr.list_nights()
+        if runs:
+            mr.list_runs()
         if exps:
             mr.list_exposures()
     elif raw:
