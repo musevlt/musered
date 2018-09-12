@@ -1,0 +1,5 @@
+plugins:
+  paths:
+    - /home/conseil/.musered
+  commands:
+    - example_plugin:my_command
