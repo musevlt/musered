@@ -20,7 +20,8 @@ from .recipes import recipe_classes
 from .reporter import Reporter
 from .static_calib import StaticCalib
 from .utils import (load_yaml_config, load_db, load_table, parse_date,
-                    parse_raw_keywords, parse_qc_keywords, ProgressBar)
+                    parse_raw_keywords, parse_qc_keywords, ProgressBar,
+                    normalize_recipe_name)
 
 
 class MuseRed(Reporter):
@@ -170,8 +171,7 @@ class MuseRed(Reporter):
     def update_qc(self, dpr_types=None, recipe_name=None):
         """Create or update the tables containing QC keywords."""
         if recipe_name is not None:
-            if not recipe_name.startswith('muse_'):
-                recipe_name = 'muse_' + recipe_name
+            recipe_name = normalize_recipe_name(recipe_name)
             # select all types for a given recipe
             dpr_types = self.select_column(
                 'DPR_TYPE', table='reduced', distinct=True,
@@ -217,9 +217,7 @@ class MuseRed(Reporter):
             self.logger.info('inserted %d rows', len(rows))
 
     def clean(self, recipe_name, date_list=None, remove_files=True):
-        if not recipe_name.startswith('muse_'):
-            recipe_name = 'muse_' + recipe_name
-        kwargs = dict(recipe_name=recipe_name)
+        kwargs = dict(recipe_name=normalize_recipe_name(recipe_name))
         if date_list:
             if isinstance(date_list, str):
                 date_list = [date_list]
@@ -543,7 +541,7 @@ class MuseRed(Reporter):
                       **kwargs):
         """Run a calibration recipe."""
 
-        recipe_cls = recipe_classes['muse_' + recipe_name]
+        recipe_cls = recipe_classes[normalize_recipe_name(recipe_name)]
 
         # get the list of nights to process
         if night_list is None:
@@ -564,8 +562,9 @@ class MuseRed(Reporter):
             else:
                 explist = list(itertools.chain(*self.exposures.values()))
 
-        recipe_cls = recipe_classes['muse_' + recipe_name]
-        use_reduced = recipe_name not in ('scibasic', )
+        recipe_name = normalize_recipe_name(recipe_name)
+        recipe_cls = recipe_classes[recipe_name]
+        use_reduced = recipe_name not in ('muse_scibasic', )
         self._run_recipe_loop(recipe_cls, explist, skip=skip,
                               use_reduced=use_reduced, **kwargs)
 

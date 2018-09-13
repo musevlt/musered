@@ -105,6 +105,11 @@ def normalize_keyword(key):
     return key.replace(' ', '_').replace('-', '_')
 
 
+def normalize_recipe_name(recipe_name):
+    if not recipe_name.startswith('muse_'):
+        recipe_name = 'muse_' + recipe_name
+    return recipe_name
+
 def parse_raw_keywords(flist, force=False, processed=None):
     nskip = 0
     rows = []
