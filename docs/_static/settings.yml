@@ -88,7 +88,6 @@ recipes:
 
   # muse_scibasic:
   #   init:
-  #     use_drs_output: False
   #     output_dir: '{workdir}/reduced/{version}/SCIBASIC'
 
   # Example of a special version of scipost to produce images for the

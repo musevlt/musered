@@ -395,9 +395,9 @@ class MuseRed(Reporter):
 
         return res[3]
 
-    def run_recipe_loop(self, recipe_cls, date_list, skip=False, calib=False,
-                        params_name=None, recipe_kwargs=None,
-                        use_reduced=False, **kwargs):
+    def _run_recipe_loop(self, recipe_cls, date_list, skip=False, calib=False,
+                         params_name=None, recipe_kwargs=None,
+                         use_reduced=False, **kwargs):
         """Main method used to run a recipe on a list of exposures/nights.
 
         Parameters
@@ -433,6 +433,7 @@ class MuseRed(Reporter):
             datecol = 'DATE_OBS'
             namecol = 'name'
 
+        date_list.sort()
         log = self.logger
         log.info('Running %s for %d %ss', recipe_name, len(date_list), label)
         log.debug(f'{label}s: ' + ', '.join(map(str, date_list)))
@@ -456,7 +457,7 @@ class MuseRed(Reporter):
         output_dir = recipe.output_dir
 
         table = self.reduced if use_reduced else self.raw
-        for date in date_list:
+        for i, date in enumerate(date_list):
             if skip and date in processed:
                 log.debug('%s already processed', date)
                 continue
@@ -482,8 +483,9 @@ class MuseRed(Reporter):
                 ins_mode = ins_mode.pop()
 
             night = res[0]['night']
-            log.info('%s %s : %d %s files, mode=%s',
-                     label, date, len(flist), DPR_TYPE, ins_mode)
+            log.info('%d/%d - %s %s : %d %s file(s), mode=%s', i,
+                     len(date_list), label.capitalize(), date, len(flist),
+                     DPR_TYPE, ins_mode)
 
             if recipe.use_drs_output:
                 out = f'{date}.{ins_mode}' if calib else date
@@ -514,9 +516,9 @@ class MuseRed(Reporter):
                     'INS_MODE': ins_mode,
                 })
 
-    def run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
-                          params_name=None, **kwargs):
-        """Run a recipe once, simpler than run_recipe_loop.
+    def _run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
+                           params_name=None, **kwargs):
+        """Run a recipe once, simpler than _run_recipe_loop.
 
         This is to run recipes like exp_align, exp_combine. Takes a list of
         files and process them.
@@ -548,8 +550,8 @@ class MuseRed(Reporter):
             night_list = self.select_dates(recipe_cls.DPR_TYPE, column='night',
                                            distinct=True)
 
-        self.run_recipe_loop(recipe_cls, night_list, calib=True, skip=skip,
-                             **kwargs)
+        self._run_recipe_loop(recipe_cls, night_list, calib=True, skip=skip,
+                              **kwargs)
 
     def process_exp(self, recipe_name, explist=None, dataset=None, skip=False,
                     **kwargs):
@@ -564,8 +566,8 @@ class MuseRed(Reporter):
 
         recipe_cls = recipe_classes['muse_' + recipe_name]
         use_reduced = recipe_name not in ('scibasic', )
-        self.run_recipe_loop(recipe_cls, explist, skip=skip,
-                             use_reduced=use_reduced, **kwargs)
+        self._run_recipe_loop(recipe_cls, explist, skip=skip,
+                              use_reduced=use_reduced, **kwargs)
 
     def process_standard(self, explist=None, skip=False, **kwargs):
         """Reduce a standard exposure, running both muse_scibasic and
@@ -580,12 +582,12 @@ class MuseRed(Reporter):
 
         # run muse_scibasic with specific parameters (tag: STD)
         recipe_kw = {'tag': 'STD', 'output_dir': recipe_std.output_dir}
-        self.run_recipe_loop(recipe_sci, explist, skip=skip,
-                             recipe_kwargs=recipe_kw, **kwargs)
+        self._run_recipe_loop(recipe_sci, explist, skip=skip,
+                              recipe_kwargs=recipe_kw, **kwargs)
 
         # run muse_standard
-        self.run_recipe_loop(recipe_std, explist, skip=skip, use_reduced=True,
-                             **kwargs)
+        self._run_recipe_loop(recipe_std, explist, skip=skip, use_reduced=True,
+                              **kwargs)
 
     def compute_offsets(self, dataset, method='drs', filt='white',
                         name=None, exps=None, **kwargs):
@@ -624,7 +626,7 @@ class MuseRed(Reporter):
             flist = [f for f in flist
                      if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
-        self.run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
     def exp_combine(self, dataset, method='drs', name=None, **kwargs):
         """Combine exposures."""
@@ -649,7 +651,7 @@ class MuseRed(Reporter):
                  for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                             recipe_name=from_recipe)]
 
-        self.run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
     def _get_recipe_conf(self, recipe_name, item=None):
         """Get config dict foldr a recipe."""
