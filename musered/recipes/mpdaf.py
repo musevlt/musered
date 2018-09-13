@@ -76,7 +76,7 @@ class MPDAFCOMBINE(PythonRecipe):
 
     recipe_name = 'mpdaf_combine'
     DPR_TYPE = 'DATACUBE_FINAL'
-    output_dir = 'exp_align'
+    output_dir = 'exp_combine'
     output_frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'STATPIX', 'EXPMAP_CUBE',
                      'EXPMAP_IMAGE']
 
