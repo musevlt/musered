@@ -181,29 +181,29 @@ def process_exp(mr, exp, force, scibasic, standard, scipost, makecube, params,
     run_all = not any([scibasic, standard, scipost, makecube])
 
     if scibasic or run_all:
-        if force:
-            mr.clean('scibasic', date_list=exp, remove_files=False)
+        # if force:
+        #     mr.clean('scibasic', date_list=exp, remove_files=False)
         mr.process_exp('scibasic', dataset=dataset, **kwargs)
 
     if standard or run_all:
-        if force:
-            mr.clean('standard', date_list=exp, remove_files=False)
+        # if force:
+        #     mr.clean('standard', date_list=exp, remove_files=False)
         mr.process_standard(**kwargs)
 
     if scipost or run_all:
-        if force:
-            mr.clean('scipost', date_list=exp, remove_files=False)
+        # if force:
+        #     mr.clean('scipost', date_list=exp, remove_files=False)
         mr.process_exp('scipost', dataset=dataset, **kwargs)
 
     if makecube:
-        if force:
-            mr.clean('scipost_make_cube', date_list=exp, remove_files=False)
+        # if force:
+        #     mr.clean('scipost_make_cube', date_list=exp, remove_files=False)
         mr.process_exp('scipost_make_cube', dataset=dataset, **kwargs)
 
 
 @click.argument('dataset')
 @click.option('--method', default='drs',
-              help='method to use: drs (default) or imphot (not implemented)')
+              help='method to use: drs (default) or imphot')
 @click.option('--filter', default='white', help='filter to use for the images'
               ' (drs only): white (default), Johnson_V, Cousins_R, Cousins_I')
 @click.option('--exp', multiple=True,
@@ -217,7 +217,7 @@ def compute_offsets(mr, dataset, method, filter, exp):
 
 @click.argument('dataset')
 @click.option('--method', default='drs',
-              help='method to use: drs (default) or imphot (not implemented)')
+              help='method to use: drs (default) or mpdaf (not implemented)')
 @click.pass_obj
 def exp_combine(mr, dataset, method):
     """Compute offsets between exposures."""

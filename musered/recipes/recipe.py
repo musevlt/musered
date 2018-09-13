@@ -323,6 +323,8 @@ class PythonRecipe:
         if 'output_dir' in kwargs:
             self.output_dir = kwargs['output_dir']
 
+        os.makedirs(self.output_dir, exist_ok=True)
+
         info('- Log file           : %s', self.log_file)
         info('- Output directory   : %s', self.output_dir)
         info('- Non-default params :')

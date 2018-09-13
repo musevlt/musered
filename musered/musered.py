@@ -629,10 +629,15 @@ class MuseRed(Reporter):
     def exp_combine(self, dataset, method='drs', name=None, **kwargs):
         """Combine exposures."""
 
+        recipe_conf = self._get_recipe_conf('muse_exp_combine')
+        from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
+        method = recipe_conf.get('method', method)
+
         if method == 'drs':
             recipe_cls = recipe_classes['muse_exp_combine']
         elif method == 'mpdaf':
-            raise NotImplementedError
+            recipe_cls = recipe_classes['mpdaf_combine']
+            kwargs.setdefault('params_name', 'muse_exp_combine')
         else:
             raise ValueError(f'unknown method {method}')
 
@@ -641,7 +646,8 @@ class MuseRed(Reporter):
 
         # get the list of dates to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE)]
+                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                            recipe_name=from_recipe)]
 
         self.run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 

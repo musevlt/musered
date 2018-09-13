@@ -116,10 +116,15 @@ recipes:
       save: 'cube,skymodel,individual,raman,autocal'
 
   muse_exp_align:
+    # by default a recipe finds frames using only DPR.TYPE. But if several
+    # recipes were run a produced the same type of file, this allows to specify
+    # the recipe from which files are used.
     from_recipe: muse_scipost
+
     # these are the default values, using the drs method
-    method: drs
-    filt: white
+    # method: drs
+    # filt: white
+
     # and this is using imphot:
     method: imphot
     params:
@@ -130,12 +135,30 @@ recipes:
 
   muse_scipost_make_cube:
     # scipost using offsets to produce recentered cubes
+
+    # OFFSET_LIST can be set either with a string OFFSET_LIST_[method], where
+    # method is the one used in muse_exp_align, or directly with a filename
     # OFFSET_LIST: OFFSET_LIST_drs
     OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+
+    # The OUTPUT_WCS used here was computed by running first muse_exp_combine
+    # with method: drs (it is the datacube combined with the DRS).
+    OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/drs/DATACUBE_FINAL.fits'
+
     from_recipe: muse_scipost
     init:
       output_dir: 'scipost_centered'
 
   muse_exp_combine:
+    from_recipe: muse_scipost_make_cube
+
+    # default is to use the drs method, where one can specify an OFFSET_LIST
+    # frame (see above)
+    # method: drs
     # OFFSET_LIST: drs
-    OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+    # OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+
+    method: mpdaf
+    params:
+      method: sigclip
+      version: 0.1
