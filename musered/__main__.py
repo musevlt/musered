@@ -69,7 +69,8 @@ def cli(ctx, loglevel, settings, pdb, debug):
         sys.excepthook = run_pdb
 
 
-@click.option('--force', is_flag=True, help='force update for existing rows')
+@click.option('-f', '--force', is_flag=True,
+              help='force update for existing rows')
 @click.pass_obj
 def update_db(mr, force):
     """Create or update the database containing FITS keywords."""
@@ -128,7 +129,7 @@ def clean(mr, recipe_name, date, keep_files):
 
 
 @click.argument('night', nargs=-1)
-@click.option('--force', is_flag=True, help='force re-processing nights')
+@click.option('-f', '--force', is_flag=True, help='force re-processing nights')
 @click.option('--bias', is_flag=True, help='run muse_bias')
 @click.option('--dark', is_flag=True, help='run muse_dark')
 @click.option('--flat', is_flag=True, help='run muse_flat')
@@ -158,7 +159,8 @@ def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
 
 
 @click.argument('exp', nargs=-1)
-@click.option('--force', is_flag=True, help='force re-processing exposures')
+@click.option('-f', '--force', is_flag=True,
+              help='force re-processing exposures')
 @click.option('--scibasic', is_flag=True, help='run muse_scibasic')
 @click.option('--standard', is_flag=True, help='run muse_standard')
 @click.option('--scipost', is_flag=True, help='run muse_scipost')
