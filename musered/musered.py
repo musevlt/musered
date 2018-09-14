@@ -48,6 +48,7 @@ class MuseRed(Reporter):
         self.db = load_db(self.conf['db'])
         self.raw = self.db.create_table('raw')
         self.reduced = self.db.create_table('reduced')
+        self.qa = self.db.create_table('qa_exposures')
 
         self.rawc = self.raw.table.c
         self.redc = self.reduced.table.c
@@ -124,6 +125,8 @@ class MuseRed(Reporter):
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
+
+        # Get the list of FITS files in the raw directory
         flist = []
         for root, dirs, files in os.walk(self.raw_path):
             if root.endswith('.cache'):
@@ -135,15 +138,17 @@ class MuseRed(Reporter):
                     flist.append(join(root, f))
         self.logger.info('found %d FITS files', len(flist))
 
-        # get the list of files already in the database
+        # Get the list of files already in the database
         try:
             arcf = self.select_column('ARCFILE')
         except Exception:
             arcf = []
 
+        # Parse FITS headers to get the keyword values
         rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf,
                                          runs=self.conf.get('runs'))
 
+        # Insert or update lines in the raw table
         if force:
             self.raw.delete()
             self.raw.insert_many(rows)
@@ -152,9 +157,14 @@ class MuseRed(Reporter):
             self.raw.insert_many(rows)
             self.logger.info('inserted %d rows, skipped %d', len(rows), nskip)
 
-        # cleanup cached attributes
-        del self.nights
+        # Cleanup cached attributes
+        del self.nights, self.runs, self.exposures
 
+        # Insert exposure names in the qa table
+        for exp in self.raw.find(DPR_TYPE='OBJECT'):
+            self.qa.upsert(dict(name=exp['name']), ['name'])
+
+        # Create indexes if needed
         for name in ('night', 'name', 'DATE_OBS', 'DPR_TYPE'):
             if not self.raw.has_index([name]):
                 self.raw.create_index([name])
