@@ -20,7 +20,7 @@ from .reporter import Reporter
 from .static_calib import StaticCalib
 from .utils import (load_yaml_config, load_db, load_table, parse_date,
                     parse_raw_keywords, parse_qc_keywords, ProgressBar,
-                    normalize_recipe_name)
+                    normalize_recipe_name, parse_gto_db)
 
 
 class MuseRed(Reporter):
@@ -174,6 +174,10 @@ class MuseRed(Reporter):
                 for name in ('name', 'DATE_OBS', 'DPR_TYPE'):
                     if not reduced.has_index([name]):
                         reduced.create_index([name])
+
+        # GTO logs
+        if 'GTO_logs' in self.conf:
+            parse_gto_db(self.db, self.conf['GTO_logs']['db'])
 
         # Cleanup cached attributes
         del self.nights, self.runs, self.exposures

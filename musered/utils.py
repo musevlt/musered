@@ -240,3 +240,47 @@ def ProgressBar(*args, **kwargs):
     from tqdm import tqdm, tqdm_notebook
     func = tqdm_notebook if isnotebook() else tqdm
     return func(*args, **kwargs)
+
+
+def parse_gto_db(musered_db, gto_dblist):
+    ranks = {2: 'A', 3: 'B', 4: 'C', 5: 'D', 6: 'X', 7: 'a', 8: 'b'}
+    exps = list(musered_db['raw'].find(DPR_TYPE='OBJECT'))
+    OBstart = [exp['OBS_START'] for exp in exps]
+    arcf = [exp['ARCFILE'] for exp in exps]
+
+    flags, comments, fcomments = {}, {}, {}
+    for f in gto_dblist:
+        db = load_db(f)
+        flags.update({r['OBstart']: r
+                      for r in db['OBflags'].find(OBstart=OBstart)})
+        comments.update({r['OBstart']: r
+                         for r in db['OBcomments'].find(OBstart=OBstart)})
+        fcomments.update({r['arcfile']: r
+                          for r in db['fcomments'].find(arcfile=arcf)})
+
+    rows = []
+    for exp in exps:
+        comm = comments.get(exp['OBS_START'], {})
+        fcomm = fcomments.get(exp['ARCFILE'], {})
+        flag = flags.get(exp['OBS_START'], {})
+        rows.append({
+            'name': exp['name'],
+            'ARCFILE': exp['ARCFILE'],
+            'OBS_START': exp['OBS_START'],
+            'version': '0',
+            'flag': ranks.get(flag.get('flag'), ''),
+            'comment': comm.get('comment', ''),
+            'date': comm.get('date', ''),
+            'author': comm.get('author', ''),
+            'fcomment': fcomm.get('comment', ''),
+            'fdate': fcomm.get('date', ''),
+            'fauthor': fcomm.get('author', '')
+        })
+
+    with musered_db as tx:
+        table = tx['gto_logs']
+        table.drop()
+        table.insert_many(rows)
+        table.create_index(['name', 'OBstart', 'flag', 'version'])
+
+    return table
