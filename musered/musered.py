@@ -148,31 +148,35 @@ class MuseRed(Reporter):
         rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf,
                                          runs=self.conf.get('runs'))
 
-        # Insert or update lines in the raw table
-        if force:
-            self.raw.delete()
-            self.raw.insert_many(rows)
-            self.logger.info('updated %d rows', len(rows))
-        else:
-            self.raw.insert_many(rows)
-            self.logger.info('inserted %d rows, skipped %d', len(rows), nskip)
+        with self.db as tx:
+            raw, reduced, qa = tx['raw'], tx['reduced'], tx['qa_exposures']
+
+            # Insert or update lines in the raw table
+            if force:
+                raw.delete()
+                raw.insert_many(rows)
+                self.logger.info('updated %d rows', len(rows))
+            else:
+                raw.insert_many(rows)
+                self.logger.info('inserted %d rows, skipped %d',
+                                 len(rows), nskip)
+
+            # Insert exposure names in the qa table
+            for exp in raw.find(DPR_TYPE='OBJECT'):
+                qa.upsert(dict(name=exp['name']), ['name'])
+
+            # Create indexes if needed
+            for name in ('night', 'name', 'DATE_OBS', 'DPR_TYPE'):
+                if not raw.has_index([name]):
+                    raw.create_index([name])
+
+            if 'DATE_OBS' in reduced.columns:
+                for name in ('name', 'DATE_OBS', 'DPR_TYPE'):
+                    if not reduced.has_index([name]):
+                        reduced.create_index([name])
 
         # Cleanup cached attributes
         del self.nights, self.runs, self.exposures
-
-        # Insert exposure names in the qa table
-        for exp in self.raw.find(DPR_TYPE='OBJECT'):
-            self.qa.upsert(dict(name=exp['name']), ['name'])
-
-        # Create indexes if needed
-        for name in ('night', 'name', 'DATE_OBS', 'DPR_TYPE'):
-            if not self.raw.has_index([name]):
-                self.raw.create_index([name])
-
-        if 'DATE_OBS' in self.reduced.columns:
-            for name in ('name', 'DATE_OBS', 'DPR_TYPE'):
-                if not self.reduced.has_index([name]):
-                    self.reduced.create_index([name])
 
     def update_qc(self, dpr_types=None, recipe_name=None):
         """Create or update the tables containing QC keywords."""
