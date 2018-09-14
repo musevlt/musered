@@ -1,4 +1,3 @@
-import cpl
 import datetime
 import fnmatch
 import inspect
@@ -13,11 +12,10 @@ from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
-from mpdaf.log import setup_logging
 from os.path import join
 from sqlalchemy import sql
 
-from .recipes import recipe_classes
+from .recipes import recipe_classes, init_cpl_params
 from .reporter import Reporter
 from .static_calib import StaticCalib
 from .utils import (load_yaml_config, load_db, load_table, parse_date,
@@ -57,7 +55,16 @@ class MuseRed(Reporter):
 
         self.static_calib = StaticCalib(self.conf['muse_calib_path'],
                                         self.conf['static_calib'])
-        self.init_cpl_params()
+
+        # configure cpl
+        cpl_conf = self.conf['cpl']
+        cpl_conf.setdefault('log_dir', join(self.reduced_path, 'logs'))
+        init_cpl_params(**cpl_conf)
+
+        # default params for recipes
+        params = self.conf['recipes'].setdefault('common', {})
+        params.setdefault('log_dir', cpl_conf['log_dir'])
+        params.setdefault('temp_dir', join(self.reduced_path, 'tmp'))
 
     @lazyproperty
     def nights(self):
@@ -223,32 +230,6 @@ class MuseRed(Reporter):
             self.logger.info('Deleted %d exposures/nights', count)
         else:
             self.logger.info('Nothing to delete')
-
-    def init_cpl_params(self):
-        """Load esorex.rc settings and override with the settings file."""
-        conf = self.conf['cpl']
-        cpl.esorex.init()
-
-        if conf['recipe_path'] is not None:
-            cpl.Recipe.path = conf['recipe_path']
-        if conf['esorex_msg'] is not None:
-            cpl.esorex.log.level = conf['esorex_msg']  # file logging
-        if conf['esorex_msg_format'] is not None:
-            cpl.esorex.log.format = conf['esorex_msg_format']
-
-        conf.setdefault('log_dir', join(self.reduced_path, 'logs'))
-        os.makedirs(conf['log_dir'], exist_ok=True)
-
-        # terminal logging: disable cpl's logger as it uses the root logger.
-        cpl.esorex.msg.level = 'off'
-        default_fmt = '%(levelname)s - %(name)s: %(message)s'
-        setup_logging(name='cpl', level=conf.get('msg', 'info').upper(),
-                      color=True, fmt=conf.get('msg_format', default_fmt))
-
-        # default params for recipes
-        params = self.conf['recipes'].setdefault('common', {})
-        params.setdefault('log_dir', conf['log_dir'])
-        params.setdefault('temp_dir', join(self.reduced_path, 'tmp'))
 
     def find_calib(self, night, dpr_type, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""

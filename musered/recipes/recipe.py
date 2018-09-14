@@ -6,6 +6,29 @@ import os
 import shutil
 import time
 from astropy.io import fits
+from mpdaf.log import setup_logging
+
+__all__ = ('init_cpl_params', 'Recipe', 'PythonRecipe')
+
+
+def init_cpl_params(recipe_path=None, esorex_msg=None, esorex_msg_format=None,
+                    log_dir='.', msg='info',
+                    msg_format='%(levelname)s - %(name)s: %(message)s'):
+    """Load esorex.rc settings and override with the settings file."""
+    cpl.esorex.init()
+
+    if recipe_path is not None:
+        cpl.Recipe.path = recipe_path
+    if esorex_msg is not None:
+        cpl.esorex.log.level = esorex_msg  # file logging
+    if esorex_msg_format is not None:
+        cpl.esorex.log.format = esorex_msg_format
+
+    os.makedirs(log_dir, exist_ok=True)
+
+    # terminal logging: disable cpl's logger as it uses the root logger.
+    cpl.esorex.msg.level = 'off'
+    setup_logging(name='cpl', level=msg.upper(), color=True, fmt=msg_format)
 
 
 class Recipe:

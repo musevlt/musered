@@ -1,4 +1,4 @@
-from .recipe import Recipe
+from .recipe import *
 from .calib import *
 from .science import *
 from .calib import calib_classes
