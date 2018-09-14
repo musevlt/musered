@@ -1,5 +1,6 @@
 import cpl
 import datetime
+import fnmatch
 import inspect
 import itertools
 import logging
@@ -548,6 +549,8 @@ class MuseRed(Reporter):
                         date_list += d
                 elif date in alldates:
                     date_list.append(date)
+                elif '*' in date:
+                    date_list += fnmatch.filter(alldates, date)
                 else:
                     self.logger.warning('Date %s not found', date)
 
