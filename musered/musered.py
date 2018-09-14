@@ -423,11 +423,13 @@ class MuseRed(Reporter):
         log.info('Running %s for %d %ss', recipe_name, len(date_list), label)
 
         if skip:
-            processed = sorted(self.select_column(
+            date_set = set(date_list)
+            processed = set(self.select_column(
                 'name', table='reduced', distinct=True,
-                where=(self.redc.recipe_name == recipe_name)))
+                where=(self.redc.recipe_name == recipe_name))) & date_set
             log.debug('processed:\n%s', '\n'.join(processed))
-            if len(processed) == len(date_list):
+
+            if processed == date_set:
                 log.info('Already processed, nothing to do')
                 return
             elif len(processed) > 0:
