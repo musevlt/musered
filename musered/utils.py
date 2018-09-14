@@ -110,15 +110,17 @@ def normalize_recipe_name(recipe_name):
         recipe_name = 'muse_' + recipe_name
     return recipe_name
 
-def parse_raw_keywords(flist, force=False, processed=None):
+
+def parse_raw_keywords(flist, force=False, processed=None, runs=None):
+    logger = logging.getLogger(__name__)
+
     nskip = 0
     rows = []
+    runs = runs or {}
     processed = processed or []
 
     keywords = [k.split('/')[0].strip()
                 for k in RAW_FITS_KEYWORDS.splitlines() if k]
-
-    logger = logging.getLogger(__name__)
 
     for f in ProgressBar(flist):
         with open(f, mode='rb') as fd:
@@ -138,11 +140,16 @@ def parse_raw_keywords(flist, force=False, processed=None):
 
         if 'DATE-OBS' in hdr:
             date = parse_datetime(hdr['DATE-OBS'])
-            row['night'] = date.date()
+            night = date.date()
             # Same as MuseWise
             if date.time() < NOON:
-                row['night'] -= ONEDAY
-            row['night'] = row['night'].isoformat()
+                night -= ONEDAY
+            row['night'] = night.isoformat()
+
+            for run_name, run in runs.items():
+                if run['start_date'] < night < run['end_date']:
+                    row['run'] = run_name
+                    break
         else:
             row['night'] = None
 

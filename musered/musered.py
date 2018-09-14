@@ -96,12 +96,12 @@ class MuseRed(Reporter):
         return load_table(self.db, name)
 
     def select_column(self, name, notnull=True, distinct=False,
-                      whereclause=None, table='raw'):
+                      where=None, table='raw'):
         """Select values from a column of the database."""
         col = self.db[table].table.c[name]
         wc = col.isnot(None) if notnull else None
-        if whereclause is not None:
-            wc = sql.and_(whereclause, wc)
+        if where is not None:
+            wc = sql.and_(where, wc)
         select = sql.select([col], whereclause=wc)
         if distinct:
             select = select.distinct(col)
@@ -111,9 +111,8 @@ class MuseRed(Reporter):
         """Select the list of dates to process."""
         tbl = self.raw if table == 'raw' else self.reduced
         wc = (tbl.table.c.DPR_TYPE == dpr_type)
-        explist = self.select_column(column, whereclause=wc, table=table,
-                                     **kwargs)
-        return list(sorted(explist))
+        dates = self.select_column(column, where=wc, table=table, **kwargs)
+        return list(sorted(dates))
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
@@ -134,19 +133,8 @@ class MuseRed(Reporter):
         except Exception:
             arcf = []
 
-        rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf)
-
-        runs = self.conf.get('runs', [])
-        for row in rows:
-            try:
-                dateobj = parse_date(row['night'])
-            except Exception:
-                continue
-
-            for run_name, run in runs.items():
-                if run['start_date'] < dateobj < run['end_date']:
-                    row['run'] = run_name
-                    break
+        rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf,
+                                         runs=self.conf.get('runs'))
 
         if force:
             self.raw.delete()
@@ -175,7 +163,7 @@ class MuseRed(Reporter):
             # select all types for a given recipe
             dpr_types = self.select_column(
                 'DPR_TYPE', table='reduced', distinct=True,
-                whereclause=(self.redc.recipe_name == recipe_name))
+                where=(self.redc.recipe_name == recipe_name))
         elif not dpr_types:
             # select all types
             dpr_types = self.select_column('DPR_TYPE', table='reduced',
@@ -431,16 +419,14 @@ class MuseRed(Reporter):
             datecol = 'DATE_OBS'
             namecol = 'name'
 
-        date_list.sort()
         log = self.logger
         log.info('Running %s for %d %ss', recipe_name, len(date_list), label)
-        log.debug(f'{label}s: ' + ', '.join(map(str, date_list)))
 
         if skip:
-            processed = self.select_column(
+            processed = sorted(self.select_column(
                 'name', table='reduced', distinct=True,
-                whereclause=(self.redc.recipe_name == recipe_name))
-            log.debug('processed: ' + ', '.join(map(str, sorted(processed))))
+                where=(self.redc.recipe_name == recipe_name)))
+            log.debug('processed:\n%s', '\n'.join(processed))
             if len(processed) == len(date_list):
                 log.info('Already processed, nothing to do')
                 return
@@ -537,38 +523,69 @@ class MuseRed(Reporter):
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
                            name=name, OBJECT=OBJECT, recipe_name=recipe_name)
 
-    def process_calib(self, recipe_name, night_list=None, skip=False,
+    def _prepare_dates(self, dates, DPR_TYPE, datecol):
+        """Compute the list of dates (nights, exposures) to process."""
+
+        alldates = self.select_dates(DPR_TYPE, column=datecol, distinct=True)
+
+        if dates is None:
+            date_list = alldates
+        else:
+            if isinstance(dates, str):
+                dates = [dates]
+
+            date_list = []
+            for date in dates:
+                if date in self.runs:
+                    d = self.select_column(
+                        datecol, distinct=True,
+                        where=sql.and_(self.rawc.run == date,
+                                       self.rawc.DPR_TYPE == DPR_TYPE)
+                    )
+                    if d:
+                        date_list += d
+                elif date in alldates:
+                    date_list.append(date)
+                else:
+                    self.logger.warning('Date %s not found', date)
+
+        if date_list:
+            date_list.sort()
+            self.logger.debug('Selected dates:\n%s', '\n'.join(date_list))
+        else:
+            self.logger.warning('No valid date found')
+
+        return date_list
+
+    def process_calib(self, recipe_name, dates=None, skip=False,
                       **kwargs):
         """Run a calibration recipe."""
 
         recipe_cls = recipe_classes[normalize_recipe_name(recipe_name)]
 
         # get the list of nights to process
-        if night_list is None:
-            night_list = self.select_dates(recipe_cls.DPR_TYPE, column='night',
-                                           distinct=True)
+        dates = self._prepare_dates(dates, recipe_cls.DPR_TYPE, 'night')
 
-        self._run_recipe_loop(recipe_cls, night_list, calib=True, skip=skip,
+        self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
                               **kwargs)
 
-    def process_exp(self, recipe_name, explist=None, dataset=None, skip=False,
+    def process_exp(self, recipe_name, dates=None, dataset=None, skip=False,
                     **kwargs):
         """Run a science recipe."""
 
         # get the list of dates to process
-        if explist is None:
-            if dataset:
-                explist = self.exposures[dataset]
-            else:
-                explist = list(itertools.chain(*self.exposures.values()))
+        if dates is None and dataset:
+            dates = self.exposures[dataset]
+        else:
+            dates = self._prepare_dates(dates, 'OBJECT', 'name')
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_cls = recipe_classes[recipe_name]
         use_reduced = recipe_name not in ('muse_scibasic', )
-        self._run_recipe_loop(recipe_cls, explist, skip=skip,
+        self._run_recipe_loop(recipe_cls, dates, skip=skip,
                               use_reduced=use_reduced, **kwargs)
 
-    def process_standard(self, explist=None, skip=False, **kwargs):
+    def process_standard(self, dates=None, skip=False, **kwargs):
         """Reduce a standard exposure, running both muse_scibasic and
         muse_standard.
         """
@@ -576,16 +593,15 @@ class MuseRed(Reporter):
         recipe_std = recipe_classes['muse_standard']
 
         # get the list of dates to process
-        if explist is None:
-            explist = self.select_dates('STD', column='name')
+        dates = self._prepare_dates(dates, 'STD', 'name')
 
         # run muse_scibasic with specific parameters (tag: STD)
         recipe_kw = {'tag': 'STD', 'output_dir': recipe_std.output_dir}
-        self._run_recipe_loop(recipe_sci, explist, skip=skip,
+        self._run_recipe_loop(recipe_sci, dates, skip=skip,
                               recipe_kwargs=recipe_kw, **kwargs)
 
         # run muse_standard
-        self._run_recipe_loop(recipe_std, explist, skip=skip, use_reduced=True,
+        self._run_recipe_loop(recipe_std, dates, skip=skip, use_reduced=True,
                               **kwargs)
 
     def compute_offsets(self, dataset, method='drs', filt='white',

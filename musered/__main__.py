@@ -128,7 +128,7 @@ def clean(mr, recipe_name, date, keep_files):
     mr.clean(recipe_name, date_list=date, remove_files=not keep_files)
 
 
-@click.argument('night', nargs=-1)
+@click.argument('date', nargs=-1)
 @click.option('-f', '--force', is_flag=True, help='force re-processing nights')
 @click.option('--bias', is_flag=True, help='run muse_bias')
 @click.option('--dark', is_flag=True, help='run muse_dark')
@@ -137,15 +137,15 @@ def clean(mr, recipe_name, date, keep_files):
 @click.option('--lsf', is_flag=True, help='run muse_lsf')
 @click.option('--twilight', is_flag=True, help='run muse_twilight')
 @click.pass_obj
-def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
+def process_calib(mr, date, force, bias, dark, flat, wavecal, lsf, twilight):
     """Process calibrations (bias, dark, flat, etc.) for given nights.
 
     By default, process calibrations for all nights, and all types except dark.
     Already processed calibrations are skipped unless using ``--force``.
 
     """
-    if len(night) == 0:
-        night = None
+    if len(date) == 0:
+        date = None
 
     skip = not force
     # if no option was given, run all steps
@@ -153,12 +153,12 @@ def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
 
     for step in ('bias', 'dark', 'flat', 'wavecal', 'lsf', 'twilight'):
         if force:
-            mr.clean(f'muse_{step}', date_list=night, remove_files=False)
+            mr.clean(f'muse_{step}', date_list=date, remove_files=False)
         if locals()[step] or (step != 'dark' and run_all):
-            mr.process_calib(step, night_list=night, skip=skip)
+            mr.process_calib(step, dates=date, skip=skip)
 
 
-@click.argument('exp', nargs=-1)
+@click.argument('date', nargs=-1)
 @click.option('-f', '--force', is_flag=True,
               help='force re-processing exposures')
 @click.option('--scibasic', is_flag=True, help='run muse_scibasic')
@@ -168,7 +168,7 @@ def process_calib(mr, night, force, bias, dark, flat, wavecal, lsf, twilight):
 @click.option('--params', help='name of the parameters block')
 @click.option('--dataset', help='process exposures for a given dataset')
 @click.pass_obj
-def process_exp(mr, exp, force, scibasic, standard, scipost, makecube, params,
+def process_exp(mr, date, force, scibasic, standard, scipost, makecube, params,
                 dataset):
     """Run recipes for science exposures.
 
@@ -176,30 +176,30 @@ def process_exp(mr, exp, force, scibasic, standard, scipost, makecube, params,
     Already processed exposures are skipped unless using ``--force``.
 
     """
-    if len(exp) == 0:
-        exp = None
+    if len(date) == 0:
+        date = None
 
-    kwargs = dict(explist=exp, skip=not force, params_name=params)
+    kwargs = dict(dates=date, skip=not force, params_name=params)
     run_all = not any([scibasic, standard, scipost, makecube])
 
     if scibasic or run_all:
         # if force:
-        #     mr.clean('scibasic', date_list=exp, remove_files=False)
+        #     mr.clean('scibasic', date_list=date, remove_files=False)
         mr.process_exp('scibasic', dataset=dataset, **kwargs)
 
     if standard or run_all:
         # if force:
-        #     mr.clean('standard', date_list=exp, remove_files=False)
+        #     mr.clean('standard', date_list=date, remove_files=False)
         mr.process_standard(**kwargs)
 
     if scipost or run_all:
         # if force:
-        #     mr.clean('scipost', date_list=exp, remove_files=False)
+        #     mr.clean('scipost', date_list=date, remove_files=False)
         mr.process_exp('scipost', dataset=dataset, **kwargs)
 
     if makecube:
         # if force:
-        #     mr.clean('scipost_make_cube', date_list=exp, remove_files=False)
+        #     mr.clean('scipost_make_cube', date_list=date, remove_files=False)
         mr.process_exp('scipost_make_cube', dataset=dataset, **kwargs)
 
 
@@ -208,13 +208,13 @@ def process_exp(mr, exp, force, scibasic, standard, scipost, makecube, params,
               help='method to use: drs (default) or imphot')
 @click.option('--filter', default='white', help='filter to use for the images'
               ' (drs only): white (default), Johnson_V, Cousins_R, Cousins_I')
-@click.option('--exp', multiple=True,
+@click.option('--date', multiple=True,
               help='exposure to process, by default all exposures are used')
 @click.pass_obj
-def compute_offsets(mr, dataset, method, filter, exp):
+def compute_offsets(mr, dataset, method, filter, date):
     """Compute offsets between exposures."""
     mr.compute_offsets(dataset, method=method, filt=filter, name=None,
-                       exps=exp)
+                       exps=date)
 
 
 @click.argument('dataset')
