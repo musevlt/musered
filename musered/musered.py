@@ -177,6 +177,7 @@ class MuseRed(Reporter):
 
         # GTO logs
         if 'GTO_logs' in self.conf:
+            self.logger.info('Importing GTO logs')
             parse_gto_db(self.db, self.conf['GTO_logs']['db'])
 
         # Cleanup cached attributes

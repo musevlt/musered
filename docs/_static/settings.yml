@@ -48,6 +48,11 @@ runs:
     start_date: 2018-05-01
     end_date: 2018-07-01
 
+# GTO-only: import databases with comments and flags added by observers
+GTO_logs:
+  db:
+    - "{workdir}/db_logs/GTO-17-P99.db"
+
 # Static calibrations.
 # By default files from the muse_calib_path directory are used, but it is also
 # possible here to specify date ranges of validity for specific calibrations.
