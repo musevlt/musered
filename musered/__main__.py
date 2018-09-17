@@ -7,6 +7,7 @@ import yaml
 
 from .musered import MuseRed
 from .scripts.retrieve_data import retrieve_data
+from .scripts.shell import shell
 from .version import __version__
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -227,7 +228,7 @@ def exp_combine(mr, dataset, method):
 
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
-            process_exp, compute_offsets, exp_combine):
+            process_exp, compute_offsets, exp_combine, shell):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
 # loading plugins
