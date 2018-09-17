@@ -1,7 +1,6 @@
 import datetime
 import fnmatch
 import inspect
-import itertools
 import logging
 import numpy as np
 import operator
@@ -17,10 +16,10 @@ from sqlalchemy import sql
 
 from .recipes import recipe_classes, init_cpl_params
 from .reporter import Reporter
-from .static_calib import StaticCalib
-from .utils import (load_yaml_config, load_db, load_table, parse_date,
-                    parse_raw_keywords, parse_qc_keywords, ProgressBar,
-                    normalize_recipe_name, parse_gto_db)
+from .calib import CalibFinder
+from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
+                    parse_qc_keywords, ProgressBar, normalize_recipe_name,
+                    parse_gto_db)
 
 
 class MuseRed(Reporter):
@@ -54,8 +53,8 @@ class MuseRed(Reporter):
         self.redc = self.reduced.table.c
         self.execute = self.db.executable.execute
 
-        self.static_calib = StaticCalib(self.conf['muse_calib_path'],
-                                        self.conf['static_calib'])
+        self.calib = CalibFinder(self.reduced, self.conf['muse_calib_path'],
+                                 self.conf['static_calib'])
 
         # configure cpl
         cpl_conf = self.conf['cpl']
@@ -250,67 +249,6 @@ class MuseRed(Reporter):
         else:
             self.logger.info('Nothing to delete')
 
-    def find_calib(self, night, dpr_type, ins_mode, day_off=None):
-        """Return calibration files for a given night, type, and mode."""
-        res = self.reduced.find_one(night=night, INS_MODE=ins_mode,
-                                    DPR_TYPE=dpr_type)
-
-        if res is None and day_off is not None:
-            if isinstance(night, str):
-                night = parse_date(night)
-            for off, direction in itertools.product(range(1, day_off + 1),
-                                                    (1, -1)):
-                off = datetime.timedelta(days=off * direction)
-                res = self.reduced.find_one(night=(night + off).isoformat(),
-                                            INS_MODE=ins_mode,
-                                            DPR_TYPE=dpr_type)
-                if res is not None:
-                    self.logger.warning('Using %s from night %s',
-                                        dpr_type, night + off)
-                    break
-
-        if res is None:
-            raise ValueError(f'could not find {dpr_type} for night {night}')
-
-        flist = sorted(glob(f"{res['path']}/{dpr_type}*.fits"))
-        if len(flist) not in (1, 24):
-            raise ValueError(f'found {len(flist)} {dpr_type} files '
-                             f'instead of (1, 24)')
-        return flist
-
-    def get_calib_frames(self, recipe, night, ins_mode, frames=None):
-        """Return a dict with all calibration frames for a recipe."""
-
-        framedict = {}
-
-        # Build the list of frames that must be found for the recipe
-        frameset = set(recipe.calib_frames)
-        # Remove frames excluded by default
-        frameset.difference_update(recipe.exclude_frames)
-        if frames is not None:
-            for key, val in frames.items():
-                if key == 'exclude':  # Remove frames to exclude
-                    frameset.difference_update(val)
-                elif key == 'include':  # Add frames to include
-                    frameset.update(val)
-                else:  # Otherwise add frame directly to the framedict
-                    framedict[key] = val
-        self.logger.info('Using frames: %s', frameset)
-
-        # FIXME: find better way to manage day_offsets ?
-        day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5,
-                       'TWILIGHT_CUBE': 3}
-
-        for frame in frameset:
-            if frame in self.static_calib.STATIC_FRAMES:
-                framedict[frame] = self.static_calib.get(frame, date=night)
-            else:
-                day_off = day_offsets.get(frame, 1)
-                framedict[frame] = self.find_calib(night, frame, ins_mode,
-                                                   day_off=day_off)
-
-        return framedict
-
     def get_additional_frames(self, recipe, recipe_name, OBJECT=None):
         """Return a dict with additional frames."""
 
@@ -332,7 +270,7 @@ class MuseRed(Reporter):
             self.logger.info('Using OUTPUT_WCS: %s', frames['OUTPUT_WCS'])
 
         if 'FILTER_LIST' in recipe.calib:
-            frames['FILTER_LIST'] = self.static_calib.get('FILTER_LIST')
+            frames['FILTER_LIST'] = self.calib.get_static('FILTER_LIST')
 
         return frames
 
@@ -480,7 +418,7 @@ class MuseRed(Reporter):
             else:
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
-            kwargs.update(self.get_calib_frames(
+            kwargs.update(self.calib.get_frames(
                 recipe, night, ins_mode, frames=recipe_conf.get('frames')))
             kwargs.update(self.get_additional_frames(recipe, recipe_name,
                                                      OBJECT=res[0]['OBJECT']))
