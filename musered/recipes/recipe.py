@@ -129,6 +129,7 @@ class Recipe:
 
         self.param = self._recipe.param
         self.calib = self._recipe.calib
+        self.raw = {}
 
         if self.env is not None:
             self._recipe.env.update(self.env)
@@ -162,21 +163,26 @@ class Recipe:
                           'PIXTABLE_COMBINED'] + frames
         return frames
 
-    def dump_params(self):
+    def dump_params(self, json_col=False):
         """Dump non-default parameters to a JSON string."""
         params = {p.name: p.value for p in self.param if p.value is not None}
-        return json.dumps(params)
+        return json.dumps(params) if json_col else params
 
-    def dump(self):
+    def dump(self, include_files=False, json_col=False):
         """Dump recipe results, stats, parameters in a dict."""
-        return {
+        info = {
             'tottime': self.timeit,
             'user_time': self.results.stat.user_time,
             'sys_time': self.results.stat.sys_time,
             'nbwarn': self.nbwarn,
             'log_file': self.log_file,
-            'params': self.dump_params(),
+            'params': self.dump_params(json_col=json_col),
         }
+        if include_files:
+            calib = dict(self.calib)
+            info['raw'] = json.dumps(self.raw) if json_col else self.raw
+            info['calib'] = json.dumps(calib) if json_col else calib
+        return info
 
     def _write_fits(self, name_or_hdulist, filename):
         if type(name_or_hdulist) is list:
@@ -259,11 +265,11 @@ class Recipe:
             except KeyError:
                 pass
 
-        raw = {self._recipe.tag: flist}
+        self.raw = {self._recipe.tag: flist}
         if self.use_illum and kwargs.get('illum'):
-            raw['ILLUM'] = kwargs.pop('illum')
+            self.raw['ILLUM'] = kwargs.pop('illum')
 
-        results = self._run(raw, *args, **kwargs)
+        results = self._run(self.raw, *args, **kwargs)
 
         if self._recipe.output_dir is None:
             self.save_results(results, name=name)
@@ -309,7 +315,7 @@ class PythonRecipe:
         elif self.output_dir is None:
             self.output_dir = self.output_frames[0]
 
-    def dump(self):
+    def dump(self, include_files=False):
         """Dump recipe results, stats, parameters in a dict."""
         return {
             'tottime': self.timeit,

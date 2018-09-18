@@ -1,6 +1,7 @@
 import datetime
 import fnmatch
 import inspect
+import json
 import logging
 import numpy as np
 import operator
@@ -234,6 +235,12 @@ class MuseRed(Reporter):
         if date_list:
             if isinstance(date_list, str):
                 date_list = [date_list]
+            elif isinstance(date_list, (list, tuple)):
+                if len(date_list) > 1:
+                    raise ValueError('FIXME: this method works only with '
+                                     'one date')
+                else:
+                    date_list = date_list[0]
             kwargs['name'] = date_list
 
         count = len(list(self.reduced.distinct('name', **kwargs)))
@@ -609,24 +616,34 @@ class MuseRed(Reporter):
 
     def _save_reduced(self, recipe, keys, DPR_CATG='SCIENCE',
                       recipe_name=None, **kwargs):
-        """Save info in database for each output frame, but check before that
-        files were created for each frame (some are optional).
+        """Save info about reduced data.
+
+        - A JSON file is saved in the output directory, with all information
+          including the complete list of calibration and input files.
+        - For each output frame, the same information are saved except the
+          calibration and input files, and after checking that files were
+          created for each frame (some are optional).
+
         """
         date_run = datetime.datetime.now().isoformat()
         recipe_name = recipe_name or recipe.recipe_name
+        info = {
+            'date_run': date_run,
+            'recipe_name': recipe_name,
+            'path': recipe.output_dir,
+            'DPR_CATG': DPR_CATG,
+            **kwargs,
+        }
+
+        with open(f'{recipe.output_dir}/recipe.json', mode='w') as f:
+            json.dump({**info, **recipe.dump(include_files=True)}, f, indent=4)
+
         out_frames = []
         for out_frame in recipe.output_frames:
-            if any(iglob(f"{recipe.output_dir}/{out_frame}*.fits")):
+            if any(iglob(f'{recipe.output_dir}/{out_frame}*.fits')):
                 out_frames.append(out_frame)
-                self.reduced.upsert({
-                    'date_run': date_run,
-                    'recipe_name': recipe_name,
-                    'path': recipe.output_dir,
-                    'DPR_TYPE': out_frame,
-                    'DPR_CATG': DPR_CATG,
-                    **kwargs,
-                    **recipe.dump()
-                }, keys)
+                self.reduced.upsert({'DPR_TYPE': out_frame, **info,
+                                     **recipe.dump(json_col=True)}, keys)
 
         if len(out_frames) == 0:
             raise RuntimeError('could not find output files')

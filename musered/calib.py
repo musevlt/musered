@@ -137,18 +137,26 @@ class CalibFinder:
             (OFFSET_LIST, OUTPUT_WCS).
 
         """
+        debug = self.logger.debug
+        debug('Building the calibration frames dict')
+
         # Build the list of frames that must be found for the recipe
         frameset = set(recipe.calib_frames)
+        debug('- calib frames: %s', frameset)
+
         # Remove frames excluded by default
         frameset.difference_update(recipe.exclude_frames)
+        debug('- excluded frames: %s', recipe.exclude_frames)
 
         frames_conf = recipe_conf.get('frames', {}) if recipe_conf else {}
         for key, val in frames_conf.items():
             if isinstance(val, str):
                 val = [val]
             if key == 'exclude':  # Remove frames to exclude
+                debug('- exclude: %s', val)
                 frameset.difference_update(val)
             elif key == 'include':  # Add frames to include
+                debug('- include: %s', val)
                 frameset.update(val)
 
         # Define day offsets, with default values that can be overloaded in
@@ -161,6 +169,7 @@ class CalibFinder:
             if frame in self.STATIC_FRAMES:
                 # Static frames
                 framedict[frame] = self.get_static(frame, date=night)
+                debug('- static: %s', framedict[frame])
 
             elif frame in ('OUTPUT_WCS', 'OFFSET_LIST'):
                 # Special handling for these optional frames
@@ -172,13 +181,12 @@ class CalibFinder:
                                                   name=offset_list)
                         offset_list = f"{off['path']}/OFFSET_LIST.fits"
 
-                    self.logger.info('Using OFFSET_LIST: %s', offset_list)
+                    debug('- OFFSET_LIST: %s', offset_list)
                     framedict['OFFSET_LIST'] = offset_list
 
                 if 'OUTPUT_WCS' in frames_conf:
                     framedict['OUTPUT_WCS'] = frames_conf['OUTPUT_WCS']
-                    self.logger.info('Using OUTPUT_WCS: %s',
-                                     framedict['OUTPUT_WCS'])
+                    debug('- OUTPUT_WCS: %s', framedict['OUTPUT_WCS'])
 
             elif frame in frames_conf:
                 # If path or glob pattern is specified in settings
@@ -187,6 +195,7 @@ class CalibFinder:
                     framedict[frame] = sorted(glob(val))
                 else:
                     framedict[frame] = sorted(glob(f"{val}/{frame}*.fits"))
+                debug('- from conf: %s', framedict[frame])
 
             else:
                 # Find frames in the database, for the given night, or using
@@ -196,6 +205,7 @@ class CalibFinder:
                 day_off = day_offsets.get(frame, 1)
                 framedict[frame] = self.find_calib(night, frame, ins_mode,
                                                    day_off=day_off)
+                debug('- from db: %s', framedict[frame])
 
-        self.logger.debug('Using frames: %s', framedict)
+        debug('Using frames: %s', framedict)
         return framedict
