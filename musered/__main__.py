@@ -148,15 +148,14 @@ def process_calib(mr, date, force, bias, dark, flat, wavecal, lsf, twilight):
     if len(date) == 0:
         date = None
 
-    skip = not force
     # if no option was given, run all steps
     run_all = not any([bias, dark, flat, wavecal, lsf, twilight])
 
     for step in ('bias', 'dark', 'flat', 'wavecal', 'lsf', 'twilight'):
-        if force:
-            mr.clean(f'muse_{step}', date_list=date, remove_files=False)
         if locals()[step] or (step != 'dark' and run_all):
-            mr.process_calib(step, dates=date, skip=skip)
+            if force:
+                mr.clean(f'muse_{step}', date_list=date, remove_files=False)
+            mr.process_calib(step, dates=date, skip=not force)
 
 
 @click.argument('date', nargs=-1)
