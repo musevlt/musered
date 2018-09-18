@@ -11,7 +11,7 @@ class SCIBASIC(ScienceRecipe):
     output_dir = 'scibasic'
     use_illum = True
     # Don't save the pre-processed CCD-based image
-    default_params = {'saveimage': False}
+    default_params = {'saveimage': False, 'merge': True}
 
 
 class STANDARD(ScienceRecipe):

@@ -214,8 +214,8 @@ class CalibFinder:
         info = self.logger.info
         for key, val in framedict.items():
             if isinstance(val, str):
-                info('- %12s : %s', key, val)
+                info('- %-18s : %s', key, val)
             else:
-                info('- %12s :', key)
+                info('- %-18s :', key)
                 for v in val:
                     info('  - %s', v)

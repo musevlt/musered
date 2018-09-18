@@ -169,10 +169,10 @@ class MuseRed(Reporter):
                 if not raw.has_index([name]):
                     raw.create_index([name])
 
-            if 'DATE_OBS' in reduced.columns:
-                for name in ('name', 'DATE_OBS', 'DPR_TYPE'):
-                    if not reduced.has_index([name]):
-                        reduced.create_index([name])
+            for name in ('recipe_name', 'name', 'DATE_OBS', 'DPR_TYPE'):
+                reduced.create_column_by_example(name, '')
+                if not reduced.has_index([name]):
+                    reduced.create_index([name])
 
         # GTO logs
         if 'GTO_logs' in self.conf:
@@ -342,11 +342,11 @@ class MuseRed(Reporter):
         ndates = len(date_list)
         log.info('Running %s for %d %ss', recipe_name, ndates, label)
 
-        if skip:
+        if skip and len(self.reduced) > 0:
             date_set = set(date_list)
-            processed = set(self.select_column(
-                'name', table='reduced', distinct=True,
-                where=(self.redc.recipe_name == recipe_name))) & date_set
+            processed = [o['name'] for o in
+                         self.reduced.find(recipe_name=recipe_name)]
+            processed = set(processed) & date_set
             log.debug('processed:\n%s', '\n'.join(processed))
 
             if processed == date_set:
@@ -354,6 +354,8 @@ class MuseRed(Reporter):
                 return
             elif len(processed) > 0:
                 log.info('%d %ss already processed', len(processed), label)
+        else:
+            processed = set()
 
         # Instantiate the recipe object
         recipe_conf = self._get_recipe_conf(recipe_name)
