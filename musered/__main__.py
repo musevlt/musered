@@ -131,6 +131,7 @@ def clean(mr, recipe_name, date, keep_files):
 
 @click.argument('date', nargs=-1)
 @click.option('-f', '--force', is_flag=True, help='force re-processing nights')
+@click.option('--dry-run', is_flag=True, help='do not run the recipe')
 @click.option('--bias', is_flag=True, help='run muse_bias')
 @click.option('--dark', is_flag=True, help='run muse_dark')
 @click.option('--flat', is_flag=True, help='run muse_flat')
@@ -138,7 +139,8 @@ def clean(mr, recipe_name, date, keep_files):
 @click.option('--lsf', is_flag=True, help='run muse_lsf')
 @click.option('--twilight', is_flag=True, help='run muse_twilight')
 @click.pass_obj
-def process_calib(mr, date, force, bias, dark, flat, wavecal, lsf, twilight):
+def process_calib(mr, date, force, dry_run, bias, dark, flat, wavecal, lsf,
+                  twilight):
     """Process calibrations (bias, dark, flat, etc.) for given nights.
 
     By default, process calibrations for all nights, and all types except dark.
@@ -155,12 +157,13 @@ def process_calib(mr, date, force, bias, dark, flat, wavecal, lsf, twilight):
         if locals()[step] or (step != 'dark' and run_all):
             if force:
                 mr.clean(f'muse_{step}', date_list=date, remove_files=False)
-            mr.process_calib(step, dates=date, skip=not force)
+            mr.process_calib(step, dates=date, skip=not force, dry_run=dry_run)
 
 
 @click.argument('date', nargs=-1)
 @click.option('-f', '--force', is_flag=True,
               help='force re-processing exposures')
+@click.option('--dry-run', is_flag=True, help='do not run the recipe')
 @click.option('--scibasic', is_flag=True, help='run muse_scibasic')
 @click.option('--standard', is_flag=True, help='run muse_standard')
 @click.option('--scipost', is_flag=True, help='run muse_scipost')
@@ -168,8 +171,8 @@ def process_calib(mr, date, force, bias, dark, flat, wavecal, lsf, twilight):
 @click.option('--params', help='name of the parameters block')
 @click.option('--dataset', help='process exposures for a given dataset')
 @click.pass_obj
-def process_exp(mr, date, force, scibasic, standard, scipost, makecube, params,
-                dataset):
+def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
+                makecube, params, dataset):
     """Run recipes for science exposures.
 
     By default, run scibasic, standard, and scipost, for all exposures.
@@ -179,7 +182,8 @@ def process_exp(mr, date, force, scibasic, standard, scipost, makecube, params,
     if len(date) == 0:
         date = None
 
-    kwargs = dict(dates=date, skip=not force, params_name=params)
+    kwargs = dict(dates=date, skip=not force, params_name=params,
+                  dry_run=dry_run)
     run_all = not any([scibasic, standard, scipost, makecube])
 
     if scibasic or run_all:

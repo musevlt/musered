@@ -302,7 +302,7 @@ class MuseRed(Reporter):
         return res[3]
 
     def _run_recipe_loop(self, recipe_cls, date_list, skip=False, calib=False,
-                         params_name=None, recipe_kwargs=None,
+                         params_name=None, recipe_kwargs=None, dry_run=False,
                          use_reduced=False, **kwargs):
         """Main method used to run a recipe on a list of exposures/nights.
 
@@ -363,7 +363,7 @@ class MuseRed(Reporter):
         output_dir = recipe.output_dir
 
         table = self.reduced if use_reduced else self.raw
-        for i, date in enumerate(date_list):
+        for i, date in enumerate(date_list, start=1):
             if skip and date in processed:
                 log.debug('%s already processed', date)
                 continue
@@ -407,6 +407,9 @@ class MuseRed(Reporter):
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
                 ref_date = np.mean([o['MJD_OBS'] for o in res])
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
+
+            if dry_run:
+                continue
 
             params = recipe_conf.get('params')
             recipe.run(flist, name=date, params=params, **kwargs)
@@ -635,8 +638,10 @@ class MuseRed(Reporter):
             **kwargs,
         }
 
-        with open(f'{recipe.output_dir}/recipe.json', mode='w') as f:
-            json.dump({**info, **recipe.dump(include_files=True)}, f, indent=4)
+        recipe_file = f'{recipe.output_dir}/recipe.json'
+        with open(recipe_file, mode='w') as f:
+            json.dump({**info, 'recipe_file': recipe_file,
+                       **recipe.dump(include_files=True)}, f, indent=4)
 
         out_frames = []
         for out_frame in recipe.output_frames:
