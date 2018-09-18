@@ -92,8 +92,8 @@ class MuseRed(Reporter):
             out[obj].append(name)
         return out
 
-    def set_loglevel(self, level):
-        logger = logging.getLogger('musered')
+    def set_loglevel(self, level, cpl=False):
+        logger = logging.getLogger('cpl' if cpl else 'musered')
         level = level.upper()
         logger.setLevel(level)
         logger.handlers[0].setLevel(level)
@@ -251,9 +251,8 @@ class MuseRed(Reporter):
                 shutil.rmtree(item['path'])
 
         if self.reduced.delete(**kwargs):
-            self.logger.info('Deleted %d exposures/nights', count)
-        else:
-            self.logger.info('Nothing to delete')
+            self.logger.info('Removed %d exposures/nights from the database',
+                             count)
 
     def find_illum(self, night, ref_temp, ref_mjd_date):
         """Find the best ILLUM exposure for the night.
@@ -340,7 +339,8 @@ class MuseRed(Reporter):
             namecol = 'name'
 
         log = self.logger
-        log.info('Running %s for %d %ss', recipe_name, len(date_list), label)
+        ndates = len(date_list)
+        log.info('Running %s for %d %ss', recipe_name, ndates, label)
 
         if skip:
             date_set = set(date_list)
@@ -390,7 +390,7 @@ class MuseRed(Reporter):
 
             night = res[0]['night']
             log.info('%d/%d - %s %s : %d %s file(s), mode=%s', i,
-                     len(date_list), label.capitalize(), date, len(flist),
+                     ndates, label.capitalize(), date, len(flist),
                      DPR_TYPE, ins_mode)
 
             if recipe.use_drs_output:
@@ -423,6 +423,9 @@ class MuseRed(Reporter):
                     'OBJECT': res[0]['OBJECT'],
                     'INS_MODE': ins_mode,
                 })
+
+            if ndates > 1:
+                log.info('===================================================')
 
     def _run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
                            params_name=None, **kwargs):
@@ -640,14 +643,14 @@ class MuseRed(Reporter):
 
         recipe_file = f'{recipe.output_dir}/recipe.json'
         with open(recipe_file, mode='w') as f:
-            json.dump({**info, 'recipe_file': recipe_file,
-                       **recipe.dump(include_files=True)}, f, indent=4)
+            json.dump({**info, **recipe.dump(include_files=True)}, f, indent=4)
 
         out_frames = []
         for out_frame in recipe.output_frames:
             if any(iglob(f'{recipe.output_dir}/{out_frame}*.fits')):
                 out_frames.append(out_frame)
                 self.reduced.upsert({'DPR_TYPE': out_frame, **info,
+                                     'recipe_file': recipe_file,
                                      **recipe.dump(json_col=True)}, keys)
 
         if len(out_frames) == 0:

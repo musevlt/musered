@@ -33,11 +33,9 @@ class HTMLFormatter:
         display(HTML(f'<h2>{text}</h2>'))
 
     def show_text(self, text):
-        from IPython.display import display, HTML
         display(HTML(f'<p>{text}</p>'))
 
     def show_table(self, t, **kwargs):
-        from IPython.display import display, HTML
         kwargs.setdefault('max_width', -1)
         display(HTML(t._base_repr_(html=True, **kwargs)))
 
@@ -139,6 +137,7 @@ class Reporter:
             recipe: {o['recipe_name']}
             - date    : {o['date_run']}
             - log     : {o['log_file']}
+            - json    : {o.get('recipe_file')}
             - frames  : {frames}
             - path    : {o['path']}
             - warning : {o['nbwarn']}

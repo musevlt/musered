@@ -24,12 +24,13 @@ except ImportError:
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=__version__)
 @click.option('--loglevel', help='log level (debug, info, warning, etc.)')
+@click.option('--drslevel', help='log level for the DRS')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
               help='settings file, default to settings.yml')
 @click.option('--pdb', is_flag=True, help='run pdb if an exception occurs')
 @click.option('--debug', is_flag=True, help='debug log level + pdb')
 @click.pass_context
-def cli(ctx, loglevel, settings, pdb, debug):
+def cli(ctx, loglevel, drslevel, settings, pdb, debug):
     """Main MuseRed command.
 
     See the help of the sub-commands for more details.
@@ -57,6 +58,9 @@ def cli(ctx, loglevel, settings, pdb, debug):
         if loglevel.lower() == 'debug':
             # this is for astroquery, but could be done better..
             logging.getLogger('astropy').setLevel('DEBUG')
+
+    if drslevel is not None:
+        mr.set_loglevel(drslevel, cpl=True)
 
     logger.debug('Musered version %s', __version__)
 
