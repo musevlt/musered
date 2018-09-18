@@ -1,6 +1,8 @@
+import json
 import matplotlib.pyplot as plt
 import numpy as np
 import textwrap
+
 from astropy.io import fits
 from astropy.table import Table
 from collections import defaultdict
@@ -137,12 +139,29 @@ class Reporter:
             recipe: {o['recipe_name']}
             - date    : {o['date_run']}
             - log     : {o['log_file']}
-            - json    : {o.get('recipe_file')}
+            - json    : {o['recipe_file']}
             - frames  : {frames}
             - path    : {o['path']}
             - warning : {o['nbwarn']}
-            - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)
+            - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)\
             """))
+
+            if o['recipe_file'] is None:
+                continue
+
+            with open(o['recipe_file']) as f:
+                info = json.load(f)
+
+            for name in ('calib', 'raw'):
+                print(f'- {name:7s} :')
+                maxlen = max(len(k) for k, v in info[name].items() if v)
+                for k, v in info[name].items():
+                    if isinstance(v, str):
+                        print(f'  - {k:{maxlen}s} : {v}')
+                    elif v is not None:
+                        for line in v:
+                            print(f'  - {k:{maxlen}s} : {line}')
+            print()
 
     def info_raw(self, night, **kwargs):
         """Print information about raw exposures for a given night."""
