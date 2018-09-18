@@ -12,27 +12,29 @@ from .utils import parse_date
 
 
 class CalibFinder:
-    """Manage calibrations.
+    """Handles calibration frames.
 
-    It must be instantiated with a directory containing the default static
-    calibration files, and a settings dict that can be used to define time
-    periods where a given calibration file is valid.
+    It must be instantiated with a settings dict containing the directory with
+    the default static calibration files ('muse_calib_path'), and a settings
+    dict that can be used to define time periods where a given calibration file
+    is valid ('static_calib').
 
     Parameters
     ----------
-    static_path : str
-        Path of the static calibration files.
-    static_conf : dict
+    table : dataset.Table
+        Table with reduced calibrations.
+    conf : dict
         Settings dictionary.
 
     """
 
     STATIC_FRAMES = STATIC_FRAMES
 
-    def __init__(self, table, static_path, static_conf):
+    def __init__(self, table, conf):
         self.table = table
-        self.static_path = static_path
-        self.static_conf = static_conf
+        self.conf = conf
+        self.static_path = self.conf['muse_calib_path']
+        self.static_conf = self.conf['static_calib']
         self.logger = logging.getLogger(__name__)
 
     @lazyproperty
@@ -116,36 +118,84 @@ class CalibFinder:
                              f'instead of (1, 24)')
         return flist
 
-    def get_frames(self, recipe, night, ins_mode, frames=None):
-        """Return a dict with all calibration frames for a recipe."""
+    def get_frames(self, recipe, night=None, ins_mode=None, recipe_conf=None,
+                   OBJECT=None):
+        """Return a dict with all calibration frames for a recipe.
 
-        framedict = {}
+        Parameters
+        ----------
+        recipe : musered.Recipe
+            The recipe for which calibration frames are needed.
+        night : str
+            The night for which calibrations are needed.
+        ins_mode : str
+            Instrument mode.
+        recipe_conf : dict
+            Settings for the recipe.
+        OBJECT : str
+            OBJECT name, use for frames specific to a given OBJECT
+            (OFFSET_LIST, OUTPUT_WCS).
 
+        """
         # Build the list of frames that must be found for the recipe
         frameset = set(recipe.calib_frames)
         # Remove frames excluded by default
         frameset.difference_update(recipe.exclude_frames)
-        if frames is not None:
-            for key, val in frames.items():
-                if key == 'exclude':  # Remove frames to exclude
-                    frameset.difference_update(val)
-                elif key == 'include':  # Add frames to include
-                    frameset.update(val)
-                else:  # Otherwise add frame directly to the framedict
-                    framedict[key] = val
 
-        self.logger.info('Using frames: %s', frameset)
+        frames_conf = recipe_conf.get('frames', {}) if recipe_conf else {}
+        for key, val in frames_conf.items():
+            if isinstance(val, str):
+                val = [val]
+            if key == 'exclude':  # Remove frames to exclude
+                frameset.difference_update(val)
+            elif key == 'include':  # Add frames to include
+                frameset.update(val)
 
-        # FIXME: find better way to manage day_offsets ?
+        # Define day offsets, with default values that can be overloaded in
+        # the settings
         day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5,
-                       'TWILIGHT_CUBE': 3}
+                       'TWILIGHT_CUBE': 3, **frames_conf.get('offsets', {})}
 
+        framedict = {}
         for frame in frameset:
             if frame in self.STATIC_FRAMES:
+                # Static frames
                 framedict[frame] = self.get_static(frame, date=night)
+
+            elif frame in ('OUTPUT_WCS', 'OFFSET_LIST'):
+                # Special handling for these optional frames
+                if 'OFFSET_LIST' in frames_conf:
+                    offset_list = frames_conf['OFFSET_LIST']
+                    if not os.path.isfile(offset_list):
+                        off = self.table.find_one(DPR_TYPE='OFFSET_LIST',
+                                                  OBJECT=OBJECT,
+                                                  name=offset_list)
+                        offset_list = f"{off['path']}/OFFSET_LIST.fits"
+
+                    self.logger.info('Using OFFSET_LIST: %s', offset_list)
+                    framedict['OFFSET_LIST'] = offset_list
+
+                if 'OUTPUT_WCS' in frames_conf:
+                    framedict['OUTPUT_WCS'] = frames_conf['OUTPUT_WCS']
+                    self.logger.info('Using OUTPUT_WCS: %s',
+                                     framedict['OUTPUT_WCS'])
+
+            elif frame in frames_conf:
+                # If path or glob pattern is specified in settings
+                val = frames_conf[frame]
+                if '*' in val:
+                    framedict[frame] = sorted(glob(val))
+                else:
+                    framedict[frame] = sorted(glob(f"{val}/{frame}*.fits"))
+
             else:
+                # Find frames in the database, for the given night, or using
+                # offsets
+                if ins_mode is None:
+                    raise ValueError('ins_mode must be specified')
                 day_off = day_offsets.get(frame, 1)
                 framedict[frame] = self.find_calib(night, frame, ins_mode,
                                                    day_off=day_off)
 
+        self.logger.debug('Using frames: %s', framedict)
         return framedict

@@ -53,8 +53,7 @@ class MuseRed(Reporter):
         self.redc = self.reduced.table.c
         self.execute = self.db.executable.execute
 
-        self.calib = CalibFinder(self.reduced, self.conf['muse_calib_path'],
-                                 self.conf['static_calib'])
+        self.calib = CalibFinder(self.reduced, self.conf)
 
         # configure cpl
         cpl_conf = self.conf['cpl']
@@ -249,31 +248,6 @@ class MuseRed(Reporter):
         else:
             self.logger.info('Nothing to delete')
 
-    def get_additional_frames(self, recipe, recipe_name, OBJECT=None):
-        """Return a dict with additional frames."""
-
-        frames = {}
-        recipe_conf = self._get_recipe_conf(recipe_name)
-
-        if 'OFFSET_LIST' in recipe.calib and 'OFFSET_LIST' in recipe_conf:
-            if os.path.isfile(recipe_conf['OFFSET_LIST']):
-                frames['OFFSET_LIST'] = recipe_conf['OFFSET_LIST']
-            else:
-                off = self.reduced.find_one(DPR_TYPE='OFFSET_LIST',
-                                            OBJECT=OBJECT,
-                                            name=recipe_conf['OFFSET_LIST'])
-                frames['OFFSET_LIST'] = f"{off['path']}/OFFSET_LIST.fits"
-            self.logger.info('Using OFFSET_LIST: %s', frames['OFFSET_LIST'])
-
-        if 'OUTPUT_WCS' in recipe.calib and 'OUTPUT_WCS' in recipe_conf:
-            frames['OUTPUT_WCS'] = recipe_conf['OUTPUT_WCS']
-            self.logger.info('Using OUTPUT_WCS: %s', frames['OUTPUT_WCS'])
-
-        if 'FILTER_LIST' in recipe.calib:
-            frames['FILTER_LIST'] = self.calib.get_static('FILTER_LIST')
-
-        return frames
-
     def find_illum(self, night, ref_temp, ref_mjd_date):
         """Find the best ILLUM exposure for the night.
 
@@ -375,7 +349,7 @@ class MuseRed(Reporter):
                 log.info('%d %ss already processed', len(processed), label)
 
         # Instantiate the recipe object
-        recipe_conf = self.conf['recipes'].get(recipe_name, {})
+        recipe_conf = self._get_recipe_conf(recipe_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name,
                                           kwargs=recipe_kwargs)
         # save recipe's output dir as we will modify it later
@@ -419,9 +393,8 @@ class MuseRed(Reporter):
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
             kwargs.update(self.calib.get_frames(
-                recipe, night, ins_mode, frames=recipe_conf.get('frames')))
-            kwargs.update(self.get_additional_frames(recipe, recipe_name,
-                                                     OBJECT=res[0]['OBJECT']))
+                recipe, night=night, ins_mode=ins_mode,
+                recipe_conf=recipe_conf, OBJECT=res[0]['OBJECT']))
 
             if recipe.use_illum:
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
@@ -454,11 +427,11 @@ class MuseRed(Reporter):
 
         # Instantiate the recipe object
         recipe_name = params_name or recipe_cls.recipe_name
+        recipe_conf = self._get_recipe_conf(recipe_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name)
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
-        kwargs.update(self.get_additional_frames(recipe, recipe_name,
-                                                 OBJECT=OBJECT))
-        recipe_conf = self._get_recipe_conf(recipe_name)
+        kwargs.update(self.calib.get_frames(recipe, recipe_conf=recipe_conf,
+                                            OBJECT=OBJECT))
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),

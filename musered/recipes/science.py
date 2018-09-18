@@ -31,7 +31,7 @@ class SCIPOST(ScienceRecipe):
     DPR_TYPE = 'PIXTABLE_OBJECT'
     output_dir = 'scipost'
     # exclude optional frames
-    exclude_frames = ('SKY_CONTINUUM', 'OUTPUT_WCS', 'OFFSET_LIST', 'SKY_MASK')
+    exclude_frames = ('SKY_CONTINUUM', 'SKY_MASK')
     # Save the V,R,I images
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
@@ -47,7 +47,6 @@ class MAKECUBE(ScienceRecipe):
     DPR_TYPE = 'PIXTABLE_REDUCED'
     output_dir = 'scipost_cube'
     # exclude optional frames
-    exclude_frames = ('OUTPUT_WCS', 'OFFSET_LIST')
     # Save the V,R,I images
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I',
                       'save': 'cube', 'skymethod': 'none'}

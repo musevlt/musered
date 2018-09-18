@@ -41,12 +41,6 @@ runs:
   GTO17: &GTO17
     start_date: 2017-04-01
     end_date: 2017-06-30
-  GTO24: &GTO24
-    start_date: 2018-04-01
-    end_date: 2018-04-30
-  GTO25: &GTO25
-    start_date: 2018-05-01
-    end_date: 2018-07-01
 
 # GTO-only: import databases with comments and flags added by observers
 GTO_logs:
@@ -65,12 +59,8 @@ static_calib:
       end_date: 2015-05-10
   ASTROMETRY_WCS:
     astrometry_wcs_wfm_gto17.fits: *GTO17
-    astrometry_wcs_wfm_gto24.fits: *GTO24
-    astrometry_wcs_wfm_gto25.fits: *GTO25
   GEOMETRY_TABLE:
     geometry_table_wfm_gto17.fits: *GTO17
-    geometry_table_wfm_gto24.fits: *GTO24
-    geometry_table_wfm_gto25.fits: *GTO25
 
 # Parameters for the retrieve_data command (passed to astroquery.Eso.login)
 retrieve_data:
@@ -80,20 +70,18 @@ retrieve_data:
 
 # Parameters for recipes. Can be used to specify additional parameters.
 recipes:
-  common:
-    temp_dir: '{workdir}/reduced/{version}/tmp'
 
   muse_wavecal:
     # This can be used to change the frames excluded by default
     # frames:
-    #   exclude: [MASTER_DARK]
+    #   exclude: MASTER_DARK
     #   include: [MASTER_FLAT]
     params:
       saveimages: True
 
-  # muse_scibasic:
-  #   init:
-  #     output_dir: '{workdir}/reduced/{version}/SCIBASIC'
+  muse_scibasic:
+    init:
+      output_dir: '{workdir}/reduced/{version}/SCIBASIC'
 
   # Example of a special version of scipost to produce images for the
   # recentering step. For this we don't need sky-subtraction nor raman
@@ -110,7 +98,8 @@ recipes:
   muse_scipost:
     # scipost using offsets (OFFSET_LIST computed with the drs method) and
     # other options (raman, skysub, autocalib)
-    # OFFSET_LIST: OFFSET_LIST_drs
+    # frames:
+    #   OFFSET_LIST: OFFSET_LIST_drs
     init:
       output_dir: 'scipost'
     params:
@@ -139,17 +128,16 @@ recipes:
 
   muse_scipost_make_cube:
     # scipost using offsets to produce recentered cubes
-
-    # OFFSET_LIST can be set either with a string OFFSET_LIST_[method], where
-    # method is the one used in muse_exp_align, or directly with a filename
-    # OFFSET_LIST: OFFSET_LIST_drs
-    OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
-
-    # The OUTPUT_WCS used here was computed by running first muse_exp_combine
-    # with method: drs (it is the datacube combined with the DRS).
-    OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/drs/DATACUBE_FINAL.fits'
-
     from_recipe: muse_scipost
+    frames:
+      # OFFSET_LIST can be set either with a string OFFSET_LIST_[method], where
+      # method is the one used in muse_exp_align, or directly with a filename
+      # OFFSET_LIST: OFFSET_LIST_drs
+      OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+
+      # The OUTPUT_WCS used here was computed by running first muse_exp_combine
+      # with method: drs (it is the datacube combined with the DRS).
+      OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/drs/DATACUBE_FINAL.fits'
     init:
       output_dir: 'scipost_centered'
 
@@ -159,8 +147,9 @@ recipes:
     # default is to use the drs method, where one can specify an OFFSET_LIST
     # frame (see above)
     # method: drs
-    # OFFSET_LIST: drs
-    # OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+    # frames:
+    #   OFFSET_LIST: drs
+    #   OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
 
     method: mpdaf
     params:

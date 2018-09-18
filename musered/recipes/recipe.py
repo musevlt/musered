@@ -95,7 +95,7 @@ class Recipe:
     QC_keywords = {}
     """QC keywords to show, for each frame."""
 
-    def __init__(self, output_dir=None, use_drs_output=True, temp_dir=None,
+    def __init__(self, output_dir=None, use_drs_output=True, temp_dir='.',
                  log_dir='.', version=None, nifu=-1, tag=None):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
