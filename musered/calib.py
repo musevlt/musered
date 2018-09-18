@@ -207,5 +207,15 @@ class CalibFinder:
                                                    day_off=day_off)
                 debug('- from db: %s', framedict[frame])
 
-        debug('Using frames: %s', framedict)
+        self.pprint_framedict(framedict)
         return framedict
+
+    def pprint_framedict(self, framedict):
+        info = self.logger.info
+        for key, val in framedict.items():
+            if isinstance(val, str):
+                info('- %12s : %s', key, val)
+            else:
+                info('- %12s :', key)
+                for v in val:
+                    info('  - %s', v)
