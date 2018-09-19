@@ -147,7 +147,7 @@ def parse_raw_keywords(flist, force=False, processed=None, runs=None):
             row['night'] = night.isoformat()
 
             for run_name, run in runs.items():
-                if run['start_date'] < night < run['end_date']:
+                if run['start_date'] <= night <= run['end_date']:
                     row['run'] = run_name
                     break
         else:
