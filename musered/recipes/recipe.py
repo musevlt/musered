@@ -309,13 +309,15 @@ class PythonRecipe:
         self.log_file = None
         self.calib = {}
         self.param = {}
+        self.calib_frames = set()
+        self.exclude_frames = set()
 
         if output_dir is not None:
             self.output_dir = output_dir
         elif self.output_dir is None:
             self.output_dir = self.output_frames[0]
 
-    def dump(self, include_files=False):
+    def dump(self, include_files=False, json_col=False):
         """Dump recipe results, stats, parameters in a dict."""
         return {
             'tottime': self.timeit,
@@ -323,7 +325,7 @@ class PythonRecipe:
             # 'sys_time': self.results.stat.sys_time,
             'nbwarn': self.nbwarn,
             'log_file': self.log_file,
-            'params': json.dumps(self.param),
+            'params': json.dumps(self.param) if json_col else self.param,
         }
 
     def _run(self, *args, **kwargs):

@@ -179,6 +179,8 @@ class CalibFinder:
                         off = self.table.find_one(DPR_TYPE='OFFSET_LIST',
                                                   OBJECT=OBJECT,
                                                   name=offset_list)
+                        if off is None:
+                            raise Exception('not valid OFFSET_LIST found')
                         offset_list = f"{off['path']}/OFFSET_LIST.fits"
 
                     debug('- OFFSET_LIST: %s', offset_list)
@@ -215,6 +217,8 @@ class CalibFinder:
         for key, val in framedict.items():
             if isinstance(val, str):
                 info('- %-18s : %s', key, val)
+            elif len(val) == 1:
+                info('- %-18s : %s', key, val[0])
             else:
                 info('- %-18s :', key)
                 for v in val:
