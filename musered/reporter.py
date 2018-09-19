@@ -54,7 +54,8 @@ class Reporter:
         """Print the list of datasets."""
         self.fmt.show_title('Datasets:')
         for name in self.datasets:
-            self.fmt.show_text(f'- {name}')
+            nexp = len(self.exposures[name])
+            self.fmt.show_text(f'- {name} : {nexp} exposures')
 
     def list_nights(self):
         """Print the list of nights."""
@@ -66,7 +67,9 @@ class Reporter:
         """Print the list of runs."""
         self.fmt.show_title('Runs:')
         for x in sorted(self.runs):
-            self.fmt.show_text(f'- {x}')
+            run = self.conf['runs'][x]
+            self.fmt.show_text(
+                f"- {x} : {run['start_date']} - {run['end_date']}")
 
     def list_exposures(self):
         """Print the list of exposures."""
@@ -88,7 +91,8 @@ class Reporter:
             self.fmt.show_text('Nothing yet.')
         else:
             # uninteresting objects to exclude from the report
-            excludes = ('Astrometric calibration (ASTROMETRY)', )
+            excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
+                        'WAVE,MASK')
             t = query_count_to_table(self.db, 'raw', exclude_obj=excludes)
             self.fmt.show_table(t)
 

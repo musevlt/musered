@@ -170,7 +170,8 @@ class MuseRed(Reporter):
                     raw.create_index([name])
 
             for name in ('recipe_name', 'name', 'DATE_OBS', 'DPR_TYPE'):
-                reduced.create_column_by_example(name, '')
+                if name not in reduced.columns:
+                    reduced.create_column_by_example(name, '')
                 if not reduced.has_index([name]):
                     reduced.create_index([name])
 
