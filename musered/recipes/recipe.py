@@ -164,6 +164,11 @@ class Recipe:
                           'PIXTABLE_COMBINED'] + frames
         return frames
 
+    @property
+    def version(self):
+        """Return the recipe version"""
+        return f'DRS-{self._recipe.version[1]}'
+
     def dump_params(self, json_col=False):
         """Dump non-default parameters to a JSON string."""
         params = {p.name: p.value for p in self.param if p.value is not None}
@@ -178,6 +183,7 @@ class Recipe:
             'nbwarn': self.nbwarn,
             'log_file': self.log_file,
             'params': self.dump_params(json_col=json_col),
+            'recipe_version': self.version,
         }
         if include_files:
             calib = dict(self.calib)
@@ -302,6 +308,9 @@ class PythonRecipe:
     output_frames = None
     """Output frames."""
 
+    version = None
+    """Recipe version."""
+
     def __init__(self, output_dir=None, log_dir='.'):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
@@ -327,6 +336,7 @@ class PythonRecipe:
             'nbwarn': self.nbwarn,
             'log_file': self.log_file,
             'params': json.dumps(self.param) if json_col else self.param,
+            'recipe_version': self.version,
         }
 
     def _run(self, *args, **kwargs):

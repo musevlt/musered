@@ -186,6 +186,7 @@ class IMPHOT(PythonRecipe):
     DPR_TYPE = 'DATACUBE_FINAL'
     output_dir = 'exp_align'
     output_frames = ['OFFSET_LIST']
+    version = f'imphot-1.0'
 
     default_params = dict(
         extramask=None,

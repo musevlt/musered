@@ -1,4 +1,5 @@
 import logging
+import mpdaf
 from astropy.io import fits
 from mpdaf.obj import CubeList, CubeMosaic
 from os.path import join
@@ -79,6 +80,7 @@ class MPDAFCOMBINE(PythonRecipe):
     output_dir = 'exp_combine'
     output_frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'STATPIX', 'EXPMAP_CUBE',
                      'EXPMAP_IMAGE']
+    version = f'mpdaf-{mpdaf.__version__}'
 
     default_params = dict(
         method='sigclip',

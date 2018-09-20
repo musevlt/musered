@@ -15,12 +15,13 @@ from glob import glob, iglob
 from os.path import join
 from sqlalchemy import sql
 
+from .calib import CalibFinder
 from .recipes import recipe_classes, init_cpl_params
 from .reporter import Reporter
-from .calib import CalibFinder
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
                     parse_qc_keywords, ProgressBar, normalize_recipe_name,
                     parse_gto_db)
+from .version import __version__
 
 
 class MuseRed(Reporter):
@@ -641,6 +642,7 @@ class MuseRed(Reporter):
             'recipe_name': recipe_name,
             'path': recipe.output_dir,
             'DPR_CATG': DPR_CATG,
+            'musered_version': __version__,
             **kwargs,
         }
 
