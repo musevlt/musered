@@ -87,7 +87,7 @@ class Reporter:
 
         # count files per night and per type, raw data, then reduced
         self.fmt.show_title(f'\nRaw data:\n')
-        if 'night' not in self.raw.columns:
+        if len(self.raw) == 0:
             self.fmt.show_text('Nothing yet.')
         else:
             # uninteresting objects to exclude from the report
@@ -96,7 +96,7 @@ class Reporter:
             t = query_count_to_table(self.db, 'raw', exclude_obj=excludes)
             self.fmt.show_table(t)
 
-        if len(self.reduced.columns) == 0:
+        if len(self.reduced) == 0:
             self.fmt.show_title(f'\nProcessed data:\n')
             self.fmt.show_text('Nothing yet.')
         else:

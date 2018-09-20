@@ -173,7 +173,7 @@ class MuseRed(Reporter):
             for name in ('recipe_name', 'name', 'DATE_OBS', 'DPR_TYPE'):
                 if name not in reduced.columns:
                     reduced.create_column_by_example(name, '')
-                if not reduced.has_index([name]):
+                if len(reduced) and not reduced.has_index([name]):
                     reduced.create_index([name])
 
         # GTO logs
