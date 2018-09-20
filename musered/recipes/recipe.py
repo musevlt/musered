@@ -29,6 +29,7 @@ def init_cpl_params(recipe_path=None, esorex_msg=None, esorex_msg_format=None,
     # terminal logging: disable cpl's logger as it uses the root logger.
     cpl.esorex.msg.level = 'off'
     setup_logging(name='cpl', level=msg.upper(), color=True, fmt=msg_format)
+    logging.getLogger('cpl').setLevel('DEBUG')
 
 
 class Recipe:
@@ -224,7 +225,6 @@ class Recipe:
 
         """
         t0 = time.time()
-        info = self.logger.info
         self.results = None
 
         if isinstance(flist, str):
@@ -236,6 +236,10 @@ class Recipe:
         if len(flist) < self.n_inputs_min:
             raise ValueError(f'need at least {self.n_inputs_min} exposures')
 
+        date = datetime.datetime.now().isoformat()
+        cpl.esorex.log.filename = self.log_file = os.path.join(
+            self.log_dir, f"{self.recipe_name}-{date}.log")
+
         if self.n_inputs_rec and len(flist) != self.n_inputs_rec:
             self.logger.warning('Got %d files though the recommended number '
                                 'is %d', len(flist), self.n_inputs_rec)
@@ -244,13 +248,10 @@ class Recipe:
             for key, value in params.items():
                 self.param[key] = value
 
-        date = datetime.datetime.now().isoformat()
-        cpl.esorex.log.filename = self.log_file = os.path.join(
-            self.log_dir, f"{self.recipe_name}-{date}.log")
-
         if 'output_dir' in kwargs:
             self.output_dir = kwargs['output_dir']
 
+        info = self.logger.info
         info('- Log file           : %s', self.log_file)
         info('- Output directory   : %s', self.output_dir)
         info('- Non-default params :')

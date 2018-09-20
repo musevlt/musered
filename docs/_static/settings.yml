@@ -65,8 +65,7 @@ static_calib:
 # Parameters for the retrieve_data command (passed to astroquery.Eso.login)
 retrieve_data:
   username: MUSE-GTO
-  store_password: False
-  reenter_password: True
+  store_password: True
 
 # Parameters for recipes. Can be used to specify additional parameters.
 recipes:
@@ -122,8 +121,8 @@ recipes:
     method: imphot
     params:
       hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
-      hst_filters_dir: '{workdir}/reduced/{version}/hst_filters'
       hst_img_dir: '{workdir}/HST/XUDF'
+      hst_basename: 'hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits'
       hst_resample_each: True
 
   muse_scipost_make_cube:
