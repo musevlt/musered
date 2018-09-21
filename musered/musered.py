@@ -529,7 +529,8 @@ class MuseRed(Reporter):
         dates = self._prepare_dates(dates, 'STD', 'name')
 
         # run muse_scibasic with specific parameters (tag: STD)
-        recipe_kw = {'tag': 'STD', 'output_dir': recipe_std.output_dir}
+        recipe = self._instantiate_recipe(recipe_std, 'muse_standard')
+        recipe_kw = {'tag': 'STD', 'output_dir': recipe.output_dir}
         self._run_recipe_loop(recipe_sci, dates, skip=skip,
                               recipe_kwargs=recipe_kw, **kwargs)
 
@@ -646,7 +647,7 @@ class MuseRed(Reporter):
             **kwargs,
         }
 
-        recipe_file = f'{recipe.output_dir}/recipe.json'
+        recipe_file = f'{recipe.output_dir}/{recipe_name}.json'
         with open(recipe_file, mode='w') as f:
             json.dump({**info, **recipe.dump(include_files=True)}, f, indent=4)
 
