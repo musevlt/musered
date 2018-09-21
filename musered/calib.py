@@ -75,7 +75,7 @@ class CalibFinder:
                 dateobj = parse_date(date)
                 start_date = val.get('start_date', datetime.date.min)
                 end_date = val.get('end_date', datetime.date.max)
-                if start_date < dateobj < end_date:
+                if start_date <= dateobj <= end_date:
                     file = item
                     break
 
