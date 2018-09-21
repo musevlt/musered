@@ -65,7 +65,7 @@ class MuseRed(Reporter):
         # default params for recipes
         params = self.conf['recipes'].setdefault('common', {})
         params.setdefault('log_dir', cpl_conf['log_dir'])
-        params.setdefault('temp_dir', join(self.reduced_path, 'tmp'))
+        # params.setdefault('temp_dir', join(self.reduced_path, 'tmp'))
 
     @lazyproperty
     def nights(self):

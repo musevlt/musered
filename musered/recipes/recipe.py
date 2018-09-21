@@ -126,7 +126,7 @@ class Recipe:
         self._recipe.output_dir = self.output_dir if use_drs_output else None
         if temp_dir is not None:
             self._recipe.temp_dir = temp_dir
-            os.makedirs(temp_dir, exist_ok=True)
+            # os.makedirs(temp_dir, exist_ok=True)
 
         self.param = self._recipe.param
         self.calib = self._recipe.calib
