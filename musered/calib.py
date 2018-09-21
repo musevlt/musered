@@ -214,7 +214,7 @@ class CalibFinder:
 
     def pprint_framedict(self, framedict):
         info = self.logger.info
-        for key, val in framedict.items():
+        for key, val in sorted(framedict.items()):
             if isinstance(val, str):
                 info('- %-18s : %s', key, val)
             elif len(val) == 1:
