@@ -34,7 +34,8 @@ class MuseRed(Reporter):
 
     """
 
-    def __init__(self, settings_file='settings.yml', report_format='txt'):
+    def __init__(self, settings_file='settings.yml', report_format='txt',
+                 version=None):
         super().__init__(report_format=report_format)
 
         self.logger = logging.getLogger(__name__)
@@ -44,14 +45,20 @@ class MuseRed(Reporter):
         self.conf = load_yaml_config(settings_file)
         self.set_loglevel(self.conf.get('loglevel', 'info'))
 
+        self.version = version or self.conf.get('version')
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
         self.reduced_path = self.conf['reduced_path']
 
         self.db = load_db(self.conf['db'])
         self.raw = self.db.create_table('raw')
-        self.reduced = self.db.create_table('reduced')
-        self.qa = self.db.create_table('qa_exposures')
+        if self.version:
+            version = self.version.replace('.', '_')
+            self.reduced = self.db.create_table(f'reduced_{version}')
+            self.qa = self.db.create_table(f'qa_exposures_{version}')
+        else:
+            self.reduced = self.db.create_table('reduced')
+            self.qa = self.db.create_table('qa_exposures')
 
         self.rawc = self.raw.table.c
         self.redc = self.reduced.table.c
