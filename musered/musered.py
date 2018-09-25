@@ -112,7 +112,7 @@ class MuseRed(Reporter):
 
     def get_table(self, name):
         name = self.dbnames.get(name, name)
-        if name not in self.db.tables:
+        if name not in self.db:
             raise ValueError('unknown table')
         return load_table(self.db, name)
 
@@ -163,8 +163,8 @@ class MuseRed(Reporter):
 
         with self.db as tx:
             raw = tx['raw']
-            reduced = tx[self.dbnames['reduced']]
-            qa = tx[self.dbnames['qa']]
+            reduced = tx[self.reduced.name]
+            qa = tx[self.qa.name]
 
             # Insert or update lines in the raw table
             if force:
@@ -223,7 +223,7 @@ class MuseRed(Reporter):
         for dpr_type in dpr_types:
             self.logger.info('Parsing %s files', dpr_type)
 
-            if dpr_type in self.db.tables:
+            if dpr_type in self.db:
                 self.logger.info('Dropping existing table')
                 self.db[dpr_type].drop()
             table = self.db.create_table(dpr_type)
@@ -667,12 +667,14 @@ class MuseRed(Reporter):
             json.dump({**info, **recipe.dump(include_files=True)}, f, indent=4)
 
         out_frames = []
-        for out_frame in recipe.output_frames:
-            if any(iglob(f'{recipe.output_dir}/{out_frame}*.fits')):
-                out_frames.append(out_frame)
-                self.reduced.upsert({'DPR_TYPE': out_frame, **info,
-                                     'recipe_file': recipe_file,
-                                     **recipe.dump(json_col=True)}, keys)
+        with self.db as tx:
+            reduced = tx[self.reduced.name]
+            for out_frame in recipe.output_frames:
+                if any(iglob(f'{recipe.output_dir}/{out_frame}*.fits')):
+                    out_frames.append(out_frame)
+                    reduced.upsert({'DPR_TYPE': out_frame, **info,
+                                    'recipe_file': recipe_file,
+                                    **recipe.dump(json_col=True)}, keys)
 
         if len(out_frames) == 0:
             raise RuntimeError('could not find output files')
