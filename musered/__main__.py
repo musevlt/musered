@@ -23,6 +23,8 @@ except ImportError:
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=__version__)
+@click.option('--redversion', help='version of the reduction (overrides the '
+              'version in settings')
 @click.option('--loglevel', help='log level (debug, info, warning, etc.)')
 @click.option('--drslevel', help='log level for the DRS')
 @click.option('--settings', default='settings.yml', envvar='MUSERED_SETTINGS',
@@ -30,7 +32,7 @@ except ImportError:
 @click.option('--pdb', is_flag=True, help='run pdb if an exception occurs')
 @click.option('--debug', is_flag=True, help='debug log level + pdb')
 @click.pass_context
-def cli(ctx, loglevel, drslevel, settings, pdb, debug):
+def cli(ctx, redversion, loglevel, drslevel, settings, pdb, debug):
     """Main MuseRed command.
 
     See the help of the sub-commands for more details.
@@ -47,7 +49,7 @@ def cli(ctx, loglevel, drslevel, settings, pdb, debug):
         logger.error("settings file '%s' not found", settings)
         sys.exit(1)
 
-    ctx.obj = mr = MuseRed(settings)
+    ctx.obj = mr = MuseRed(settings, version=redversion)
 
     if debug:
         loglevel = 'debug'
