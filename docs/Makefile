@@ -24,3 +24,6 @@ livehtml:
 
 sync:
 	rsync -rltDvhc --exclude=.doctrees _build/html/ urania1:/srv/UDF/musered
+
+clean:
+	rm -rf _build/ api/

@@ -6,9 +6,10 @@ from .musered import MuseRed  # noqa
 from .recipes import *  # noqa
 
 warnings.simplefilter('ignore', category=UnitsWarning)
-del UnitsWarning
 
 setup_logging(name='musered', level='INFO', color=True,
               fmt='%(levelname)s %(message)s')
 # fmt='%(levelname)s - %(name)s: %(message)s')
 # fmt='[%(process)s] %(levelname)s - %(name)s: %(message)s')
+
+del UnitsWarning, setup_logging

@@ -79,6 +79,10 @@ is done for the calibration files, so only the missing files are retrieved.
     but the process was interrupted before all its calibrations were retrieved,
     at the next execution the missing calibrations will not be downloaded.
 
+    This is fixed with Astroquery 0.3.9.dev582 (``pip install
+    astroquery==0.3.9.dev582``). Adding the ``--force`` flag will do the query
+    with all OBJECT files.
+
 
 Ingesting metadata in a database
 --------------------------------
@@ -88,6 +92,9 @@ is triggered automatically by the ``retrieve_data`` command, but it can also be
 run manually if needed, with::
 
     $ musered update_db
+
+This command can be run each time new data are retrieved, and by default it will
+add only the new files that are not yet in the database.
 
 
 Inspecting the database
@@ -114,7 +121,49 @@ the temporary directory), and the example below shows how to set
    :end-at: saveimages
 
 By default the parameters for a recipe must be set in a block with the recipe
-name, but this can be specified with ``--params``.
+name, but this can also be specified with ``--params``.
+
+Frames associations
+^^^^^^^^^^^^^^^^^^^
+
+By default MuseRed search for calibration frames in the database, and use
+automatically the frames for the current night (for ``MASTER_BIAS``,
+``MASTER_FLAT``), or for the previous or following nights (for ``STD_TELLURIC``,
+``STD_RESPONSE``, ``TWILIGHT_CUBE``).  ``MASTER_DARK`` and ``NONLINEARITY_GAIN``
+are excluded by default.
+
+The frames that are used by default can be configured with the ``frames`` dict:
+
+.. code-block:: yaml
+
+   muse_wavecal:
+      frames:
+         exclude: MASTER_DARK
+         include: [MASTER_FLAT]
+
+It is also possible to specify the path or the files that must be used:
+
+.. code-block:: yaml
+
+   muse_wavecal:
+      frames:
+         MASTER_BIAS: /path/to/MASTER_BIAS/
+         MASTER_FLAT: /path/to/MASTER_FLAT/MASTER_FLAT*.fits
+
+TODO: Allow to specify frames for a given night
+
+The number of nights before and after the current one, for which frames are
+searched for, can be specified with ``offsets``:
+
+.. code-block:: yaml
+
+   muse_wavecal:
+      frames:
+         offsets:
+            STD_TELLURIC: 5
+            STD_RESPONSE: 5
+            TWILIGHT_CUBE: 3
+
 
 Calibrations
 ^^^^^^^^^^^^
@@ -224,7 +273,8 @@ And with the parameters with the ``OFFSET_LIST`` frame:
 .. code-block:: yaml
 
     muse_exp_combine:
-        OFFSET_LIST: drs
+      frames:
+         OFFSET_LIST: drs
 
 Setting custom frames
 ^^^^^^^^^^^^^^^^^^^^^
@@ -232,10 +282,11 @@ Setting custom frames
 It may happen that one need to set a custom ``OFFSET_LIST`` or ``OUTPUT_WCS``.
 This can be done by setting directly the file name. For example here the offsets
 computed by the DRS are not good, so we could compute manually better offsets
-and use something like:
+and use something like this:
 
 .. code-block:: yaml
 
     muse_exp_combine:
+      frames:
         OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
 

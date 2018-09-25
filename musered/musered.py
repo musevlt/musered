@@ -23,6 +23,8 @@ from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
                     parse_gto_db)
 from .version import __version__
 
+__all__ = ('MuseRed', )
+
 
 class MuseRed(Reporter):
     """The main class handling all MuseRed's logic.

@@ -138,6 +138,7 @@ class Reporter:
 
         for recipe in res:
             o = recipe[0]
+            o.setdefault('recipe_file', None)
             frames = ', '.join(r['DPR_TYPE'] for r in recipe)
             print(textwrap.dedent(f"""\
             recipe: {o['recipe_name']}
