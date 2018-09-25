@@ -80,6 +80,7 @@ class Reporter:
 
     def info(self):
         """Print a summary of the raw and reduced data."""
+        self.fmt.show_text(f'Reduction version {self.version}')
         self.fmt.show_text(f'{self.raw.count()} files\n')
         self.list_datasets()
         print()
@@ -102,7 +103,7 @@ class Reporter:
         else:
             self.fmt.show_title(f'\nProcessed calib data:\n')
             t = query_count_to_table(
-                self.db, 'reduced', where=sql.and_(
+                self.db, self.dbnames['reduced'], where=sql.and_(
                     self.redc.DPR_CATG == 'CALIB',
                     self.redc.DPR_TYPE.notlike('%STD%')
                 ))
@@ -111,13 +112,15 @@ class Reporter:
 
             self.fmt.show_title(f'\nProcessed standard:\n')
             t = query_count_to_table(
-                self.db, 'reduced', where=self.redc.DPR_TYPE.like('%STD%'))
+                self.db, self.dbnames['reduced'],
+                where=self.redc.DPR_TYPE.like('%STD%'))
             if t:
                 self.fmt.show_table(t)
 
             self.fmt.show_title(f'\nProcessed science data:\n')
             t = query_count_to_table(
-                self.db, 'reduced', where=self.redc.DPR_CATG == 'SCIENCE')
+                self.db, self.dbnames['reduced'],
+                where=self.redc.DPR_CATG == 'SCIENCE')
             if t:
                 self.fmt.show_table(t)
 

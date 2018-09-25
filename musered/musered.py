@@ -60,6 +60,8 @@ class MuseRed(Reporter):
             self.reduced = self.db.create_table('reduced')
             self.qa = self.db.create_table('qa_exposures')
 
+        self.dbnames = {'raw': 'raw', 'reduced': self.reduced.name,
+                        'qa': self.qa.name}
         self.rawc = self.raw.table.c
         self.redc = self.reduced.table.c
         self.execute = self.db.executable.execute
@@ -109,6 +111,7 @@ class MuseRed(Reporter):
         logger.handlers[0].setLevel(level)
 
     def get_table(self, name):
+        name = self.dbnames.get(name, name)
         if name not in self.db.tables:
             raise ValueError('unknown table')
         return load_table(self.db, name)
@@ -116,6 +119,7 @@ class MuseRed(Reporter):
     def select_column(self, name, notnull=True, distinct=False,
                       where=None, table='raw'):
         """Select values from a column of the database."""
+        table = self.dbnames.get(table, table)
         col = self.db[table].table.c[name]
         wc = col.isnot(None) if notnull else None
         if where is not None:
@@ -158,7 +162,9 @@ class MuseRed(Reporter):
                                          runs=self.conf.get('runs'))
 
         with self.db as tx:
-            raw, reduced, qa = tx['raw'], tx['reduced'], tx['qa_exposures']
+            raw = tx['raw']
+            reduced = tx[self.dbnames['reduced']]
+            qa = tx[self.dbnames['qa']]
 
             # Insert or update lines in the raw table
             if force:
