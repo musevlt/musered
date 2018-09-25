@@ -40,7 +40,6 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
         recipe_name = 'muse_' + recipe_name
 
     rows = mr.reduced.find(recipe_name=recipe_name, DPR_TYPE='SKY_SPECTRUM', name=dates)
-    logger.debug(list(rows))
     if skip:
         exists = [row['name'] for row in mr.qa.find(BSKY={'!=':None})]
     qarows = []
