@@ -214,10 +214,39 @@ class Reporter:
             self.fmt.show_table(t, **kwargs)
 
     def show_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
-                    filt='white', ncols=4, figsize=4, **kwargs):
+                    filt='white', ncols=4, figsize=4, limit=None,
+                    catalog=None, zoom_center=None, zoom_size=None, **kwargs):
+        """Show images on a grid.
+
+        Parameters
+        ----------
+        recipe_name : str
+            Recipe for which images are shown.
+        dataset : str, optional
+            Dataset for which images are shown.
+        DPR_TYPE : str, optional
+            Type of images to show.
+        filt : str, optional
+            Filter, default to white.
+        ncols : 4
+            Number of columns in the grid.
+        figsize : float
+            Size of each subimage.
+        limit : int
+            Maximum number of images to show.
+        catalog : str
+            Catalog to be plotted on images, needs 'ra' and 'dec' columns.
+        zoom_center : (float, float)
+            Position (in pixels) on which to zoom in.
+        zoom_size : (float, float)
+            Size (in pixels) of the zoom.
+        **kwargs
+            Additional parameters are passed to `mpdaf.obj.Image.plot`.
+
+        """
         dataset = dataset or list(self.datasets.keys())[0]
         res = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                     recipe_name=recipe_name))
+                                     recipe_name=recipe_name, _limit=limit))
 
         filters = [filt] if isinstance(filt, str) else filt
         filtkey = 'ESO DRS MUSE FILTER NAME'
@@ -233,14 +262,34 @@ class Reporter:
                     continue
                 flist.append((r['name'], filtr, f))
 
+        if catalog is not None:
+            tbl = Table.read(catalog)
+            skycoords = np.array([tbl['dec'], tbl['ra']])
+
         nrows = int(np.ceil(len(flist) / ncols))
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True,
-                                 figsize=(figsize*ncols, figsize*nrows))
+                                 figsize=(figsize*ncols, figsize*nrows),
+                                 gridspec_kw={'wspace': 0, 'hspace': 0})
 
-        for r, ax in zip(sorted(flist), axes.flat):
-            im = Image(r[2])
-            title = f'{r[0]} ({r[1]})' if r[1] else r[0]
-            im.plot(ax=ax, title=title, **kwargs)
+        for (name, filtr, fname), ax in zip(sorted(flist), axes.flat):
+            im = Image(fname)
+            if zoom_size is not None and zoom_center is not None:
+                im = im.subimage(zoom_center, zoom_size, unit_center=None,
+                                 unit_size=None)
+            im.plot(ax=ax, **kwargs)
+            title = f'{name} ({filtr})' if filtr else name
+            ax.text(10, im.shape[1] - 25, title)
+
+            if catalog is not None:
+                x, y = im.wcs.sky2pix(skycoords.T).T
+                sel = (x > 0) & (x < im.shape[0]) & (y > 0) & (y < im.shape[1])
+                ax.scatter(x[sel], y[sel], c='r', marker='+')
 
         for ax in axes.flat[len(flist):]:
             ax.axis('off')
+        for ax in axes.flat:
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_aspect('equal')
+
+        return fig
