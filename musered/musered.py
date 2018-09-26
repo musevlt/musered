@@ -53,8 +53,9 @@ class MuseRed(Reporter):
         self.db = load_db(self.conf['db'])
 
         version = self.version.replace('.', '_')
-        self.tables = {'raw': 'raw', 'reduced': f'reduced_{version}',
-                       'qa_raw': f'qa_raw_{version}',
+        self.tables = {'raw': 'raw',
+                       'reduced': f'reduced_{version}',
+                       'qa_raw': 'qa_raw',
                        'qa_reduced': f'qa_reduced_{version}', }
         for attrname, tablename in self.tables.items():
             setattr(self, attrname, self.db.create_table(tablename))
