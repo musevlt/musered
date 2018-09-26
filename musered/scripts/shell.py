@@ -1,6 +1,8 @@
+import click
 
 
-def shell():
+@click.pass_obj
+def shell(mr):
     """Starts an IPython shell."""
 
     # Ipython does not work if it receive sys.argv arguments, so we remove this
@@ -20,7 +22,7 @@ def shell():
         'print("\\nStarting IPython for MuseRed")',
         'print("\\nThe MuseRed object is available as `mr`\\n")',
         'import musered',
-        'mr = musered.MuseRed()',
+        f'mr = musered.MuseRed(version="{mr.version}")',
     ]
     c.InteractiveShell.colors = 'LightBG'
     c.InteractiveShell.confirm_exit = False
