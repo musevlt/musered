@@ -45,25 +45,21 @@ class MuseRed(Reporter):
         self.conf = load_yaml_config(settings_file)
         self.set_loglevel(self.conf.get('loglevel', 'info'))
 
-        self.version = version or self.conf.get('version')
+        self.version = version or self.conf.get('version', '0.1')
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
         self.reduced_path = self.conf['reduced_path']
 
         self.db = load_db(self.conf['db'])
-        self.raw = self.db.create_table('raw')
-        if self.version:
-            version = self.version.replace('.', '_')
-            self.reduced = self.db.create_table(f'reduced_{version}')
-            self.qa = self.db.create_table(f'qa_exposures_{version}')
-        else:
-            self.reduced = self.db.create_table('reduced')
-            self.qa = self.db.create_table('qa_exposures')
 
-        self.dbnames = {'raw': 'raw', 'reduced': self.reduced.name,
-                        'qa': self.qa.name}
+        version = self.version.replace('.', '_')
+        self.tables = {'raw': 'raw', 'reduced': f'reduced_{version}',
+                       'qa_raw': f'qa_raw_{version}',
+                       'qa_reduced': f'qa_reduced_{version}', }
+        for attrname, tablename in self.tables.items():
+            setattr(self, attrname, self.db.create_table(tablename))
+
         self.rawc = self.raw.table.c
-        self.redc = self.reduced.table.c
         self.execute = self.db.executable.execute
 
         self.calib = CalibFinder(self.reduced, self.conf)
@@ -111,7 +107,7 @@ class MuseRed(Reporter):
         logger.handlers[0].setLevel(level)
 
     def get_table(self, name):
-        name = self.dbnames.get(name, name)
+        name = self.tables.get(name, name)
         if name not in self.db:
             raise ValueError('unknown table')
         return load_table(self.db, name)
@@ -119,7 +115,7 @@ class MuseRed(Reporter):
     def select_column(self, name, notnull=True, distinct=False,
                       where=None, table='raw'):
         """Select values from a column of the database."""
-        table = self.dbnames.get(table, table)
+        table = self.tables.get(table, table)
         col = self.db[table].table.c[name]
         wc = col.isnot(None) if notnull else None
         if where is not None:
@@ -164,7 +160,6 @@ class MuseRed(Reporter):
         with self.db as tx:
             raw = tx['raw']
             reduced = tx[self.reduced.name]
-            qa = tx[self.qa.name]
 
             # Insert or update lines in the raw table
             if force:
@@ -175,10 +170,6 @@ class MuseRed(Reporter):
                 raw.insert_many(rows)
                 self.logger.info('inserted %d rows, skipped %d',
                                  len(rows), nskip)
-
-            # Insert exposure names in the qa table
-            for exp in raw.find(DPR_TYPE='OBJECT'):
-                qa.upsert(dict(name=exp['name']), ['name'])
 
             # Create indexes if needed
             for name in ('night', 'name', 'DATE_OBS', 'DPR_TYPE'):
@@ -206,7 +197,7 @@ class MuseRed(Reporter):
             # select all types for a given recipe
             dpr_types = self.select_column(
                 'DPR_TYPE', table='reduced', distinct=True,
-                where=(self.redc.recipe_name == recipe_name))
+                where=(self.reduced.table.c.recipe_name == recipe_name))
         elif not dpr_types:
             # select all types
             dpr_types = self.select_column('DPR_TYPE', table='reduced',
