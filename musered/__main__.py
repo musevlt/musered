@@ -7,6 +7,7 @@ import yaml
 
 from .musered import MuseRed
 from .scripts.retrieve_data import retrieve_data
+from .scripts.update_qa import update_qa
 from .scripts.shell import shell
 from .version import __version__
 
@@ -236,7 +237,7 @@ def exp_combine(mr, dataset, method):
     mr.exp_combine(dataset, method=method, name=None)
 
 
-for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
+for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib, update_qa,
             process_exp, compute_offsets, exp_combine, shell):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
