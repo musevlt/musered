@@ -549,7 +549,8 @@ class MuseRed(Reporter):
                         name=None, exps=None, **kwargs):
         """Compute offsets between exposures."""
 
-        recipe_conf = self._get_recipe_conf('muse_exp_align')
+        recipe_name = kwargs.get('params_name') or 'muse_exp_align'
+        recipe_conf = self._get_recipe_conf(recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         method = recipe_conf.get('method', method)
         filt = recipe_conf.get('filt', filt)
@@ -559,20 +560,21 @@ class MuseRed(Reporter):
         elif method == 'imphot':
             recipe_cls = recipe_classes['imphot']
             # by default use params from the muse_exp_align block
-            kwargs.setdefault('params_name', 'muse_exp_align')
+            if not kwargs.get('params_name'):
+                kwargs['params_name'] = 'muse_exp_align'
         else:
             raise ValueError(f'unknown method {method}')
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or f'OFFSET_LIST_{method}'
+        name = name or recipe_conf.get('name') or f'OFFSET_LIST_{method}'
 
         # get the list of dates to process
         if exps:
-            query = self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                      recipe_name=from_recipe, name=exps)
+            query = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                           recipe_name=from_recipe, name=exps))
         else:
-            query = self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                      recipe_name=from_recipe)
+            query = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                           recipe_name=from_recipe))
 
         flist = [f
                  for r in query
@@ -583,6 +585,18 @@ class MuseRed(Reporter):
                      if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
+
+        if method == 'imphot':
+            # Special case to insert IMPHOT result files in the table
+            info = self.reduced.find_one(name=name)
+            del info['id']
+            with self.db as tx:
+                reduced = tx[self.reduced.name]
+                for item in query:
+                    reduced.upsert({**info, 'name': item['name'],
+                                    'DPR_TYPE': 'IMPHOT',
+                                    'path': join(info['path'], item['name'])},
+                                   keys=('name', 'recipe_name', 'DPR_TYPE'))
 
     def exp_combine(self, dataset, method='drs', name=None, **kwargs):
         """Combine exposures."""

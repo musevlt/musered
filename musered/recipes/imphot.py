@@ -59,7 +59,7 @@ EXCLUDE_UDF_STARS = None
 def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
                      muse_outdir=".", hst_outdir=".", hst_img_dir=None,
                      hst_basename=None, hst_resample_each=False,
-                     extramask=None, nprocess=8, fix_beta=2.8,
+                     extramask=None, nprocess=8, fix_beta=2.8, expname=None,
                      force_muse_image=False, force_hst_image=False):
     """Fit pointing offsets to the MUSE observation in a specified cube.
 
@@ -105,13 +105,6 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
         filter_curves[name] = np.loadtxt(filter_pathname, usecols=(0, 1))
 
     imfits = {}
-    expname = get_exp_name(cube.filename)
-    # if expname is None:
-    #     # Maybe a field name ?
-    #     try:
-    #         expname = re.findall(r'(UDF-.*)\.fits', cube.filename)[0]
-    #     except IndexError:
-    #         raise Exception('Could not find exposure or field name')
 
     if extramask:
         logger.info('Using extra mask: %s', extramask)
@@ -147,8 +140,11 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
             # useful if MUSE images are not (yet) on the same grid, when
             # OUTPUT_WCS is not used. So we need to resample the HST image for
             # each MUSE exposures.
-            resamp_name = join(hst_outdir,
-                               f"hst_{filter_name}_for_{expname}.fits")
+            if expname:
+                resamp_name = join(hst_outdir,
+                                   f"hst_{filter_name}_for_{expname}.fits")
+            else:
+                resamp_name = join(hst_outdir, f"hst_{filter_name}.fits")
         else:
             resamp_name = join(hst_outdir,
                                f"hst_{filter_name}_for_{field}.fits")
@@ -195,9 +191,7 @@ class IMPHOT(PythonRecipe):
         hst_filters_dir=None,
         hst_filters=None,
         hst_img_dir=None,
-        hst_outdir=None,
         hst_resample_each=False,
-        muse_outdir=None,
     )
 
     @property
@@ -214,18 +208,17 @@ class IMPHOT(PythonRecipe):
         offset_rows = []
         nfiles = len(flist)
 
-        if self.param['muse_outdir'] is None:
-            self.param['muse_outdir'] = join(self.output_dir, 'muse')
-        if self.param['hst_outdir'] is None:
-            self.param['hst_outdir'] = join(self.output_dir, 'hst')
-
-        os.makedirs(self.param['muse_outdir'], exist_ok=True)
-        os.makedirs(self.param['hst_outdir'], exist_ok=True)
-
         for i, filename in enumerate(flist, start=1):
             self.logger.info("%d/%d Processing %s", i, nfiles, filename)
-            ddec, dra, imfits = fit_cube_offsets(filename, nprocess=nproc,
-                                                 **self.param)
+            expname = get_exp_name(filename)
+            outdir = join(self.output_dir, expname)
+            os.makedirs(outdir, exist_ok=True)
+
+            hst_outdir = (outdir if self.param['hst_resample_each']
+                          else self.output_dir)
+            ddec, dra, imfits = fit_cube_offsets(
+                filename, nprocess=nproc, muse_outdir=outdir,
+                hst_outdir=hst_outdir, **self.param)
 
             hdr = fits.getheader(filename)
             offset_rows.append((hdr['DATE-OBS'], hdr['MJD-OBS'], dra, ddec))
@@ -246,13 +239,12 @@ class IMPHOT(PythonRecipe):
                     ('rms', fit.rms_error)
                 ]))
             t = Table(rows=rows)
-            t.meta['EXPNAME'] = expname = get_exp_name(filename)
+            t.meta['EXPNAME'] = expname
             t.meta['RA_OFF'] = dra
             t.meta['DEC_OFF'] = ddec
             t.meta['DATE-OBS'] = hdr['DATE-OBS']
             t.meta['MJD-OBS'] = hdr['MJD-OBS']
-            t.write(join(self.output_dir, f'IMPHOT_{expname}.fits'),
-                    overwrite=True)
+            t.write(join(outdir, 'IMPHOT.fits'), overwrite=True)
 
         t = Table(rows=offset_rows,
                   names=('DATE_OBS', 'MJD_OBS', 'RA_OFFSET', 'DEC_OFFSET'),
