@@ -186,7 +186,6 @@ class IMPHOT(PythonRecipe):
     DPR_TYPE = 'DATACUBE_FINAL'
     output_dir = 'exp_align'
     output_frames = ['OFFSET_LIST']
-    version = f'imphot-1.0'
 
     default_params = dict(
         extramask=None,
@@ -200,6 +199,15 @@ class IMPHOT(PythonRecipe):
         hst_resample_each=False,
         muse_outdir=None,
     )
+
+    @property
+    def version(self):
+        """Return the recipe version"""
+        import imphot
+        try:
+            return f'imphot-{imphot.__version__}'
+        except AttributeError:
+            return f'imphot-unknown'
 
     def _run(self, flist, *args, **kwargs):
         nproc = int(os.getenv('OMP_NUM_THREADS', 8))
