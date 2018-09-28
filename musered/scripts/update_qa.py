@@ -3,7 +3,6 @@ import itertools
 import logging
 import numpy as np
 import pprint
-import psfrec
 from astropy.table import Table
 
 from ..utils import normalize_recipe_name
@@ -139,6 +138,7 @@ def _find_existing_exp(table, key):
 
 
 def _psfrec(filename):
+    import psfrec
     lbda, fwhm, beta = psfrec.reconstruct_psf(filename)
     lbref = [500, 700, 900]
     fwhmref = np.interp(lbref, lbda, fwhm)
