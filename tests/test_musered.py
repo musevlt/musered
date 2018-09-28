@@ -104,3 +104,11 @@ def test_info_qc(mr, capsys):
     mr.info_qc('MASTER_FLAT')
     captured = capsys.readouterr()
     assert len(captured.out.splitlines()) == 26 * 3  # 3 nights
+
+
+def test_get_table(mr):
+    tbl = mr.get_table('raw')
+    assert len(tbl) == 155
+    assert tbl.colnames[:10] == [
+        'id', 'name', 'filename', 'path', 'night', 'ARCFILE', 'DATE_OBS',
+        'EXPTIME', 'MJD_OBS', 'OBJECT']
