@@ -1,6 +1,8 @@
 before_script:
   - export PYENV_ROOT="$HOME/.pyenv"
   - export PATH="$PYENV_ROOT/bin:$PATH"
+  - export LC_ALL=C.UTF-8
+  - export LANG=C.UTF-8
   - eval "$(pyenv init -)"
   - pyenv local 3.6.4
   - pip install tox
