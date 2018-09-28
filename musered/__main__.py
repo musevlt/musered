@@ -15,12 +15,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 logger = logging.getLogger(__name__)
 
-try:
-    import click_completion
-    click_completion.init()
-except ImportError:
-    pass
-
 
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=__version__)
