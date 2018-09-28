@@ -1,0 +1,18 @@
+[run]
+source = musered
+omit =
+   musered/_githash.py
+
+[report]
+show_missing = false
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def info
+    def plot
+    def _plot
+    def _onclick
+    def _ipython_key_completions_
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:

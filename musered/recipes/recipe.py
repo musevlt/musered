@@ -63,7 +63,8 @@ class Recipe:
     """Name of the recipe."""
 
     recipe_name_drs = None
-    """Real name of the recipe for the DRS, in case it is renamed in musex."""
+    """Real name of the recipe for the DRS, in case it is renamed in musered.
+    """
 
     DPR_TYPE = None
     """Type of data to process (DPR.TYPE). If None, cpl.Recipe.tag is used."""

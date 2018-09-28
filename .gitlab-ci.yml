@@ -8,3 +8,6 @@ before_script:
 docs:
   script:
     - tox -v -e docs
+py36:
+  script:
+    - tox -v -e py36

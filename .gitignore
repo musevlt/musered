@@ -3,6 +3,7 @@
 *.egg-info/
 *~
 ._*
+.coverage
 .DS_Store
 .ipynb_checkpoints/
 _githash.py
