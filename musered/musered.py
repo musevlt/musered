@@ -20,7 +20,7 @@ from .recipes import recipe_classes, init_cpl_params
 from .reporter import Reporter
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
                     parse_qc_keywords, ProgressBar, normalize_recipe_name,
-                    parse_gto_db)
+                    parse_gto_db, upsert_many)
 from .version import __version__
 
 __all__ = ('MuseRed', )
@@ -591,13 +591,11 @@ class MuseRed(Reporter):
             # Special case to insert IMPHOT result files in the table
             info = self.reduced.find_one(name=name)
             del info['id']
-            with self.db as tx:
-                reduced = tx[self.reduced.name]
-                for item in query:
-                    reduced.upsert({**info, 'name': item['name'],
-                                    'DPR_TYPE': 'IMPHOT',
-                                    'path': join(info['path'], item['name'])},
-                                   keys=('name', 'recipe_name', 'DPR_TYPE'))
+            rows = [{**info, 'name': item['name'], 'DPR_TYPE': 'IMPHOT',
+                     'path': join(info['path'], item['name'])}
+                    for item in query]
+            upsert_many(self.db, self.reduced.name, rows,
+                        keys=('name', 'recipe_name', 'DPR_TYPE'))
 
     def exp_combine(self, dataset, method='drs', name=None, **kwargs):
         """Combine exposures."""
@@ -673,17 +671,14 @@ class MuseRed(Reporter):
         with open(recipe_file, mode='w') as f:
             json.dump({**info, **recipe.dump(include_files=True)}, f, indent=4)
 
-        out_frames = []
-        with self.db as tx:
-            reduced = tx[self.reduced.name]
-            for out_frame in recipe.output_frames:
-                if any(iglob(f'{recipe.output_dir}/{out_frame}*.fits')):
-                    out_frames.append(out_frame)
-                    reduced.upsert({'DPR_TYPE': out_frame, **info,
-                                    'recipe_file': recipe_file,
-                                    **recipe.dump(json_col=True)}, keys)
+        rows = [{'DPR_TYPE': out_frame, **info, 'recipe_file': recipe_file,
+                 **recipe.dump(json_col=True)}
+                for out_frame in recipe.output_frames
+                if any(iglob(f'{recipe.output_dir}/{out_frame}*.fits'))]
+        upsert_many(self.db, self.reduced.name, rows, keys=keys)
 
-        if len(out_frames) == 0:
+        if len(rows) == 0:
             raise RuntimeError('could not find output files')
         self.logger.info('Processed data (%s) available in %s',
-                         ', '.join(out_frames), recipe.output_dir)
+                         ', '.join(row['DPR_TYPE'] for row in rows),
+                         recipe.output_dir)

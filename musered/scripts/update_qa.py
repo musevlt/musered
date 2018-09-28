@@ -5,7 +5,7 @@ import numpy as np
 import pprint
 from astropy.table import Table
 
-from ..utils import normalize_recipe_name
+from ..utils import normalize_recipe_name, upsert_many
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +64,7 @@ def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if dry_run:
         pprint.pprint(qarows)
     else:
-        with mr.db as tx:
-            for row in qarows:
-                tx[mr.tables['qa_reduced']].upsert(row, ['name'])
+        upsert_many(mr.db, mr.tables['qa_reduced'], qarows, ['name'])
 
 
 def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
@@ -90,9 +88,7 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if dry_run:
         pprint.pprint(qarows)
     else:
-        with mr.db as tx:
-            for row in qarows:
-                tx[mr.tables['qa_reduced']].upsert(row, ['name'])
+        upsert_many(mr.db, mr.tables['qa_reduced'], qarows, ['name'])
 
 
 def qa_sparta(mr, dates=None, skip=True, dry_run=False):
@@ -111,9 +107,7 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
     if dry_run:
         pprint.pprint(qarows)
     else:
-        with mr.db as tx:
-            for row in qarows:
-                tx['qa_raw'].upsert(row, ['name'])
+        upsert_many(mr.db, mr.tables['qa_raw'], qarows, ['name'])
 
 
 def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):

@@ -284,3 +284,11 @@ def parse_gto_db(musered_db, gto_dblist):
         table.create_index(['name', 'OBstart', 'flag', 'version'])
 
     return table
+
+
+def upsert_many(db, tablename, rows, keys):
+    """Use dataset.Table.upsert for a list of rows."""
+    with db as tx:
+        table = tx[tablename]
+        for row in rows:
+            table.upsert(row, keys=keys)
