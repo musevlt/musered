@@ -1,31 +1,38 @@
 import os
 import pytest
 import textwrap
-from musered import MuseRed
+from click.testing import CliRunner
 
-DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   '..', 'docs', '_static')
+from musered import MuseRed
+from musered.__main__ import cli
+
+CURDIR = os.path.dirname(os.path.abspath(__file__))
+TESTDIR = os.path.join(CURDIR, '..', 'docs', '_static')
 
 
 @pytest.fixture
 def mr():
-    os.chdir(DIR)
-    return MuseRed()
+    cwd = os.getcwd()
+    os.chdir(TESTDIR)
+    yield MuseRed()
+    os.chdir(cwd)
 
 
-def test_list_datasets(mr, capsys):
-    mr.list_datasets()
-    captured = capsys.readouterr()
-    assert captured.out == textwrap.dedent("""\
+def test_list_datasets(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--datasets'])
+    assert result.exit_code == 0
+    assert result.output == textwrap.dedent("""\
         Datasets:
         - IC4406 : 6 exposures
         """)
 
 
-def test_list_nights(mr, capsys):
-    mr.list_nights()
-    captured = capsys.readouterr()
-    assert captured.out == textwrap.dedent("""\
+def test_list_nights(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--nights'])
+    assert result.exit_code == 0
+    assert result.output == textwrap.dedent("""\
         Nights:
         - 2017-04-23
         - 2017-06-13
@@ -38,10 +45,11 @@ def test_list_nights(mr, capsys):
         """)
 
 
-def test_list_exposures(mr, capsys):
-    mr.list_exposures()
-    captured = capsys.readouterr()
-    assert captured.out == textwrap.dedent("""\
+def test_list_exposures(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--exps'])
+    assert result.exit_code == 0
+    assert result.output == textwrap.dedent("""\
         Exposures:
         - IC4406
           - 2017-06-16T01:34:56.867
@@ -53,10 +61,11 @@ def test_list_exposures(mr, capsys):
         """)
 
 
-def test_info(mr, capsys):
-    mr.info()
-    captured = capsys.readouterr()
-    assert captured.out == textwrap.dedent("""\
+def test_info(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info'])
+    assert result.exit_code == 0
+    assert result.output == textwrap.dedent("""\
         Reduction version 0.1
         155 files
 
@@ -79,3 +88,19 @@ def test_info(mr, capsys):
 
         Nothing yet.
         """)
+
+
+def test_info_raw(mr, capsys):
+    mr.info_raw('2017-06-17')
+    captured = capsys.readouterr()
+    assert len(captured.out.splitlines()) == 39
+
+
+def test_info_qc(mr, capsys):
+    mr.info_qc('MASTER_FLAT', date_list='2017-06-17')
+    captured = capsys.readouterr()
+    assert len(captured.out.splitlines()) == 26  # 24 rows + header
+
+    mr.info_qc('MASTER_FLAT')
+    captured = capsys.readouterr()
+    assert len(captured.out.splitlines()) == 26 * 3  # 3 nights

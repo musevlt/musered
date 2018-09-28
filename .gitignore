@@ -10,3 +10,4 @@ _githash.py
 api/
 build/
 docs/_build
+htmlcov/

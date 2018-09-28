@@ -128,7 +128,7 @@ class MuseRed(Reporter):
 
     def select_dates(self, dpr_type, table='raw', column='name', **kwargs):
         """Select the list of dates to process."""
-        tbl = self.raw if table == 'raw' else self.reduced
+        tbl = self.db[self.tables.get(table, table)]
         wc = (tbl.table.c.DPR_TYPE == dpr_type)
         dates = self.select_column(column, where=wc, table=table, **kwargs)
         return list(sorted(dates))

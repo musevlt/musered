@@ -204,11 +204,12 @@ class Reporter:
         if dpr_type not in self.db:
             self.update_qc(dpr_types=[dpr_type])
 
-        if not date_list:
-            date_list = self.select_dates(dpr_type, table=dpr_type,
-                                          distinct=True)
-
         table = self.db[dpr_type]
+        if not date_list:
+            date_list = [o['DATE_OBS'] for o in table.distinct('DATE_OBS')]
+        elif isinstance(date_list, str):
+            date_list = [date_list]
+
         recipe_cls = recipe_classes[table.find_one()['recipe_name']]
         cols = ['filename', 'DATE_OBS', 'INS_MODE']
         cols.extend(recipe_cls.QC_keywords.get(dpr_type, []))
