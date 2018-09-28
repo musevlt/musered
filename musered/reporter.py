@@ -144,6 +144,8 @@ class Reporter:
             o = recipe[0]
             o.setdefault('recipe_file', None)
             frames = ', '.join(r['DPR_TYPE'] for r in recipe)
+            usert = o.get('user_time') or 0
+            syst = o.get('sys_time') or 0
             print(textwrap.dedent(f"""\
             recipe: {o['recipe_name']}
             - date    : {o['date_run']}
@@ -152,7 +154,7 @@ class Reporter:
             - frames  : {frames}
             - path    : {o['path']}
             - warning : {o['nbwarn']}
-            - runtime : {o['user_time']:.1f} (user) {o['sys_time']:.1f} (sys)\
+            - runtime : {usert:.1f} (user) {syst:.1f} (sys)\
             """))
 
             if o['recipe_file'] is None:
@@ -162,6 +164,8 @@ class Reporter:
                 info = json.load(f)
 
             for name in ('calib', 'raw'):
+                if name not in info:
+                    continue
                 print(f'- {name:7s} :')
                 maxlen = max(len(k) for k, v in info[name].items() if v)
                 for k, v in info[name].items():
