@@ -256,8 +256,9 @@ class MuseRed(Reporter):
 
         if remove_files:
             for item in self.reduced.distinct('path', **kwargs):
-                self.logger.info('Removing %s', item['path'])
-                shutil.rmtree(item['path'])
+                if os.path.exists(item['path']):
+                    self.logger.info('Removing %s', item['path'])
+                    shutil.rmtree(item['path'])
 
         if self.reduced.delete(**kwargs):
             self.logger.info('Removed %d exposures/nights from the database',

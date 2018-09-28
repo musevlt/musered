@@ -10,6 +10,9 @@ from glob import glob
 from .settings import STATIC_FRAMES
 from .utils import parse_date
 
+SPECIAL_FRAMES = ('OUTPUT_WCS', 'OFFSET_LIST', 'SKY_MASK')
+"""Frames that can be set manually (to a file path) in the settings."""
+
 
 class CalibFinder:
     """Handles calibration frames.
@@ -171,24 +174,24 @@ class CalibFinder:
                 framedict[frame] = self.get_static(frame, date=night)
                 debug('- static: %s', framedict[frame])
 
-            elif frame in ('OUTPUT_WCS', 'OFFSET_LIST'):
-                # Special handling for these optional frames
-                if 'OFFSET_LIST' in frames_conf:
-                    offset_list = frames_conf['OFFSET_LIST']
-                    if not os.path.isfile(offset_list):
-                        off = self.table.find_one(DPR_TYPE='OFFSET_LIST',
-                                                  OBJECT=OBJECT,
-                                                  name=offset_list)
-                        if off is None:
-                            raise Exception('not valid OFFSET_LIST found')
-                        offset_list = f"{off['path']}/OFFSET_LIST.fits"
+            elif frame in SPECIAL_FRAMES and frame in frames_conf:
+                # Special handling for these optional frames :
+                # use directly the value from settings
+                framedict[frame] = frames_conf[frame]
 
-                    debug('- OFFSET_LIST: %s', offset_list)
-                    framedict['OFFSET_LIST'] = offset_list
+                # except for OFFSET_LIST, that can be set to a name that can be
+                # found in the database
+                if frame == 'OFFSET_LIST' and \
+                        not os.path.isfile(framedict[frame]):
+                    off = self.table.find_one(
+                        DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
+                        name=framedict[frame])
+                    if off is None:
+                        raise Exception(f'OFFSET_LIST "{framedict[frame]}" '
+                                        'not found')
+                    framedict[frame] = f"{off['path']}/OFFSET_LIST.fits"
 
-                if 'OUTPUT_WCS' in frames_conf:
-                    framedict['OUTPUT_WCS'] = frames_conf['OUTPUT_WCS']
-                    debug('- OUTPUT_WCS: %s', framedict['OUTPUT_WCS'])
+                debug('- %s: %s', frame, framedict[frame])
 
             elif frame in frames_conf:
                 # If path or glob pattern is specified in settings

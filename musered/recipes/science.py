@@ -30,8 +30,7 @@ class SCIPOST(ScienceRecipe):
     recipe_name = 'muse_scipost'
     DPR_TYPE = 'PIXTABLE_OBJECT'
     output_dir = 'scipost'
-    # exclude optional frames
-    exclude_frames = ('SKY_CONTINUUM', 'SKY_MASK')
+    exclude_frames = ('SKY_CONTINUUM', )
     # Save the V,R,I images
     default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
 
