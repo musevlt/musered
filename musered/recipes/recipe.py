@@ -28,7 +28,13 @@ def init_cpl_params(recipe_path=None, esorex_msg=None, esorex_msg_format=None,
 
     # terminal logging: disable cpl's logger as it uses the root logger.
     cpl.esorex.msg.level = 'off'
-    setup_logging(name='cpl', level=msg.upper(), color=True, fmt=msg_format)
+    try:
+        setup_logging(name='cpl', level=msg.upper(), color=True,
+                      fmt=msg_format)
+    except Exception:
+        # This fails for some reason when running unit tests on Gitlab CI when
+        # using Click's runner...
+        pass
     logging.getLogger('cpl').setLevel('DEBUG')
 
 
