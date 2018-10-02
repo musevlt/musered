@@ -20,7 +20,7 @@ from .recipes import recipe_classes, init_cpl_params
 from .reporter import Reporter
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
                     parse_qc_keywords, ProgressBar, normalize_recipe_name,
-                    parse_gto_db, upsert_many)
+                    parse_gto_db, upsert_many, parse_weather_conditions)
 from .version import __version__
 
 __all__ = ('MuseRed', )
@@ -182,6 +182,9 @@ class MuseRed(Reporter):
                     reduced.create_column_by_example(name, '')
                 if len(reduced) and not reduced.has_index([name]):
                     reduced.create_index([name])
+
+        # weather conditions
+        parse_weather_conditions(self)
 
         # GTO logs
         if 'GTO_logs' in self.conf:

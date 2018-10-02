@@ -7,8 +7,8 @@ import numpy as np
 import re
 import yaml
 
-from astropy.io import fits
-from astropy.table import Table, MaskedColumn
+from astropy.io import ascii, fits
+from astropy.table import Table, MaskedColumn, vstack
 from collections import OrderedDict, defaultdict
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, pool, sql, func
@@ -284,6 +284,52 @@ def parse_gto_db(musered_db, gto_dblist):
         table.create_index(['name', 'OBstart', 'flag', 'version'])
 
     return table
+
+
+def parse_weather_conditions(mr):
+    """Parse weather conditions from the .NL.txt files associated to
+    observations.
+    """
+    logger = logging.getLogger(__name__)
+
+    tables = []
+    query = (sql.select([mr.rawc.night, mr.rawc.path])
+             .where(mr.rawc.DPR_TYPE == 'OBJECT')
+             .group_by(mr.rawc.night))
+
+    for night, path in mr.execute(query):
+        cond_file = path.replace('.fits.fz', '.NL.txt')
+        logger.debug('Night %s, %s', night, cond_file)
+
+        get_lines = False
+        lines = []
+        with open(cond_file) as f:
+            # Find lines between "Weather observations" and the next separator
+            # line. Also skip malformed lines ("New update at...").
+            for line in f:
+                if line.startswith('Weather observations'):
+                    get_lines = True
+                elif get_lines:
+                    if line.startswith('----------------------'):
+                        break
+                    if not line.startswith('New update'):
+                        lines.append(line)
+
+        try:
+            tbl = ascii.read(''.join(lines))
+        except Exception as e:
+            logger.warning('Failed to parse lines: %s', e)
+            continue
+        tbl['night'] = night
+        tables.append(tbl)
+
+    tables = vstack(tables)
+    # Move the night column at beginning
+    tables.columns.move_to_end('night', last=False)
+
+    logger.info('Importing weather conditions, %d entries', len(tables))
+    rows = [dict(zip(tables.colnames, row)) for row in tables]
+    upsert_many(mr.db, 'weather_conditions', rows, ['night', 'Time'])
 
 
 def upsert_many(db, tablename, rows, keys):
