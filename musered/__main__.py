@@ -90,6 +90,7 @@ def update_qc(mr, type, recipe):
 
 
 @click.argument('dateobs', nargs=-1)
+@click.option('--short', is_flag=True, help='shortened output for --exp')
 @click.option('--datasets', is_flag=True, help='list datasets')
 @click.option('--nights', is_flag=True, help='list nights')
 @click.option('--runs', is_flag=True, help='list runs')
@@ -97,7 +98,7 @@ def update_qc(mr, type, recipe):
 @click.option('--raw', is_flag=True, help='list raw exposures for a night')
 @click.option('--qc', help='show QC keywords')
 @click.pass_obj
-def info(mr, dateobs, datasets, nights, runs, exps, raw, qc):
+def info(mr, dateobs, short, datasets, nights, runs, exps, raw, qc):
     """Print info about raw and reduced data, or night or exposure."""
 
     if any([datasets, nights, exps, runs]):
@@ -118,7 +119,7 @@ def info(mr, dateobs, datasets, nights, runs, exps, raw, qc):
             mr.info()
         else:
             for date in dateobs:
-                mr.info_exp(date)
+                mr.info_exp(date, full=not short)
 
 
 @click.argument('recipe_name')

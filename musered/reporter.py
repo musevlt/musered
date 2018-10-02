@@ -1,3 +1,4 @@
+import click
 import json
 import matplotlib.pyplot as plt
 import numpy as np
@@ -125,7 +126,7 @@ class Reporter:
             if t:
                 self.fmt.show_table(t)
 
-    def info_exp(self, expname):
+    def info_exp(self, expname, full=True):
         """Print information about a given exposure or night."""
         res = defaultdict(list)
         for r in self.reduced.find(name=expname):
@@ -134,28 +135,48 @@ class Reporter:
         res = list(res.values())
         res.sort(key=lambda x: x[0]['date_run'])
 
-        print(textwrap.dedent(f"""
-        =========================
-         {expname}
-        =========================
-        """))
+        click.secho(f'\n {expname} \n', fg='green', bold=True, reverse=True)
+
+        if 'gto_logs' in self.db:
+            click.secho(f"★ GTO logs:", fg='green', bold=True)
+            colors = dict(A='green', B='yellow', C='orange')
+            for log in self.db['gto_logs'].find(name=expname):
+                if log['flag']:
+                    rk = log['flag']
+                    log['rk'] = click.style(f'Rank {rk}', reverse=True,
+                                            fg=colors.get(rk, 'red'))
+                    print("- {date}\t{author}\t{rk}\t{comment}".format(**log))
+                if log['fdate']:
+                    print("- {fdate}\t{fauthor}\t\t{fcomment}".format(**log))
+            print()
+
+        if 'weather_conditions' in self.db:
+            click.secho(f"★ Weather Conditions:", fg='green', bold=True)
+            table = self.db['weather_conditions']
+            for log in table.find(night=res[0][0]['night'], order_by='Time'):
+                print("- {Time}\t{Conditions:12s}\t{Comment}".format(**log))
+            print()
 
         for recipe in res:
             o = recipe[0]
             o.setdefault('recipe_file', None)
-            frames = ', '.join(r['DPR_TYPE'] for r in recipe)
+            frames = ', '.join(click.style(r['DPR_TYPE'], bold=True)
+                               for r in recipe)
             usert = o.get('user_time') or 0
             syst = o.get('sys_time') or 0
+            click.secho(f"★ Recipe: {o['recipe_name']}", fg='green', bold=True)
             print(textwrap.dedent(f"""\
-            recipe: {o['recipe_name']}
             - date    : {o['date_run']}
             - log     : {o['log_file']}
             - json    : {o['recipe_file']}
             - frames  : {frames}
             - path    : {o['path']}
-            - warning : {o['nbwarn']}
             - runtime : {usert:.1f} (user) {syst:.1f} (sys)\
             """))
+            if o['nbwarn'] > 0:
+                click.secho(f"- warning : {o['nbwarn']}", fg='red', bold=True)
+            # else:
+            #     click.secho(f"- warning : {o['nbwarn']}")
 
             if o['recipe_file'] is None:
                 continue
@@ -163,17 +184,18 @@ class Reporter:
             with open(o['recipe_file']) as f:
                 info = json.load(f)
 
-            for name in ('calib', 'raw'):
-                if name not in info:
-                    continue
-                print(f'- {name:7s} :')
-                maxlen = max(len(k) for k, v in info[name].items() if v)
-                for k, v in info[name].items():
-                    if isinstance(v, str):
-                        print(f'  - {k:{maxlen}s} : {v}')
-                    elif v is not None:
-                        for line in v:
-                            print(f'  - {k:{maxlen}s} : {line}')
+            if full:
+                for name in ('calib', 'raw'):
+                    if name not in info:
+                        continue
+                    print(f'- {name:7s} :')
+                    maxlen = max(len(k) for k, v in info[name].items() if v)
+                    for k, v in info[name].items():
+                        if isinstance(v, str):
+                            print(f'  - {k:{maxlen}s} : {v}')
+                        elif v is not None:
+                            for line in v:
+                                print(f'  - {k:{maxlen}s} : {line}')
             print()
 
     def info_raw(self, night, **kwargs):
