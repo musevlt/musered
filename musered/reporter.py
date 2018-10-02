@@ -67,10 +67,11 @@ class Reporter:
     def list_runs(self):
         """Print the list of runs."""
         self.fmt.show_title('Runs:')
-        for x in sorted(self.runs):
-            run = self.conf['runs'][x]
-            self.fmt.show_text(
-                f"- {x} : {run['start_date']} - {run['end_date']}")
+        for name in sorted(self.runs):
+            run = self.conf['runs'][name]
+            nexp = self.raw.count(run=name, DPR_TYPE='OBJECT')
+            self.fmt.show_text(f"- {name} : {run['start_date']} - "
+                               f"{run['end_date']}, {nexp} exposures")
 
     def list_exposures(self):
         """Print the list of exposures."""
