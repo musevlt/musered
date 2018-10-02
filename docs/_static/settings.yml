@@ -28,7 +28,7 @@ cpl:
   # log files directory
   log_dir: '{workdir}/reduced/{version}/logs'
   # severity level and format of messages printed to the terminal
-  msg: info
+  msg: warning
   msg_format: "[%(process)s] %(levelname)s - %(name)s: %(message)s"
   # msg_format: "[%(process)s] %(levelname)s - %(name)s: %(message)s"
   # severity level and format of messages for the logfile
@@ -80,32 +80,21 @@ recipes:
 
   muse_scibasic:
     init:
-      output_dir: '{workdir}/reduced/{version}/SCIBASIC'
+      output_dir: 'scibasic'
 
   # Example of a special version of scipost to produce images for the
   # recentering step. For this we don't need sky-subtraction nor raman
   # correction. Can be run with --params muse_scipost_rec
-  # muse_scipost_rec:
-  #   frames:
-  #     exclude: [RAMAN_LINES]
-  #   init:
-  #     output_dir: 'scipost-rec'
-  #   params:
-  #     dlambda: 5
-  #     skymethod: 'none'
-
-  muse_scipost:
-    # scipost using offsets (OFFSET_LIST computed with the drs method) and
-    # other options (raman, skysub, autocalib)
-    # frames:
-    #   OFFSET_LIST: OFFSET_LIST_drs
+  muse_scipost_rec:
+    frames:
+      exclude: [RAMAN_LINES]
     init:
-      output_dir: 'scipost'
+      output_dir: 'scipost-not-recentered'
     params:
-      autocalib: 'deepfield'
-      skymethod: 'model'
-      skymodel_fraction: 0.5
-      save: 'cube,skymodel,individual,raman,autocal'
+      dlambda: 5
+      # autocalib: 'deepfield'
+      skymethod: 'none'
+      save: 'cube,autocal'
 
   muse_exp_align:
     # by default a recipe finds frames using only DPR.TYPE. But if several
@@ -114,16 +103,33 @@ recipes:
     from_recipe: muse_scipost
 
     # these are the default values, using the drs method
-    # method: drs
-    # filt: white
+    method: drs
+    filt: white
 
     # and this is using imphot:
-    method: imphot
+    # method: imphot
+    # params:
+    #   fix_beta: 2.5
+    #   hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
+    #   # hst_filters_dir: '{workdir}/reduced/{version}/hst_filters'
+    #   # hst_outdir: '{workdir}/reduced/{version}/imphot-hst-images'
+    #   hst_img_dir: '{workdir}/HST/XUDF'
+    #   hst_basename: 'hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits'
+    #   hst_resample_each: True
+
+  muse_scipost:
+    # scipost using offsets (OFFSET_LIST computed with the drs method, or a
+    # file computed by other means) and other options (raman, skysub, autocalib)
+    frames:
+      # OFFSET_LIST: OFFSET_LIST_drs
+      OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+    init:
+      output_dir: 'scipost'
     params:
-      hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
-      hst_img_dir: '{workdir}/HST/XUDF'
-      hst_basename: 'hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits'
-      hst_resample_each: True
+      # autocalib: 'deepfield'
+      skymethod: 'model'
+      skymodel_fraction: 0.2
+      save: 'cube,skymodel,individual,raman,autocal'
 
   muse_scipost_make_cube:
     # scipost using offsets to produce recentered cubes
@@ -141,16 +147,14 @@ recipes:
       output_dir: 'scipost_centered'
 
   muse_exp_combine:
-    from_recipe: muse_scipost_make_cube
-
+    from_recipe: muse_scipost
     # default is to use the drs method, where one can specify an OFFSET_LIST
     # frame (see above)
-    # method: drs
-    # frames:
-    #   OFFSET_LIST: drs
-    #   OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
-
-    method: mpdaf
-    params:
-      method: sigclip
-      version: 0.1
+    method: drs
+    frames:
+      # OFFSET_LIST: drs
+      OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+    # method: mpdaf
+    # params:
+    #   method: sigclip
+    #   version: 0.1

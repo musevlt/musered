@@ -183,6 +183,9 @@ class MuseRed(Reporter):
                 if len(reduced) and not reduced.has_index([name]):
                     reduced.create_index([name])
 
+        # Update cached attributes (needed if the table was created)
+        self.rawc = self.raw.table.c
+
         # weather conditions
         parse_weather_conditions(self)
 
