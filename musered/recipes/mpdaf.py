@@ -10,7 +10,7 @@ from .recipe import PythonRecipe
 def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
                method='sigclip', nmax=2, nclip=5.0, nstop=2, mosaic=False,
                output_wcs=None, version=None, var='propagate', scales=None,
-               offsets=None, mad=False):
+               offsets=None, mad=False, filter=None):
     logger = logging.getLogger('musered')
     logger.info('Combining %d datacubes', len(flist))
 
@@ -56,6 +56,18 @@ def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
     logger.info('Saving img: %s', img_name)
     im = cube.mean(axis=0)
     im.write(img_name, savemask='nan')
+
+    if filter is not None:
+        if isinstance(filter, str):
+            filter = filter.split(',')
+        for filt in filter:
+            if filt == 'white':
+                continue
+            im = cube.get_band_image(filt)
+            fname = img_name.replace('.fits', '_{}.fits'.format(filt))
+            logger.info('Saving img: %s', fname)
+            im.write(fname, savemask='nan')
+
     cube = None
 
     if all([expmap, expmap_name]):
@@ -93,7 +105,8 @@ class MPDAFCOMBINE(PythonRecipe):
         var='propagate',
         scales=None,
         offsets=None,
-        mad=False
+        mad=False,
+        filter='white,Johnson_V,Cousins_R,Cousins_I'
     )
 
     def _run(self, flist, *args, **kwargs):
