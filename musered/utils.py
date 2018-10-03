@@ -350,3 +350,53 @@ def upsert_many(db, tablename, rows, keys):
         table = tx[tablename]
         for row in rows:
             table.upsert(row, keys=keys)
+
+
+def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
+             use_labels=True, isouter=False, debug=False, **params):
+    """Join table with other catalogs.
+
+   Parameters
+   ----------
+   db:
+       The database
+   tablenames:
+       List of table names
+   whereclause:
+       The SQLAlchemy selection clause.
+   columns: list of str
+       List of columns to retrieve (all columns if None).
+   keys: list of tuple
+       List of keys to do the join for each catalog. If None, the IDs of
+       each catalog are used (from the ``idname`` attribute). Otherwise it
+       must be a list of tuples, where each tuple contains the key for
+       self and the key for the other catalog.
+   use_labels: bool
+       By default, all columns are selected which may gives name
+       conflicts. So ``use_labels`` allows to rename the columns by
+       prefixinf the name with the catalog name.
+   isouter: bool
+       If True, render a LEFT OUTER JOIN, instead of JOIN.
+   params: dict
+       Additional parameters are passed to `sqlalchemy.sql.select`.
+
+   """
+    tables = [db[name].table for name in tablenames]
+    if columns is None:
+        columns = tables
+
+    if keys is None:
+        keys = [('name','name')]*(len(tables)-1)
+
+    query = sql.select(columns, use_labels=use_labels,
+                       whereclause=whereclause, **params)
+    joincl = tables[0]
+    for (key1, key2), other in zip(keys, tables[1:]):
+        joincl = joincl.join(other, tables[0].c[key1] == other.c[key2],
+                             isouter=isouter)
+    query = query.select_from(joincl)
+
+    if debug:
+        print(query)
+    return db.query(query)
+
