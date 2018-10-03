@@ -174,24 +174,25 @@ class CalibFinder:
                 framedict[frame] = self.get_static(frame, date=night)
                 debug('- static: %s', framedict[frame])
 
-            elif frame in SPECIAL_FRAMES and frame in frames_conf:
-                # Special handling for these optional frames :
-                # use directly the value from settings
-                framedict[frame] = frames_conf[frame]
+            elif frame in SPECIAL_FRAMES:
+                if frame in frames_conf:
+                    # Special handling for these optional frames :
+                    # use directly the value from settings
+                    framedict[frame] = frames_conf[frame]
 
-                # except for OFFSET_LIST, that can be set to a name that can be
-                # found in the database
-                if frame == 'OFFSET_LIST' and \
-                        not os.path.isfile(framedict[frame]):
-                    off = self.table.find_one(
-                        DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
-                        name=framedict[frame])
-                    if off is None:
-                        raise Exception(f'OFFSET_LIST "{framedict[frame]}" '
-                                        'not found')
-                    framedict[frame] = f"{off['path']}/OFFSET_LIST.fits"
+                    # except for OFFSET_LIST, that can be set to a name that
+                    # can be found in the database
+                    if frame == 'OFFSET_LIST' and \
+                            not os.path.isfile(framedict[frame]):
+                        off = self.table.find_one(
+                            DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
+                            name=framedict[frame])
+                        if off is None:
+                            raise Exception(f'OFFSET_LIST "{framedict[frame]}"'
+                                            ' not found')
+                        framedict[frame] = f"{off['path']}/OFFSET_LIST.fits"
 
-                debug('- %s: %s', frame, framedict[frame])
+                    debug('- %s: %s', frame, framedict[frame])
 
             elif frame in frames_conf:
                 # If path or glob pattern is specified in settings
