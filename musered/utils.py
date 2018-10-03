@@ -321,6 +321,18 @@ def parse_weather_conditions(mr):
             logger.warning('Failed to parse lines: %s', e)
             continue
         tbl['night'] = night
+
+        dates = []
+        for row in tbl:
+            night = row['night']
+            time = row['Time']
+            d = datetime.datetime.strptime(f'{night}T{time}', '%Y-%m-%dT%H:%M')
+            if d.time() < NOON:
+                d += ONEDAY
+            dates.append(d.isoformat())
+
+        tbl['date'] = dates
+        tbl.remove_column('Time')
         tables.append(tbl)
 
     tables = vstack(tables)
@@ -329,7 +341,7 @@ def parse_weather_conditions(mr):
 
     logger.info('Importing weather conditions, %d entries', len(tables))
     rows = [dict(zip(tables.colnames, row)) for row in tables]
-    upsert_many(mr.db, 'weather_conditions', rows, ['night', 'Time'])
+    upsert_many(mr.db, 'weather_conditions', rows, ['night', 'date'])
 
 
 def upsert_many(db, tablename, rows, keys):
