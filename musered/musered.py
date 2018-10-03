@@ -606,7 +606,8 @@ class MuseRed(Reporter):
     def exp_combine(self, dataset, method='drs', name=None, **kwargs):
         """Combine exposures."""
 
-        recipe_conf = self._get_recipe_conf('muse_exp_combine')
+        recipe_name = kwargs.get('params_name') or 'muse_exp_combine'
+        recipe_conf = self._get_recipe_conf(recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         method = recipe_conf.get('method', method)
 
