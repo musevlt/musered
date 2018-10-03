@@ -226,12 +226,13 @@ def compute_offsets(mr, dataset, method, name, params, filter, date):
 
 
 @click.argument('dataset')
-@click.option('--method', default='drs',
-              help='method to use: drs (default) or mpdaf (not implemented)')
+@click.option('--params', help='name of the parameters block')
+@click.option('--method', default='drs', help='method to use: drs (default) '
+              'or mpdaf. This can be overridden in the settings file.')
 @click.pass_obj
-def exp_combine(mr, dataset, method):
+def exp_combine(mr, dataset, method, params):
     """Compute offsets between exposures."""
-    mr.exp_combine(dataset, method=method, name=None)
+    mr.exp_combine(dataset, params_name=params, method=method, name=None)
 
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,

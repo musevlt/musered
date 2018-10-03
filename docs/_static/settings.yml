@@ -100,7 +100,7 @@ recipes:
     # by default a recipe finds frames using only DPR.TYPE. But if several
     # recipes were run a produced the same type of file, this allows to specify
     # the recipe from which files are used.
-    from_recipe: muse_scipost
+    from_recipe: muse_scipost_rec
 
     # these are the default values, using the drs method
     method: drs
@@ -122,7 +122,7 @@ recipes:
     # file computed by other means) and other options (raman, skysub, autocalib)
     frames:
       # OFFSET_LIST: OFFSET_LIST_drs
-      OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+      OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
     init:
       output_dir: 'scipost'
     params:
@@ -131,30 +131,38 @@ recipes:
       skymodel_fraction: 0.2
       save: 'cube,skymodel,individual,raman,autocal'
 
+  muse_exp_combine:
+    from_recipe: muse_scipost
+    # Default is to use the drs method, where one can specify an OFFSET_LIST
+    # frame (see above). Other option is to use MPDAF, see below.
+    method: drs
+    frames:
+      # OFFSET_LIST: drs
+      OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
+
   muse_scipost_make_cube:
-    # scipost using offsets to produce recentered cubes
+    # Example of how to produce cubes with the same OUTPUT_WCS, with
+    # process-exp --makecube (this is a special version of muse_scipost just to
+    # produce cubes).
     from_recipe: muse_scipost
     frames:
       # OFFSET_LIST can be set either with a string OFFSET_LIST_[method], where
       # method is the one used in muse_exp_align, or directly with a filename
       # OFFSET_LIST: OFFSET_LIST_drs
-      OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+      OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
 
       # The OUTPUT_WCS used here was computed by running first muse_exp_combine
       # with method: drs (it is the datacube combined with the DRS).
       OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/drs/DATACUBE_FINAL.fits'
     init:
-      output_dir: 'scipost_centered'
+      output_dir: 'scipost_cubes'
 
-  muse_exp_combine:
-    from_recipe: muse_scipost
-    # default is to use the drs method, where one can specify an OFFSET_LIST
-    # frame (see above)
-    method: drs
-    frames:
-      # OFFSET_LIST: drs
-      OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
-    # method: mpdaf
-    # params:
-    #   method: sigclip
-    #   version: 0.1
+  muse_exp_combine_mpdaf:
+    # Example of cube combination with MPDAF. For this we need cubes that have
+    # been produced on the same grid (same OUTPUT_WCS), which is achieved here
+    # with muse_scipost_make_cube.
+    from_recipe: muse_scipost_make_cube
+    method: mpdaf
+    params:
+      method: sigclip
+      version: 0.1
