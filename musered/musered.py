@@ -394,8 +394,11 @@ class MuseRed(Reporter):
             res = list(table.find(**select_args))
 
             if use_reduced:
-                if len(res) != 1:
+                if len(res) == 0:
                     raise RuntimeError('could not find exposures')
+                elif len(res) > 1:
+                    raise RuntimeError('found several input frames instead of '
+                                       'one. Maybe use "from_recipe" ?')
                 flist = sorted(glob(f"{res[0]['path']}/{DPR_TYPE}*.fits"))
                 ins_mode = res[0]['INS_MODE']
             else:
