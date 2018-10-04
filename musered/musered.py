@@ -9,6 +9,7 @@ import os
 import shutil
 
 from astropy.io import fits
+from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
@@ -528,6 +529,26 @@ class MuseRed(Reporter):
             dates = self.exposures[dataset]
         else:
             dates = self._prepare_dates(dates, 'OBJECT', 'name')
+
+        recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
+                                            recipe_name)
+
+        if recipe_name == 'superflat':
+            # Build a Table (name, run, path)
+            redc = self.reduced.table.c
+            rawc = self.rawc
+            exps = [
+                (name, run, join(path, 'PIXTABLE_REDUCED_0001.fits'))
+                for (name, run, path) in self.execute(
+                    sql.select([rawc.name, rawc.run, redc.path])
+                    .select_from(self.reduced.table
+                                 .join(self.raw.table, redc.name == rawc.name))
+                    .where((redc.DPR_TYPE == 'PIXTABLE_REDUCED') &
+                           (redc.recipe_name == recipe_conf['from_recipe']))
+                    .order_by(rawc.name))
+            ]
+            kwargs['exposures'] = Table(rows=exps,
+                                        names=('name', 'run', 'path'))
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_cls = recipe_classes[recipe_name]

@@ -321,6 +321,9 @@ class PythonRecipe:
     version = None
     """Recipe version."""
 
+    use_illum = None
+    """If True, the recipe should use an ILLUM exposure."""
+
     def __init__(self, output_dir=None, log_dir='.'):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
@@ -329,13 +332,18 @@ class PythonRecipe:
         self.log_file = None
         self.calib = {}
         self.param = {}
-        self.calib_frames = set()
         self.exclude_frames = set()
+        self.use_drs_output = True
 
         if output_dir is not None:
             self.output_dir = output_dir
         elif self.output_dir is None:
             self.output_dir = self.output_frames[0]
+
+    @property
+    def calib_frames(self):
+        """Return the list of calibration frames."""
+        return set()
 
     def dump(self, include_files=False, json_col=False):
         """Dump recipe results, stats, parameters in a dict."""
@@ -381,6 +389,7 @@ class PythonRecipe:
         info('- Output directory   : %s', self.output_dir)
         info('- Non-default params :')
         self.param = self.default_params.copy()
+        params = params or {}
         for key in self.param:
             if key in params:
                 info('%15s = %s (%s)', key, params[key], self.param[key])
