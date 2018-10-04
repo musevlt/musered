@@ -164,7 +164,10 @@ def normalize_recipe_name(recipe_name):
     'muse_scibasic'
 
     """
-    if not recipe_name.startswith('muse_'):
+    from .recipes import recipe_classes
+    if recipe_name in recipe_classes:
+        return recipe_name
+    elif not recipe_name.startswith('muse_'):
         recipe_name = 'muse_' + recipe_name
     return recipe_name
 
