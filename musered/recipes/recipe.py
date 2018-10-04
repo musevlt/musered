@@ -390,10 +390,9 @@ class PythonRecipe:
         info('- Non-default params :')
         self.param = self.default_params.copy()
         params = params or {}
-        for key in self.param:
-            if key in params:
-                info('%15s = %s (%s)', key, params[key], self.param[key])
-                self.param[key] = params[key]
+        for key in params:
+            info('%15s = %s (%s)', key, params[key], self.param.get(key, ''))
+            self.param[key] = params[key]
 
         results = self._run(flist, *args, **kwargs)
         self.results = results

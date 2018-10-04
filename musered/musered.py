@@ -530,21 +530,23 @@ class MuseRed(Reporter):
         else:
             dates = self._prepare_dates(dates, 'OBJECT', 'name')
 
-        recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
-                                            recipe_name)
+        # recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
+        #                                     recipe_name)
 
         if recipe_name == 'superflat':
             # Build a Table (name, run, path)
             redc = self.reduced.table.c
             rawc = self.rawc
+            wc = (redc.DPR_TYPE == 'PIXTABLE_OBJECT')
+            # if 'from_recipe' in recipe_conf:
+            #     wc = wc & (redc.recipe_name == recipe_conf['from_recipe'])
             exps = [
-                (name, run, join(path, 'PIXTABLE_REDUCED_0001.fits'))
+                (name, run, path)
                 for (name, run, path) in self.execute(
                     sql.select([rawc.name, rawc.run, redc.path])
                     .select_from(self.reduced.table
                                  .join(self.raw.table, redc.name == rawc.name))
-                    .where((redc.DPR_TYPE == 'PIXTABLE_REDUCED') &
-                           (redc.recipe_name == recipe_conf['from_recipe']))
+                    .where(wc)
                     .order_by(rawc.name))
             ]
             kwargs['exposures'] = Table(rows=exps,

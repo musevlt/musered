@@ -2,11 +2,11 @@ import numpy as np
 import os
 from astropy.io import fits
 from astropy.table import Table
+from glob import glob
 from mpdaf.obj import Cube, CubeList
 
 from .recipe import PythonRecipe
-from .science import MAKECUBE
-from ..utils import get_exp_name
+from .science import SCIPOST
 
 
 class SUPERFLAT(PythonRecipe):
@@ -21,7 +21,9 @@ class SUPERFLAT(PythonRecipe):
 
     @property
     def calib_frames(self):
-        return ['FILTER_LIST', 'OUTPUT_WCS', 'OFFSET_LIST']
+        frames = SCIPOST().calib_frames
+        frames.remove('SKY_CONTINUUM')
+        return frames
 
     def _run(self, flist, *args, exposures=None, name=None, **kwargs):
         hdr = fits.getheader(flist[0])
@@ -29,24 +31,25 @@ class SUPERFLAT(PythonRecipe):
 
         # 1. Run scipost for all exposures used to build the superflat
         run = exposures[exposures['name'] == name]['run'][0]
-        exps = exposures[exposures['run'] == run]
+        exps = exposures[(exposures['run'] == run) &
+                         (exposures['name'] != name)]
 
         # Fix the RA/DEC/DROT values for all exposures to the values of the
         # reference exp. Take into account the offset of the exposure, as we
         # need the superflat to be aligned with the exposure. The offset is
         # applied them directly to the RA/DEC values, otherwise the DRS checks
         # the exposure name.
-        if 'OFFSET_LIST' in kwargs:
-            offsets = Table.read(kwargs['OFFSET_LIST'])
-            offsets = offsets[offsets['DATE_OBS'] == hdr['DATE-OBS']]
-            ra -= offsets['RA_OFFSET'][0]
-            dec -= offsets['DEC_OFFSET'][0]
+        # if 'OFFSET_LIST' in kwargs:
+        #     offsets = Table.read(kwargs['OFFSET_LIST'])
+        #     offsets = offsets[offsets['DATE_OBS'] == hdr['DATE-OBS']]
+        #     ra -= offsets['RA_OFFSET'][0]
+        #     dec -= offsets['DEC_OFFSET'][0]
 
         os.environ['MUSE_SUPERFLAT_POS'] = ','.join(
             map(str, (ra, dec, hdr['ESO INS DROT POSANG'])))
 
-        make_cube = MAKECUBE()
-        recipe_kw = {key: kwargs[key] for key in ('FILTER_LIST', 'OUTPUT_WCS')
+        recipe = SCIPOST()
+        recipe_kw = {key: kwargs[key] for key in self.calib_frames
                      if key in kwargs}
 
         cubelist = []
@@ -57,12 +60,10 @@ class SUPERFLAT(PythonRecipe):
                 self.logger.info('%s already processed', exp['name'])
             else:
                 self.logger.info('processing %s', exp['name'])
-                make_cube.run(exp['path'], output_dir=output_dir,
-                              filter='white', **recipe_kw)
+                explist = glob(f"{exp['path']}/PIXTABLE_OBJECT*.fits")
+                recipe.run(explist, output_dir=output_dir, params=self.param,
+                           filter='white', **recipe_kw)
             cubelist.append(outname)
-
-        # Get list of processed cubes
-        # glob(f'{recipe.output_dir}/{out_frame}*.fits')
 
         # FIXME - Keep and use variance ?
 
