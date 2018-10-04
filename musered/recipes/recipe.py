@@ -216,18 +216,20 @@ class Recipe:
         self.outfiles.append(filename)
 
     def save_results(self, results, name=None):
-        ifukey = 'ESO DRS MUSE PIXTABLE LIMITS IFU LOW'
-        for frame in self.output_frames:
-            if isinstance(results[frame], list):
-                for p in results[frame]:
-                    chan = p[0].header.get(ifukey)
-                    outn = (f'{frame}-{name}-{chan:02d}.fits'
-                            if (name and chan) else p[0].header['PIPEFILE'])
-                    self._write_fits(p, os.path.join(self.output_dir, outn))
-            else:
-                p = results[frame]
-                outn = f'{frame}-{name}.fits' if name else p.header['PIPEFILE']
-                self._write_fits(p, os.path.join(self.output_dir, outn))
+        raise NotImplementedError
+        # FIXME: Old stuff to update
+        # ifukey = 'ESO DRS MUSE PIXTABLE LIMITS IFU LOW'
+        # for frame in self.output_frames:
+        #     if isinstance(results[frame], list):
+        #         for p in results[frame]:
+        #             chan = p[0].header.get(ifukey)
+        #             outn = (f'{frame}-{name}-{chan:02d}.fits'
+        #                     if (name and chan) else p[0].header['PIPEFILE'])
+        #             self._write_fits(p, os.path.join(self.output_dir, outn))
+        #     else:
+        #         p = results[frame]
+        #         outn = f'{frame}-{name}.fits' if name else p.header['PIPEFILE']
+        #         self._write_fits(p, os.path.join(self.output_dir, outn))
 
     def _run(self, raw, **kwargs):
         return self._recipe(raw=raw, **kwargs)
