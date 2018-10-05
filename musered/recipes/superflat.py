@@ -1,10 +1,14 @@
 import numpy as np
 import os
+
 from astropy.io import fits
 from astropy.table import Table
 from glob import glob
 from mpdaf.obj import Cube, CubeList
+from os.path import join
+from tempfile import TemporaryDirectory
 
+from ..masking import mask_sources
 from .recipe import PythonRecipe
 from .science import SCIPOST
 
@@ -54,31 +58,50 @@ class SUPERFLAT(PythonRecipe):
 
         cubelist = []
         for exp in exps:
-            output_dir = os.path.join(self.output_dir, 'cubes', exp['name'])
-            outname = f'{output_dir}/DATACUBE_FINAL.fits'
+            outdir = join(self.output_dir, 'cubes', exp['name'])
+            outname = f'{outdir}/DATACUBE_FINAL.fits'
             if os.path.exists(outname):
                 self.logger.info('%s already processed', exp['name'])
             else:
                 self.logger.info('processing %s', exp['name'])
                 explist = glob(f"{exp['path']}/PIXTABLE_OBJECT*.fits")
-                recipe.run(explist, output_dir=output_dir, params=self.param,
+                recipe.run(explist, output_dir=outdir, params=self.param,
                            filter='white', **recipe_kw)
             cubelist.append(outname)
 
-        # FIXME - Keep and use variance ?
+        # 2. Mask sources and combine exposures to obtain the superflat
+        prefix = f"superflat.{exp['name']}"
+        with TemporaryDirectory(dir='/scratch', prefix=prefix) as tmpdir:
+            cubes_masked = []
+            for cubef in cubelist:
+                self.logger.debug('Masking %s', cubef)
+                cubedir = os.path.dirname(cubef)
+                mask = mask_sources(join(cubedir, 'IMAGE_FOV_0001.fits'),
+                                    sigma=5., iterations=2,
+                                    opening_iterations=1)
+                mask.write(join(cubedir, 'MASK_SOURCES.fits'), savemask='none')
+                cube = Cube(cubef)
+                cube.mask |= mask._data.astype(bool)
+                outf = join(tmpdir, os.path.basename(cubef))
+                cube.write(outf, savemask='nan')
+                cubes_masked.append(outf)
 
-        # 2. Combine exposures to obtain the superflat
-        cubes = CubeList(cubelist)
-        supercube, _, _ = cubes.combine(var='stat_mean', mad=True)
+            self.logger.info('Combining cubes')
+            cubes = CubeList(cubes_masked)
+            # supercube, expmap, stat = cubes.median()
+            supercube, expmap, stat = cubes.combine(var='propagate', mad=True)
+
         # Mask values where the variance is NaN
         supercube.mask |= np.isnan(supercube._var)
 
-        fname = os.path.join(self.output_dir, 'SUPERFLAT.fits')
-        supercube.write(fname, savemask='nan')
-
         superim = supercube.mean(axis=0)
-        fname = os.path.join(self.output_dir, 'SUPERFLAT_IMAGE.fits')
-        superim.write(fname, savemask='nan')
+        expim = expmap.mean(axis=0)
+        outdir = self.output_dir
+        supercube.write(join(outdir, 'SUPERFLAT.fits'), savemask='nan')
+        expmap.write(join(outdir, 'EXPMAP.fits.gz'), savemask='nan')
+        expim.write(join(outdir, 'EXPMAP_IMAGE.fits'), savemask='nan')
+        stat.write(join(outdir, 'STATPIX.fits'), overwrite=True)
+        superim.write(join(outdir, 'SUPERFLAT_IMAGE.fits'), savemask='nan')
 
         # 3. Subtract superflat
         self.logger.info('Applying superflat to %s', flist[0])
@@ -86,12 +109,11 @@ class SUPERFLAT(PythonRecipe):
         assert expcube.shape == supercube.shape
 
         # Do nothing for masked values
-        supercube._data[supercube.mask] = 0
-        supercube._var[supercube.mask] = 0
+        mask = supercube.mask.copy()
+        supercube.data[mask] = 0
+        supercube.var[mask] = 0
         expcube -= supercube
-
-        fname = os.path.join(self.output_dir, 'DATACUBE_FINAL.fits')
-        expcube.write(fname, savemask='nan')
-        fname = os.path.join(self.output_dir, 'IMAGE_FOV_0001.fits')
         im = expcube.mean(axis=0)
-        im.write(fname, savemask='nan')
+
+        expcube.write(join(outdir, 'DATACUBE_FINAL.fits'), savemask='nan')
+        im.write(join(outdir, 'IMAGE_FOV_0001.fits'), savemask='nan')
