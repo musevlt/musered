@@ -415,7 +415,7 @@ class MuseRed(Reporter):
                      ndates, label.capitalize(), date, len(flist),
                      DPR_TYPE, ins_mode)
 
-            if recipe.use_drs_output:
+            if getattr(recipe, 'use_drs_output', True):
                 out = f'{date}.{ins_mode}' if calib else date
                 kwargs['output_dir'] = join(self.reduced_path, output_dir, out)
             else:
@@ -425,7 +425,7 @@ class MuseRed(Reporter):
                 recipe, night=night, ins_mode=ins_mode,
                 recipe_conf=recipe_conf, OBJECT=res[0]['OBJECT']))
 
-            if recipe.use_illum:
+            if getattr(recipe, 'use_illum', False):
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
                 ref_date = np.mean([o['MJD_OBS'] for o in res])
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)

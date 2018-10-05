@@ -35,6 +35,7 @@ class SUPERFLAT(PythonRecipe):
         return frames
 
     def _run(self, flist, *args, exposures=None, name=None, **kwargs):
+        __import__('pdb').set_trace()
         hdr = fits.getheader(flist[0])
         ra, dec = hdr['RA'], hdr['DEC']
 
@@ -76,7 +77,7 @@ class SUPERFLAT(PythonRecipe):
 
         # 2. Mask sources and combine exposures to obtain the superflat
         prefix = f"superflat.{exp['name']}"
-        with TemporaryDirectory(dir='/scratch', prefix=prefix) as tmpdir:
+        with TemporaryDirectory(dir=self.temp_dir, prefix=prefix) as tmpdir:
             cubes_masked = [join(tmpdir, *cubef.split(os.sep)[-2:])
                             for cubef in cubelist]
             Parallel(n_jobs=8)(delayed(mask_cube)(cubef, outf)
