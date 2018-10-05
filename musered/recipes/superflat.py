@@ -1,9 +1,11 @@
+import logging
 import numpy as np
 import os
 
 from astropy.io import fits
 from astropy.table import Table
 from glob import glob
+from joblib import Parallel, delayed
 from mpdaf.obj import Cube, CubeList
 from os.path import join
 from tempfile import TemporaryDirectory
@@ -21,7 +23,10 @@ class SUPERFLAT(PythonRecipe):
     output_frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'SUPERFLAT']
     version = '0.1'
     # Save the V,R,I images
-    default_params = {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
+    default_params = {
+        'method': 'sigclip',
+        'scipost': {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
+    }
 
     @property
     def calib_frames(self):
@@ -65,34 +70,30 @@ class SUPERFLAT(PythonRecipe):
             else:
                 self.logger.info('processing %s', exp['name'])
                 explist = glob(f"{exp['path']}/PIXTABLE_OBJECT*.fits")
-                recipe.run(explist, output_dir=outdir, params=self.param,
-                           filter='white', **recipe_kw)
+                recipe.run(explist, output_dir=outdir,
+                           params=self.param['scipost'], **recipe_kw)
             cubelist.append(outname)
 
         # 2. Mask sources and combine exposures to obtain the superflat
         prefix = f"superflat.{exp['name']}"
         with TemporaryDirectory(dir='/scratch', prefix=prefix) as tmpdir:
-            cubes_masked = []
-            for cubef in cubelist:
-                self.logger.debug('Masking %s', cubef)
-                cubedir = os.path.dirname(cubef)
-                mask = mask_sources(join(cubedir, 'IMAGE_FOV_0001.fits'),
-                                    sigma=5., iterations=2,
-                                    opening_iterations=1)
-                mask.write(join(cubedir, 'MASK_SOURCES.fits'), savemask='none')
-                cube = Cube(cubef)
-                cube.mask |= mask._data.astype(bool)
-                outf = join(tmpdir, os.path.basename(cubef))
-                cube.write(outf, savemask='nan')
-                cubes_masked.append(outf)
+            cubes_masked = [join(tmpdir, *cubef.split(os.sep)[-2:])
+                            for cubef in cubelist]
+            Parallel(n_jobs=8)(delayed(mask_cube)(cubef, outf)
+                               for cubef, outf in zip(cubelist, cubes_masked))
 
-            self.logger.info('Combining cubes')
+            method = self.param['method']
+            self.logger.info(f'Combining cubes with method {method}')
             cubes = CubeList(cubes_masked)
-            # supercube, expmap, stat = cubes.median()
-            supercube, expmap, stat = cubes.combine(var='propagate', mad=True)
-
-        # Mask values where the variance is NaN
-        supercube.mask |= np.isnan(supercube._var)
+            if method == 'median':
+                supercube, expmap, stat = cubes.median()
+            elif method == 'sigclip':
+                supercube, expmap, stat = cubes.combine(var='propagate',
+                                                        mad=True)
+                # Mask values where the variance is NaN
+                supercube.mask |= np.isnan(supercube._var)
+            else:
+                raise ValueError(f'unknown method {method}')
 
         superim = supercube.mean(axis=0)
         expim = expmap.mean(axis=0)
@@ -111,9 +112,24 @@ class SUPERFLAT(PythonRecipe):
         # Do nothing for masked values
         mask = supercube.mask.copy()
         supercube.data[mask] = 0
-        supercube.var[mask] = 0
+        if supercube.var is not None:
+            supercube.var[mask] = 0
         expcube -= supercube
         im = expcube.mean(axis=0)
 
         expcube.write(join(outdir, 'DATACUBE_FINAL.fits'), savemask='nan')
         im.write(join(outdir, 'IMAGE_FOV_0001.fits'), savemask='nan')
+
+
+def mask_cube(cubef, outf):
+    logger = logging.getLogger(__name__)
+    logger.debug('Masking %s', cubef)
+    cubedir = os.path.dirname(cubef)
+    maskf = join(cubedir, 'MASK_SOURCES.fits')
+    mask = mask_sources(join(cubedir, 'IMAGE_FOV_0001.fits'), sigma=5.,
+                        iterations=2, opening_iterations=1)
+    mask.write(maskf, savemask='none')
+    cube = Cube(cubef)
+    cube.mask |= mask._data.astype(bool)
+    os.makedirs(os.path.dirname(outf), exist_ok=True)
+    cube.write(outf, savemask='nan')
