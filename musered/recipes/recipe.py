@@ -6,6 +6,7 @@ import os
 # import shutil
 import time
 # from astropy.io import fits
+from cpl.param import ParameterList
 from mpdaf.log import setup_logging
 
 __all__ = ('init_cpl_params', 'Recipe', 'PythonRecipe')
@@ -144,8 +145,11 @@ class BaseRecipe:
 
         params = params or {}
         for key, value in params.items():
+            default = (self.param[key].default
+                       if isinstance(self.param, ParameterList)
+                       else self.param.get(key, ''))
+            info('%15s = %s (%s)', key, params[key], default)
             self.param[key] = value
-            info('%15s = %s (%s)', key, params[key], self.param.get(key, ''))
 
         results = self._run(flist, *args, **kwargs)
 
