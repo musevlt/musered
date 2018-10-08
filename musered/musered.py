@@ -98,6 +98,7 @@ class MuseRed(Reporter):
         out = defaultdict(list)
         for obj, name in self.execute(
                 sql.select([self.rawc.OBJECT, self.rawc.name])
+                .order_by(self.rawc.name)
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
             out[obj].append(name)
         return out
