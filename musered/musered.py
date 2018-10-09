@@ -9,6 +9,7 @@ import os
 import shutil
 
 from astropy.io import fits
+from astropy.table import Table
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
@@ -97,6 +98,7 @@ class MuseRed(Reporter):
         out = defaultdict(list)
         for obj, name in self.execute(
                 sql.select([self.rawc.OBJECT, self.rawc.name])
+                .order_by(self.rawc.name)
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
             out[obj].append(name)
         return out
@@ -394,8 +396,11 @@ class MuseRed(Reporter):
             res = list(table.find(**select_args))
 
             if use_reduced:
-                if len(res) != 1:
+                if len(res) == 0:
                     raise RuntimeError('could not find exposures')
+                elif len(res) > 1:
+                    raise RuntimeError('found several input frames instead of '
+                                       'one. Maybe use "from_recipe" ?')
                 flist = sorted(glob(f"{res[0]['path']}/{DPR_TYPE}*.fits"))
                 ins_mode = res[0]['INS_MODE']
             else:
@@ -411,7 +416,7 @@ class MuseRed(Reporter):
                      ndates, label.capitalize(), date, len(flist),
                      DPR_TYPE, ins_mode)
 
-            if recipe.use_drs_output:
+            if getattr(recipe, 'use_drs_output', True):
                 out = f'{date}.{ins_mode}' if calib else date
                 kwargs['output_dir'] = join(self.reduced_path, output_dir, out)
             else:
@@ -421,7 +426,7 @@ class MuseRed(Reporter):
                 recipe, night=night, ins_mode=ins_mode,
                 recipe_conf=recipe_conf, OBJECT=res[0]['OBJECT']))
 
-            if recipe.use_illum:
+            if getattr(recipe, 'use_illum', False):
                 ref_temp = np.mean([o['INS_TEMP7_VAL'] for o in res])
                 ref_date = np.mean([o['MJD_OBS'] for o in res])
                 kwargs['illum'] = self.find_illum(night, ref_temp, ref_date)
@@ -525,6 +530,28 @@ class MuseRed(Reporter):
             dates = self.exposures[dataset]
         else:
             dates = self._prepare_dates(dates, 'OBJECT', 'name')
+
+        recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
+                                            recipe_name)
+
+        if recipe_name == 'superflat':
+            # Build a Table (name, run, path)
+            redc = self.reduced.table.c
+            rawc = self.rawc
+            wc = (redc.DPR_TYPE == 'PIXTABLE_REDUCED')
+            if 'from_recipe' in recipe_conf:
+                wc = wc & (redc.recipe_name == recipe_conf['superflat_from'])
+            exps = [
+                (name, run, path)
+                for (name, run, path) in self.execute(
+                    sql.select([rawc.name, rawc.run, redc.path])
+                    .select_from(self.reduced.table
+                                 .join(self.raw.table, redc.name == rawc.name))
+                    .where(wc)
+                    .order_by(rawc.name))
+            ]
+            kwargs['exposures'] = Table(rows=exps,
+                                        names=('name', 'run', 'path'))
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_cls = recipe_classes[recipe_name]

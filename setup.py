@@ -45,7 +45,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=['mpdaf', 'python-cpl', 'tqdm', 'dataset', 'PyYAML',
-                      'click', 'astroquery>0.3.8', 'secretstorage>=3.1.0'],
+                      'click', 'astroquery>0.3.8', 'joblib'],
     extras_require={'all': ['click-repl']},
     entry_points={
         'console_scripts': [
