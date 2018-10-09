@@ -127,10 +127,21 @@ def test_info(mr):
         """)
 
 
-def test_info_raw(mr, capsys):
+def test_info_exp(mr, caplog):
+    # test missing exp/night
+    mr.info_exp('2017-06-20')
+    assert caplog.records[0].message == '2017-06-20 not found'
+
+
+def test_info_raw(mr, capsys, caplog):
     mr.info_raw('2017-06-17')
     captured = capsys.readouterr()
     assert len(captured.out.splitlines()) == 39
+
+    # test missing exp/night
+    mr.info_raw('2017-06-20')
+    assert caplog.records[0].message == \
+        'Could not find exposures for 2017-06-20'
 
 
 # FIXME: update with qc from merged files

@@ -138,6 +138,7 @@ class Reporter:
 
         if len(res) == 0:
             self.logger.warning('%s not found', expname)
+            return
 
         click.secho(f'\n {expname} \n', fg='green', bold=True, reverse=True)
 
