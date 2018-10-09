@@ -26,8 +26,24 @@ def load_yaml_config(filename):
     """Load a YAML config file, with string substitution."""
     with open(filename, 'r') as f:
         conftext = f.read()
-        conf = yaml.load(conftext)
-        return yaml.load(conftext.format(**conf))
+
+    def expanduser(confdict):
+        """Expand ~ in paths."""
+        for key in ('workdir', 'raw_path', 'reduced_path', 'muse_calib_path'):
+            if key in confdict:
+                confdict[key] = os.path.expanduser(confdict[key])
+        if 'recipe_path' in confdict.get('cpl', {}):
+            confdict['cpl']['recipe_path'] = os.path.expanduser(
+                confdict['cpl']['recipe_path'])
+        return confdict
+
+    # We need to do 2 passes, before and after key substitution
+    conf = yaml.load(conftext)
+    conf = expanduser(conf)
+    conf = yaml.load(conftext.format(**conf))
+    conf = expanduser(conf)
+
+    return conf
 
 
 def load_db(filename, **kwargs):

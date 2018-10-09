@@ -104,7 +104,7 @@ class Recipe:
     """QC keywords to show, for each frame."""
 
     def __init__(self, output_dir=None, use_drs_output=True, temp_dir='.',
-                 log_dir='.', version=None, nifu=-1, tag=None):
+                 log_dir='.', version=None, nifu=-1, tag=None, verbose=True):
         self.nbwarn = 0
         self.logger = logging.getLogger(__name__)
         self.outfiles = []
@@ -149,8 +149,9 @@ class Recipe:
             for name, value in self.default_params.items():
                 self.param[name] = value
 
-        self.logger.info('%s recipe (DRS v%s from %s)', recipe_name,
-                         self._recipe.version[1], cpl.Recipe.path)
+        if verbose:
+            self.logger.info('%s recipe (DRS v%s from %s)', recipe_name,
+                             self._recipe.version[1], cpl.Recipe.path)
 
     @property
     def calib_frames(self):

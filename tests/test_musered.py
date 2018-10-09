@@ -1,3 +1,4 @@
+import logging
 import os
 import pytest
 import textwrap
@@ -16,6 +17,15 @@ def mr():
     os.chdir(TESTDIR)
     yield MuseRed()
     os.chdir(cwd)
+
+
+def test_help(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['--help'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    out = out[out.index('Commands:'):]
+    assert len(out) > 10
 
 
 def test_list_datasets(mr):
@@ -157,3 +167,39 @@ def test_select_date(mr):
 
     assert mr.select_dates('MASTER_BIAS', table='reduced') == [
         '2017-06-13', '2017-06-15', '2017-06-17', '2017-06-19']
+
+
+def test_process_calib(mr, caplog):
+    caplog.set_level(logging.INFO)
+    runner = CliRunner()
+    result = runner.invoke(cli, ['process-calib', '--dry-run'])
+    assert result.exit_code == 0
+    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+        Running muse_bias for 4 nights
+        Already processed, nothing to do
+        Running muse_flat for 3 nights
+        Already processed, nothing to do
+        Running muse_wavecal for 3 nights
+        Already processed, nothing to do
+        Running muse_lsf for 3 nights
+        Already processed, nothing to do
+        Running muse_twilight for 1 nights
+        Already processed, nothing to do
+    """).splitlines()
+
+
+def test_process_exp(mr, caplog):
+    caplog.set_level(logging.INFO)
+    runner = CliRunner()
+    result = runner.invoke(cli, ['process-exp', '--dry-run'])
+    assert result.exit_code == 0
+    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+        Running muse_scibasic for 6 exposures
+        Already processed, nothing to do
+        Running muse_scibasic for 1 exposures
+        Already processed, nothing to do
+        Running muse_standard for 1 exposures
+        Already processed, nothing to do
+        Running muse_scipost for 6 exposures
+        Already processed, nothing to do
+    """).splitlines()

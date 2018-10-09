@@ -543,7 +543,8 @@ class MuseRed(Reporter):
         dates = self._prepare_dates(dates, 'STD', 'name')
 
         # run muse_scibasic with specific parameters (tag: STD)
-        recipe = self._instantiate_recipe(recipe_std, 'muse_standard')
+        recipe = self._instantiate_recipe(recipe_std, 'muse_standard',
+                                          verbose=False)
         recipe_kw = {'tag': 'STD', 'output_dir': recipe.output_dir}
         self._run_recipe_loop(recipe_sci, dates, skip=skip,
                               recipe_kwargs=recipe_kw, **kwargs)
@@ -637,7 +638,8 @@ class MuseRed(Reporter):
         else:
             return recipe_conf
 
-    def _instantiate_recipe(self, recipe_cls, recipe_name, kwargs=None):
+    def _instantiate_recipe(self, recipe_cls, recipe_name, kwargs=None,
+                            verbose=True):
         """Instantiate the recipe object.  Use parameters from the settings,
         common first, and then from recipe_name.init, and from kwargs.
         """
@@ -650,7 +652,7 @@ class MuseRed(Reporter):
         sig = inspect.signature(recipe_cls)
         recipe_kw = {k: v for k, v in recipe_kw.items() if k in sig.parameters}
 
-        return recipe_cls(**recipe_kw)
+        return recipe_cls(**recipe_kw, verbose=verbose)
 
     def _save_reduced(self, recipe, keys, DPR_CATG='SCIENCE',
                       recipe_name=None, **kwargs):

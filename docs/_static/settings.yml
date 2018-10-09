@@ -5,7 +5,7 @@ workdir: '.'
 db: 'musered.db'
 raw_path: '{workdir}/raw'
 reduced_path: '{workdir}/reduced/{version}'
-muse_calib_path: '/home/conseil/lib/musedrs/muse-calib'
+muse_calib_path: '~/lib/musedrs/muse-calib'
 
 # Version
 version: '0.1'
@@ -23,7 +23,7 @@ datasets:
 # python-cpl settings, esorex like.
 cpl:
   # recipes directory (and version if needed)
-  recipe_path: '/home/conseil/.local/lib/esopipes-plugins'
+  recipe_path: '~/.local/lib/esopipes-plugins'
   # drs_version: '2.1.0'
   # log files directory
   log_dir: '{workdir}/reduced/{version}/logs'
