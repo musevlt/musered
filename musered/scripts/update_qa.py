@@ -5,7 +5,7 @@ import numpy as np
 import pprint
 from astropy.table import Table
 
-from ..utils import normalize_recipe_name, upsert_many
+from musered.utils import normalize_recipe_name, upsert_many
 
 logger = logging.getLogger(__name__)
 

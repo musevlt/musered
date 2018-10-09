@@ -99,7 +99,16 @@ def load_table(db, name, indexes=None):
 
 
 def get_exp_name(filename):
-    """Return the exposure id from a filename."""
+    """Return the exposure id from a filename.
+
+    >>> get_exp_name('MUSE.2018-09-08T10:19:47.146.fits.fz')
+    '2018-09-08T10:19:47.146'
+    >>> get_exp_name('raw/MUSE.2018-09-08T10:19:47.146.fits.fz')
+    '2018-09-08T10:19:47.146'
+    >>> get_exp_name('foo.fits')
+    >>>
+
+    """
     try:
         return re.findall(EXP_PATTERN, filename)[0]
     except IndexError:
@@ -107,21 +116,54 @@ def get_exp_name(filename):
 
 
 def parse_datetime(exp):
+    """Parse an exposure name to a datetime object.
+
+    >>> parse_datetime('2018-09-08T10:19:47.146')
+    datetime.datetime(2018, 9, 8, 10, 19, 47, 146000)
+
+    """
     return datetime.datetime.strptime(exp, DATETIME_PATTERN)
 
 
 def parse_date(exp):
+    """Parse a date string to a datetime object.
+
+    >>> parse_date('2018-09-08')
+    datetime.date(2018, 9, 8)
+
+    """
     return datetime.datetime.strptime(exp, DATE_PATTERN).date()
 
 
 def normalize_keyword(key):
-    """Normalize FITS keywords to use it as a database column name."""
+    """Normalize FITS keywords to use it as a database column name.
+
+    >>> normalize_keyword('foo')
+    'foo'
+    >>> normalize_keyword('FOO BAR')
+    'FOO_BAR'
+    >>> normalize_keyword('FOO-BAR')
+    'FOO_BAR'
+    >>> normalize_keyword('ESO INS MODE')
+    'INS_MODE'
+    >>> normalize_keyword('ESO DPR TYPE')
+    'DPR_TYPE'
+
+    """
     if key.startswith('ESO '):
         key = key[4:]
     return key.replace(' ', '_').replace('-', '_')
 
 
 def normalize_recipe_name(recipe_name):
+    """Add 'muse_' if needed for the DRS recipe names.
+
+    >>> normalize_recipe_name('scibasic')
+    'muse_scibasic'
+    >>> normalize_recipe_name('muse_scibasic')
+    'muse_scibasic'
+
+    """
     if not recipe_name.startswith('muse_'):
         recipe_name = 'muse_' + recipe_name
     return recipe_name
@@ -361,7 +403,18 @@ def parse_weather_conditions(mr):
 
 
 def upsert_many(db, tablename, rows, keys):
-    """Use dataset.Table.upsert for a list of rows."""
+    """Use dataset.Table.upsert for a list of rows.
+
+    >>> import dataset
+    >>> db = dataset.connect('sqlite:///:memory:')
+    >>> table = db['sometable']
+    >>> table.insert(dict(name='John Doe', age=37))
+    1
+    >>> upsert_many(db, 'sometable', [dict(name='John Doe', age=42)], ['name'])
+    >>> table.find_one()
+    OrderedDict([('id', 1), ('name', 'John Doe'), ('age', 42)])
+
+    """
     with db as tx:
         table = tx[tablename]
         for row in rows:
@@ -369,34 +422,51 @@ def upsert_many(db, tablename, rows, keys):
 
 
 def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
-             use_labels=True, isouter=False, debug=False, **params):
+                use_labels=True, isouter=False, debug=False, **params):
     """Join table with other catalogs.
 
-   Parameters
-   ----------
-   db:
-       The database
-   tablenames:
-       List of table names
-   whereclause:
-       The SQLAlchemy selection clause.
-   columns: list of str
-       List of columns to retrieve (all columns if None).
-   keys: list of tuple
-       List of keys to do the join for each catalog. If None, the IDs of
-       each catalog are used (from the ``idname`` attribute). Otherwise it
-       must be a list of tuples, where each tuple contains the key for
-       self and the key for the other catalog.
-   use_labels: bool
-       By default, all columns are selected which may gives name
-       conflicts. So ``use_labels`` allows to rename the columns by
-       prefixinf the name with the catalog name.
-   isouter: bool
-       If True, render a LEFT OUTER JOIN, instead of JOIN.
-   params: dict
-       Additional parameters are passed to `sqlalchemy.sql.select`.
+    >>> import dataset
+    >>> from pprint import pprint
+    >>> db = dataset.connect('sqlite:///:memory:')
+    >>> table = db['sometable']
+    >>> table.insert(dict(name='John Doe', age=37))
+    1
+    >>> table2 = db['sometable2']
+    >>> table2.insert(dict(name='John Doe', gender='male'))
+    1
+    >>> pprint(next(join_tables(db, ['sometable', 'sometable2'])))
+    OrderedDict([('sometable_id', 1),
+                 ('sometable_name', 'John Doe'),
+                 ('sometable_age', 37),
+                 ('sometable2_id', 1),
+                 ('sometable2_name', 'John Doe'),
+                 ('sometable2_gender', 'male')])
 
-   """
+    Parameters
+    ----------
+    db:
+        The database
+    tablenames:
+        List of table names
+    whereclause:
+        The SQLAlchemy selection clause.
+    columns: list of str
+        List of columns to retrieve (all columns if None).
+    keys: list of tuple
+        List of keys to do the join for each catalog. If None, the IDs of
+        each catalog are used (from the ``idname`` attribute). Otherwise it
+        must be a list of tuples, where each tuple contains the key for
+        self and the key for the other catalog.
+    use_labels: bool
+        By default, all columns are selected which may gives name
+        conflicts. So ``use_labels`` allows to rename the columns by
+        prefixinf the name with the catalog name.
+    isouter: bool
+        If True, render a LEFT OUTER JOIN, instead of JOIN.
+    params: dict
+        Additional parameters are passed to `sqlalchemy.sql.select`.
+
+    """
     tables = [db[name].table for name in tablenames]
     if columns is None:
         columns = tables
