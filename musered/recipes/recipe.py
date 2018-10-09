@@ -66,7 +66,7 @@ class BaseRecipe:
     n_inputs_min = None
     """Minimum number of input files, as required by the DRS."""
 
-    def __init__(self, output_dir=None, log_dir='.', temp_dir=None):
+    def __init__(self, output_dir=None, log_dir='.', temp_dir=None, **kwargs):
         self.nbwarn = 0
         self.timeit = 0
         self.logger = logging.getLogger(__name__)

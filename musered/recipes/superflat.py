@@ -30,7 +30,7 @@ class SUPERFLAT(PythonRecipe):
 
     @property
     def calib_frames(self):
-        frames = SCIPOST().calib_frames
+        frames = SCIPOST(verbose=False).calib_frames
         if 'SKY_CONTINUUM' in frames:
             frames.remove('SKY_CONTINUUM')
         return frames
@@ -38,38 +38,41 @@ class SUPERFLAT(PythonRecipe):
     def _run(self, flist, *args, exposures=None, name=None, **kwargs):
         hdr = fits.getheader(flist[0])
         ra, dec = hdr['RA'], hdr['DEC']
+        info = self.logger.info
 
         # 1. Run scipost for all exposures used to build the superflat
         run = exposures[exposures['name'] == name]['run'][0]
         exps = exposures[(exposures['run'] == run) &
                          (exposures['name'] != name)]
+        nexps = len(exps)
+        info('Found %d exposures for run %s', nexps, run)
 
         # Fix the RA/DEC/DROT values for all exposures to the values of the
         # reference exp. Take into account the offset of the exposure, as we
         # need the superflat to be aligned with the exposure. The offset is
         # applied them directly to the RA/DEC values, otherwise the DRS checks
         # the exposure name.
-        # if 'OFFSET_LIST' in kwargs:
-        #     offsets = Table.read(kwargs['OFFSET_LIST'])
-        #     offsets = offsets[offsets['DATE_OBS'] == hdr['DATE-OBS']]
-        #     ra -= offsets['RA_OFFSET'][0]
-        #     dec -= offsets['DEC_OFFSET'][0]
+        if 'OFFSET_LIST' in kwargs:
+            offsets = Table.read(kwargs['OFFSET_LIST'])
+            offsets = offsets[offsets['DATE_OBS'] == hdr['DATE-OBS']]
+            ra -= offsets['RA_OFFSET'][0]
+            dec -= offsets['DEC_OFFSET'][0]
 
         os.environ['MUSE_SUPERFLAT_POS'] = ','.join(
             map(str, (ra, dec, hdr['ESO INS DROT POSANG'])))
 
-        recipe = SCIPOST()
+        recipe = SCIPOST(log_dir=self.log_dir)
         recipe_kw = {key: kwargs[key] for key in self.calib_frames
-                     if key in kwargs}
+                     if key in kwargs and key != 'OFFSET_LIST'}
 
         cubelist = []
-        for exp in exps:
+        for i, exp in enumerate(exps, start=1):
             outdir = join(self.output_dir, 'cubes', exp['name'])
             outname = f'{outdir}/DATACUBE_FINAL.fits'
             if os.path.exists(outname):
-                self.logger.info('%s already processed', exp['name'])
+                info('%d/%d : %s already processed', i, nexps, exp['name'])
             else:
-                self.logger.info('processing %s', exp['name'])
+                info('%d/%d : %s processing', i, nexps, exp['name'])
                 explist = glob(f"{exp['path']}/PIXTABLE_REDUCED*.fits")
                 recipe.run(explist, output_dir=outdir,
                            params=self.param['scipost'], **recipe_kw)
@@ -84,7 +87,7 @@ class SUPERFLAT(PythonRecipe):
                                for cubef, outf in zip(cubelist, cubes_masked))
 
             method = self.param['method']
-            self.logger.info(f'Combining cubes with method {method}')
+            info(f'Combining cubes with method {method}')
             cubes = CubeList(cubes_masked)
             if method == 'median':
                 supercube, expmap, stat = cubes.median()
