@@ -136,6 +136,9 @@ class Reporter:
         res = list(res.values())
         res.sort(key=lambda x: x[0]['date_run'])
 
+        if len(res) == 0:
+            self.logger.warning('%s not found', expname)
+
         click.secho(f'\n {expname} \n', fg='green', bold=True, reverse=True)
 
         if 'gto_logs' in self.db:
