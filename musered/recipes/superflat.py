@@ -31,11 +31,11 @@ class SUPERFLAT(PythonRecipe):
     @property
     def calib_frames(self):
         frames = SCIPOST().calib_frames
-        frames.remove('SKY_CONTINUUM')
+        if 'SKY_CONTINUUM' in frames:
+            frames.remove('SKY_CONTINUUM')
         return frames
 
     def _run(self, flist, *args, exposures=None, name=None, **kwargs):
-        __import__('pdb').set_trace()
         hdr = fits.getheader(flist[0])
         ra, dec = hdr['RA'], hdr['DEC']
 
@@ -70,7 +70,7 @@ class SUPERFLAT(PythonRecipe):
                 self.logger.info('%s already processed', exp['name'])
             else:
                 self.logger.info('processing %s', exp['name'])
-                explist = glob(f"{exp['path']}/PIXTABLE_OBJECT*.fits")
+                explist = glob(f"{exp['path']}/PIXTABLE_REDUCED*.fits")
                 recipe.run(explist, output_dir=outdir,
                            params=self.param['scipost'], **recipe_kw)
             cubelist.append(outname)
@@ -99,11 +99,12 @@ class SUPERFLAT(PythonRecipe):
         superim = supercube.mean(axis=0)
         expim = expmap.mean(axis=0)
         outdir = self.output_dir
-        supercube.write(join(outdir, 'SUPERFLAT.fits'), savemask='nan')
-        expmap.write(join(outdir, 'EXPMAP.fits.gz'), savemask='nan')
-        expim.write(join(outdir, 'EXPMAP_IMAGE.fits'), savemask='nan')
+        supercube.write(join(outdir, 'DATACUBE_SUPERFLAT.fits'),
+                        savemask='nan')
+        expmap.write(join(outdir, 'DATACUBE_EXPMAP.fits.gz'), savemask='nan')
+        expim.write(join(outdir, 'IMAGE_EXPMAP.fits'), savemask='nan')
         stat.write(join(outdir, 'STATPIX.fits'), overwrite=True)
-        superim.write(join(outdir, 'SUPERFLAT_IMAGE.fits'), savemask='nan')
+        superim.write(join(outdir, 'IMAGE_SUPERFLAT.fits'), savemask='nan')
 
         # 3. Subtract superflat
         self.logger.info('Applying superflat to %s', flist[0])

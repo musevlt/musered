@@ -531,16 +531,16 @@ class MuseRed(Reporter):
         else:
             dates = self._prepare_dates(dates, 'OBJECT', 'name')
 
-        # recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
-        #                                     recipe_name)
+        recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
+                                            recipe_name)
 
         if recipe_name == 'superflat':
             # Build a Table (name, run, path)
             redc = self.reduced.table.c
             rawc = self.rawc
-            wc = (redc.DPR_TYPE == 'PIXTABLE_OBJECT')
-            # if 'from_recipe' in recipe_conf:
-            #     wc = wc & (redc.recipe_name == recipe_conf['from_recipe'])
+            wc = (redc.DPR_TYPE == 'PIXTABLE_REDUCED')
+            if 'from_recipe' in recipe_conf:
+                wc = wc & (redc.recipe_name == recipe_conf['superflat_from'])
             exps = [
                 (name, run, path)
                 for (name, run, path) in self.execute(
