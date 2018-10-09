@@ -38,6 +38,16 @@ def test_list_datasets(mr):
         """)
 
 
+def test_list_runs(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--runs'])
+    assert result.exit_code == 0
+    assert result.output == textwrap.dedent("""\
+        Runs:
+        - GTO17 : 2017-04-01 - 2017-06-30, 6 exposures
+        """)
+
+
 def test_list_nights(mr):
     runner = CliRunner()
     result = runner.invoke(cli, ['info', '--nights'])
@@ -127,16 +137,30 @@ def test_info(mr):
         """)
 
 
-def test_info_exp(mr, caplog):
+def test_info_exp(mr, capsys, caplog):
     # test missing exp/night
     mr.info_exp('2017-06-20')
     assert caplog.records[0].message == '2017-06-20 not found'
 
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '2017-06-16T01:34:56.867'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    for line in ['★ GTO logs:',
+                 '★ Weather Conditions:',
+                 '★ Recipe: muse_scibasic',
+                 '★ Recipe: muse_scipost_rec',
+                 '★ Recipe: muse_scipost',
+                 '★ Recipe: muse_scipost_make_cube']:
+        assert line in out
+
 
 def test_info_raw(mr, capsys, caplog):
-    mr.info_raw('2017-06-17')
-    captured = capsys.readouterr()
-    assert len(captured.out.splitlines()) == 39
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--raw', '2017-06-17'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    assert len(out) == 39
 
     # test missing exp/night
     mr.info_raw('2017-06-20')

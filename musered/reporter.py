@@ -2,6 +2,7 @@ import click
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import textwrap
 
 from astropy.io import fits
@@ -186,10 +187,10 @@ class Reporter:
             if o['recipe_file'] is None:
                 continue
 
-            with open(o['recipe_file']) as f:
-                info = json.load(f)
+            if full and os.path.isfile(o['recipe_file']):
+                with open(o['recipe_file']) as f:
+                    info = json.load(f)
 
-            if full:
                 for name in ('calib', 'raw'):
                     if name not in info:
                         continue
