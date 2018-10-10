@@ -383,6 +383,10 @@ def parse_weather_conditions(mr):
             continue
         tbl['night'] = night
 
+        # Fix when comment is incorrect, typically when there is no comment
+        if tbl['Comment'].dtype.kind != 'U':
+            tbl.replace_column('Comment', [str(s) for s in tbl['Comment']])
+
         dates = []
         for row in tbl:
             night = row['night']
