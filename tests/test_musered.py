@@ -168,15 +168,14 @@ def test_info_raw(mr, capsys, caplog):
         'Could not find exposures for 2017-06-20'
 
 
-# FIXME: update with qc from merged files
-# def test_info_qc(mr, capsys):
-#     mr.info_qc('MASTER_FLAT', date_list='2017-06-17')
-#     captured = capsys.readouterr()
-#     assert len(captured.out.splitlines()) == 26  # 24 rows + header
+def test_info_qc(mr, capsys):
+    mr.info_qc('MASTER_FLAT', date_list='2017-06-17')
+    captured = capsys.readouterr()
+    assert len(captured.out.splitlines()) == 29  # 24 rows + header + expname
 
-#     mr.info_qc('MASTER_FLAT')
-#     captured = capsys.readouterr()
-#     assert len(captured.out.splitlines()) == 26 * 3  # 3 nights
+    mr.info_qc('MASTER_FLAT')
+    captured = capsys.readouterr()
+    assert len(captured.out.splitlines()) == 29 * 3  # 3 nights
 
 
 def test_get_table(mr):

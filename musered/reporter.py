@@ -239,12 +239,17 @@ class Reporter:
             date_list = [date_list]
 
         recipe_cls = recipe_classes[table.find_one()['recipe_name']]
-        cols = ['filename', 'DATE_OBS', 'INS_MODE']
+        cols = ['filename', 'hdu', 'DATE_OBS', 'INS_MODE']
         cols.extend(recipe_cls.QC_keywords.get(dpr_type, []))
 
         for date_obs in date_list:
-            t = Table(rows=[[row[k] for k in cols] for row in
-                            table.find(DATE_OBS=date_obs)], names=cols)
+            self.fmt.show_title(f'\n{date_obs}\n')
+            rows = list(table.find(DATE_OBS=date_obs))
+            if len(rows) == 0:
+                self.fmt.show_text('no QC.')
+                continue
+            t = Table(rows=[[row[k] for k in cols] for row in rows],
+                      names=cols)
             self.fmt.show_table(t, **kwargs)
 
     def show_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',

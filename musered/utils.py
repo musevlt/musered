@@ -213,14 +213,24 @@ def parse_raw_keywords(flist, runs=None):
 
 
 def parse_qc_keywords(flist):
+    logger = logging.getLogger(__name__)
     rows = []
     for f in sorted(flist):
-        hdr = fits.getheader(f)
-        cards = {normalize_keyword(key): val
-                 for key, val in hdr['ESO QC*'].items()}
-        if len(cards) == 0:
-            break  # no QC params
-        rows.append({'filename': os.path.basename(f), **cards})
+        with fits.open(f) as hdul:
+            for hdu in hdul:
+                if '.' in hdu.name:
+                    name, ext = hdu.name.split('.')
+                    if ext in ('DQ', 'STAT'):
+                        continue
+                else:
+                    name = hdu.name
+                cards = {normalize_keyword(key): val
+                         for key, val in hdu.header['ESO QC*'].items()}
+                if len(cards) == 0:
+                    logger.debug('%s - %s : no QC keywords', f, name)
+                    continue
+                rows.append({'filename': os.path.basename(f),
+                             'hdu': name, **cards})
     return rows
 
 
@@ -284,8 +294,8 @@ def isnotebook():  # pragma: no cover
 
 
 def ProgressBar(*args, **kwargs):
-    logger = logging.getLogger('origin')
-    if logging.getLevelName(logger.getEffectiveLevel()) == 'ERROR':
+    logger = logging.getLogger(__name__)
+    if logging.getLevelName(logger.getEffectiveLevel()) == 'DEBUG':
         kwargs['disable'] = True
 
     from tqdm import tqdm, tqdm_notebook
