@@ -172,14 +172,10 @@ def normalize_recipe_name(recipe_name):
     return recipe_name
 
 
-def parse_raw_keywords(flist, force=False, processed=None, runs=None):
+def parse_raw_keywords(flist, runs=None):
     logger = logging.getLogger(__name__)
-
-    nskip = 0
     rows = []
     runs = runs or {}
-    processed = processed or []
-
     keywords = [k.split('/')[0].strip()
                 for k in RAW_FITS_KEYWORDS.splitlines() if k]
 
@@ -191,13 +187,9 @@ def parse_raw_keywords(flist, force=False, processed=None, runs=None):
 
         logger.debug('parsing %s', f)
         hdr = fits.getheader(f, ext=0)
-        if not force and hdr['ARCFILE'] in processed:
-            nskip += 1
-            continue
-
         row = OrderedDict([('name', get_exp_name(f)),
                            ('filename', os.path.basename(f)),
-                           ('path', f)])
+                           ('path', f), ('night', None)])
 
         if 'DATE-OBS' in hdr:
             date = parse_datetime(hdr['DATE-OBS'])
@@ -211,15 +203,13 @@ def parse_raw_keywords(flist, force=False, processed=None, runs=None):
                 if run['start_date'] <= night <= run['end_date']:
                     row['run'] = run_name
                     break
-        else:
-            row['night'] = None
 
         for key in keywords:
             row[normalize_keyword(key)] = hdr.get(key)
 
         rows.append(row)
 
-    return rows, nskip
+    return rows
 
 
 def parse_qc_keywords(flist):

@@ -138,7 +138,14 @@ class MuseRed(Reporter):
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
 
+        # Already parsed raw files
+        try:
+            known_files = self.select_column('filename')
+        except Exception:
+            known_files = []
+
         # Get the list of FITS files in the raw directory
+        nskip = 0
         flist = []
         for root, dirs, files in os.walk(self.raw_path):
             if root.endswith('.cache'):
@@ -147,18 +154,16 @@ class MuseRed(Reporter):
                 continue
             for f in files:
                 if f.endswith(('.fits', '.fits.fz')):
+                    if f in known_files:
+                        nskip += 1
+                        if not force:
+                            continue
                     flist.append(join(root, f))
-        self.logger.info('found %d FITS files', len(flist))
 
-        # Get the list of files already in the database
-        try:
-            arcf = self.select_column('ARCFILE')
-        except Exception:
-            arcf = []
+        self.logger.info('%d new FITS files, %d known', len(flist), nskip)
 
         # Parse FITS headers to get the keyword values
-        rows, nskip = parse_raw_keywords(flist, force=force, processed=arcf,
-                                         runs=self.conf.get('runs'))
+        rows = parse_raw_keywords(flist, runs=self.conf.get('runs'))
 
         with self.db as tx:
             raw = tx['raw']
