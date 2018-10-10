@@ -77,9 +77,6 @@ class BaseRecipe:
         self.calib = {}  # calib frames
         self.raw = {}    # raw frames
 
-        if self.default_params is not None:
-            self.param.update(self.default_params)
-
         self.temp_dir = temp_dir
         if temp_dir is not None:
             os.makedirs(temp_dir, exist_ok=True)
@@ -143,13 +140,19 @@ class BaseRecipe:
         info('- Output directory   : %s', self.output_dir)
         info('- Non-default params :')
 
-        params = params or {}
-        for key, value in params.items():
+        for key, value in self.default_params.items():
+            self.param[key] = value
+
+        if params is not None:
+            for key, value in params.items():
+                self.param[key] = value
+
+        for key, value in dict(self.param).items():
             default = (self.param[key].default
                        if isinstance(self.param, ParameterList)
-                       else self.param.get(key, ''))
-            info('%15s = %s (%s)', key, params[key], default)
-            self.param[key] = value
+                       else self.default_params.get(key, ''))
+            if value != default:
+                info('%15s = %s (%s)', key, value, default)
 
         results = self._run(flist, *args, **kwargs)
 
@@ -238,8 +241,8 @@ class Recipe(BaseRecipe):
         self._recipe.output_dir = self.output_dir if use_drs_output else None
         self._recipe.temp_dir = temp_dir
 
-        self.param = self._recipe.param
         self.calib = self._recipe.calib
+        self.param = self._recipe.param
 
         if self.env is not None:
             self._recipe.env.update(self.env)
