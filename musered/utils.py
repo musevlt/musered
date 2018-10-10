@@ -394,7 +394,6 @@ def parse_weather_conditions(mr, force=False):
             dates.append(d.isoformat())
 
         tbl['date'] = dates
-        tbl.remove_column('Time')
         tables.append(tbl)
 
     if len(tables) == 0:
