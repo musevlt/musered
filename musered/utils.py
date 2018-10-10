@@ -347,16 +347,23 @@ def parse_gto_db(musered_db, gto_dblist):
     return table
 
 
-def parse_weather_conditions(mr):
+def parse_weather_conditions(mr, force=False):
     """Parse weather conditions from the .NL.txt files associated to
     observations.
     """
     logger = logging.getLogger(__name__)
 
-    tables = []
+    wc = (mr.rawc.DPR_TYPE == 'OBJECT')
+    if not force:
+        weather_tbl = mr.db['weather_conditions']
+        existing_nights = [o['night'] for o in weather_tbl.find()]
+        logger.debug('Skipping %d nights', len(existing_nights))
+        wc = wc & (mr.rawc.night.notin_(existing_nights))
+
     query = (sql.select([mr.rawc.night, mr.rawc.path])
-             .where(mr.rawc.DPR_TYPE == 'OBJECT')
+             .where(wc)
              .group_by(mr.rawc.night))
+    tables = []
 
     for night, path in mr.execute(query):
         cond_file = path.replace('.fits.fz', '.NL.txt')
@@ -399,6 +406,10 @@ def parse_weather_conditions(mr):
         tbl['date'] = dates
         tbl.remove_column('Time')
         tables.append(tbl)
+
+    if len(tables) == 0:
+        logger.debug('Nothing to do for weather conditions')
+        return
 
     tables = vstack(tables)
     # Move the night column at beginning

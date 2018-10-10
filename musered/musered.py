@@ -189,7 +189,7 @@ class MuseRed(Reporter):
         self.rawc = self.raw.table.c
 
         # weather conditions
-        parse_weather_conditions(self)
+        parse_weather_conditions(self, force=force)
 
         # GTO logs
         if 'GTO_logs' in self.conf:
