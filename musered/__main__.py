@@ -122,13 +122,16 @@ def info(mr, dateobs, short, datasets, nights, runs, exps, raw, qc):
                 mr.info_exp(date, full=not short)
 
 
-@click.argument('recipe_name')
-@click.argument('date', nargs=-1)
+@click.option('-r', '--recipe', multiple=True)
+@click.option('-d', '--date', multiple=True)
+@click.option('-n', '--night', multiple=True)
+@click.option('--dry-run', is_flag=True, help='do not run the recipe')
 @click.option('--keep-files', is_flag=True, help='do not delete files')
 @click.pass_obj
-def clean(mr, recipe_name, date, keep_files):
+def clean(mr, recipe, date, night, dry_run, keep_files):
     """Remove data and database entries for a given recipe and dates."""
-    mr.clean(recipe_name, date_list=date, remove_files=not keep_files)
+    mr.clean(recipe_list=recipe, date_list=date, night_list=night,
+             remove_files=not keep_files, dry_run=dry_run)
 
 
 @click.argument('date', nargs=-1)

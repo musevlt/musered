@@ -252,30 +252,34 @@ class MuseRed(Reporter):
             table.insert_many(rows)
             self.logger.info('inserted %d rows', len(rows))
 
-    def clean(self, recipe_name, date_list=None, remove_files=True):
-        kwargs = dict(recipe_name=normalize_recipe_name(recipe_name))
+    def clean(self, recipe_list=None, date_list=None, night_list=None,
+              remove_files=True, dry_run=False):
+        """Remove database entries and files."""
+        for attr in (recipe_list, date_list, night_list):
+            if attr and isinstance(attr, str):
+                raise ValueError(f'{attr} should be a list')
+
+        kwargs = {}
+        if recipe_list:
+            kwargs = {'recipe_name': [normalize_recipe_name(rec)
+                                      for rec in recipe_list]}
         if date_list:
-            if isinstance(date_list, str):
-                date_list = [date_list]
-            elif isinstance(date_list, (list, tuple)):
-                if len(date_list) > 1:
-                    raise ValueError('FIXME: this method works only with '
-                                     'one date')
-                else:
-                    date_list = date_list[0]
             kwargs['name'] = date_list
+        if night_list:
+            kwargs['night'] = night_list
 
         count = len(list(self.reduced.distinct('name', **kwargs)))
 
         if remove_files:
             for item in self.reduced.distinct('path', **kwargs):
                 if os.path.exists(item['path']):
-                    self.logger.info('Removing %s', item['path'])
-                    shutil.rmtree(item['path'])
+                    self.logger.info('Remove %s', item['path'])
+                    if not dry_run:
+                        shutil.rmtree(item['path'])
 
-        if self.reduced.delete(**kwargs):
-            self.logger.info('Removed %d exposures/nights from the database',
-                             count)
+        self.logger.info('Remove %d exposures/nights from the database', count)
+        if not dry_run:
+            self.reduced.delete(**kwargs)
 
     def find_illum(self, night, ref_temp, ref_mjd_date):
         """Find the best ILLUM exposure for the night.
