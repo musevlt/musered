@@ -51,7 +51,7 @@ class BaseRecipe:
     output_dir = None
     """Default output directory."""
 
-    default_params = None
+    default_params = {}
     """Default parameters."""
 
     output_frames = []
