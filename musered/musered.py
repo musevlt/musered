@@ -61,9 +61,7 @@ class MuseRed(Reporter):
         for attrname, tablename in self.tables.items():
             setattr(self, attrname, self.db.create_table(tablename))
 
-        self.rawc = self.raw.table.c
         self.execute = self.db.executable.execute
-
         self.calib = CalibFinder(self.reduced, self.conf)
 
         # configure cpl
@@ -75,6 +73,11 @@ class MuseRed(Reporter):
         params = self.conf['recipes'].setdefault('common', {})
         params.setdefault('log_dir', cpl_conf['log_dir'])
         # params.setdefault('temp_dir', join(self.reduced_path, 'tmp'))
+
+    @property
+    def rawc(self):
+        """The SQLAlchemy columns object for the raw table."""
+        return self.raw.table.c
 
     @lazyproperty
     def nights(self):
@@ -189,9 +192,6 @@ class MuseRed(Reporter):
                     reduced.create_column_by_example(name, '')
                 if len(reduced) and not reduced.has_index([name]):
                     reduced.create_index([name])
-
-        # Update cached attributes (needed if the table was created)
-        self.rawc = self.raw.table.c
 
         # weather conditions
         parse_weather_conditions(self, force=force)
@@ -498,8 +498,8 @@ class MuseRed(Reporter):
                 if date in self.runs:
                     d = self.select_column(
                         datecol, distinct=True,
-                        where=sql.and_(self.rawc.run == date,
-                                       self.rawc.DPR_TYPE == DPR_TYPE)
+                        where=((self.rawc.run == date) &
+                               (self.rawc.DPR_TYPE == DPR_TYPE))
                     )
                     if d:
                         date_list += d
