@@ -10,7 +10,7 @@ from glob import glob
 from .settings import STATIC_FRAMES
 from .utils import parse_date
 
-SPECIAL_FRAMES = ('OUTPUT_WCS', 'OFFSET_LIST', 'SKY_MASK')
+SPECIAL_FRAMES = ('OUTPUT_WCS', 'OFFSET_LIST', 'SKY_MASK', 'AUTOCAL_FACTORS')
 """Frames that can be set manually (to a file path) in the settings."""
 
 
