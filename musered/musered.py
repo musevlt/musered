@@ -590,7 +590,7 @@ class MuseRed(Reporter):
                               **kwargs)
 
     def exp_align(self, dataset, method='drs', filt='white', name=None,
-                  exps=None, **kwargs):
+                  exps=None, force=False, **kwargs):
         """Compute offsets between exposures."""
 
         recipe_name = kwargs.get('params_name') or 'muse_exp_align'
@@ -598,6 +598,7 @@ class MuseRed(Reporter):
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         method = recipe_conf.get('method', method)
         filt = recipe_conf.get('filt', filt)
+        processed = []
 
         if method == 'drs':
             recipe_cls = recipe_classes['muse_exp_align']
@@ -606,6 +607,15 @@ class MuseRed(Reporter):
             # by default use params from the muse_exp_align block
             if not kwargs.get('params_name'):
                 kwargs['params_name'] = 'muse_exp_align'
+
+            if not force:
+                # Find already processed files
+                processed = [r['name'] for r in self.reduced.find(
+                    OBJECT=dataset, DPR_TYPE='IMPHOT',
+                    recipe_name=kwargs['params_name']
+                )]
+                kwargs['processed'] = processed
+                self.logger.debug('Found %d processed exps', len(processed))
         else:
             raise ValueError(f'unknown method {method}')
 
@@ -620,11 +630,10 @@ class MuseRed(Reporter):
             query = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                            recipe_name=from_recipe))
 
-        flist = [f
-                 for r in query
+        flist = [f for r in query
                  for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")]
 
-        if filt and method == 'drs':
+        if method == 'drs' and filt:
             flist = [f for f in flist
                      if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
@@ -636,7 +645,7 @@ class MuseRed(Reporter):
             del info['id']
             rows = [{**info, 'name': item['name'], 'DPR_TYPE': 'IMPHOT',
                      'path': join(info['path'], item['name'])}
-                    for item in query]
+                    for item in query if item['name'] not in processed]
             upsert_many(self.db, self.reduced.name, rows,
                         keys=('name', 'recipe_name', 'DPR_TYPE'))
 

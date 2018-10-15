@@ -225,11 +225,13 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
               ' (drs only): white (default), Johnson_V, Cousins_R, Cousins_I')
 @click.option('--date', multiple=True,
               help='exposure to process, by default all exposures are used')
+@click.option('-f', '--force', is_flag=True,
+              help='force re-processing (imphot only)')
 @click.pass_obj
-def exp_align(mr, dataset, method, name, params, filter, date):
+def exp_align(mr, dataset, method, name, params, filter, date, force):
     """Compute offsets between exposures."""
     mr.exp_align(dataset, method=method, filt=filter, name=name,
-                 params_name=params, exps=date)
+                 params_name=params, exps=date, force=force)
 
 
 @click.argument('dataset')

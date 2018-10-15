@@ -23,7 +23,7 @@ import os
 # import re
 
 from astropy.io import fits
-from astropy.table import Table
+from astropy.table import Table, vstack
 from mpdaf.obj import Image, Cube
 from os.path import join, exists
 # from textwrap import dedent
@@ -203,14 +203,18 @@ class IMPHOT(PythonRecipe):
         except AttributeError:
             return f'imphot-unknown'
 
-    def _run(self, flist, *args, **kwargs):
+    def _run(self, flist, *args, processed=None, **kwargs):
         nproc = int(os.getenv('OMP_NUM_THREADS', 8))
         offset_rows = []
         nfiles = len(flist)
+        processed = processed or []
 
         for i, filename in enumerate(flist, start=1):
-            self.logger.info("%d/%d Processing %s", i, nfiles, filename)
             expname = get_exp_name(filename)
+            if expname in processed:
+                self.logger.info("%d/%d Skipping %s", i, nfiles, filename)
+                continue
+            self.logger.info("%d/%d Processing %s", i, nfiles, filename)
             outdir = join(self.output_dir, expname)
             os.makedirs(outdir, exist_ok=True)
 
@@ -252,8 +256,16 @@ class IMPHOT(PythonRecipe):
 
         outname = join(self.output_dir, 'OFFSET_LIST.fits')
         if os.path.exists(outname):
-            # FIXME should update only recomputed values
-            self.logger.info('Overwriting OFFSET_LIST')
+            self.logger.info('Updating OFFSET_LIST')
+            off = Table.read(outname)
+            # find matches with the existing table
+            match = np.in1d(off['DATE_OBS'], t['DATE_OBS'])
+            if np.any(match):
+                # Remove rows have been recomputed
+                self.logger.info('Updating %d rows', np.count_nonzero(match))
+                off = off[~match]
+            # combine the new and old values
+            t = vstack([off, t])
 
         self.logger.info('Save OFFSET_LIST file: %s', outname)
         t.write(outname, overwrite=True)
