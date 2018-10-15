@@ -226,10 +226,10 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
 @click.option('--date', multiple=True,
               help='exposure to process, by default all exposures are used')
 @click.pass_obj
-def compute_offsets(mr, dataset, method, name, params, filter, date):
+def exp_align(mr, dataset, method, name, params, filter, date):
     """Compute offsets between exposures."""
-    mr.compute_offsets(dataset, method=method, filt=filter, name=name,
-                       params_name=params, exps=date)
+    mr.exp_align(dataset, method=method, filt=filter, name=name,
+                 params_name=params, exps=date)
 
 
 @click.argument('dataset')
@@ -243,7 +243,7 @@ def exp_combine(mr, dataset, method, params):
 
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
-            update_qa, process_exp, compute_offsets, exp_combine, shell):
+            update_qa, process_exp, exp_align, exp_combine, shell):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
 # loading plugins

@@ -589,8 +589,8 @@ class MuseRed(Reporter):
         self._run_recipe_loop(recipe_std, dates, skip=skip, use_reduced=True,
                               **kwargs)
 
-    def compute_offsets(self, dataset, method='drs', filt='white',
-                        name=None, exps=None, **kwargs):
+    def exp_align(self, dataset, method='drs', filt='white', name=None,
+                  exps=None, **kwargs):
         """Compute offsets between exposures."""
 
         recipe_name = kwargs.get('params_name') or 'muse_exp_align'

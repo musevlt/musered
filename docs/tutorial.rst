@@ -57,7 +57,7 @@ Retrieving a dataset is done with `Astroquery
 possible query options for Muse, to use in the *archive_filter* for your
 dataset, use this::
 
-    $ musered retrieve_data --help-query
+    $ musered retrieve-data --help-query
 
 In the IC4406 example we just use the target name, but it may be needed to
 specify also dates, instrument mode, etc.
@@ -65,7 +65,7 @@ specify also dates, instrument mode, etc.
 Once a dataset is defined in the settings file, its data files can be retrieved
 with this command::
 
-    $ musered retrieve_data IC4406
+    $ musered retrieve-data IC4406
 
 Note that this also retrieves the calibration files associated to the data.  All
 files are placed in a unique directory (defined by the ``raw_path`` setting),
@@ -88,10 +88,10 @@ Ingesting metadata in a database
 --------------------------------
 
 Then the next step is to ingest FITS keywords in a SQLite database. This step
-is triggered automatically by the ``retrieve_data`` command, but it can also be
+is triggered automatically by the ``retrieve-data`` command, but it can also be
 run manually if needed, with::
 
-    $ musered update_db
+    $ musered update-db
 
 This command can be run each time new data are retrieved, and by default it will
 add only the new files that are not yet in the database.
@@ -168,7 +168,7 @@ searched for, can be specified with ``offsets``:
 Calibrations
 ^^^^^^^^^^^^
 
-Processing the calibrations is done with the ``musered process_calib`` command.
+Processing the calibrations is done with the ``musered process-calib`` command.
 The different steps can be run for a given night or for all nights, and the
 ``--skip`` parameter allows to avoid reprocessing the nights that have already
 been processed.
@@ -188,12 +188,12 @@ recipes.
 
 For instance, to run the ``muse_bias`` recipe for a given night::
 
-    $ musered process_calib --bias 2017-06-15
+    $ musered process-calib --bias 2017-06-15
 
 Or to run ``muse_flat`` recipe for all nights, skipping already processed
 nights::
 
-    $ musered process_calib --flat --skip
+    $ musered process-calib --flat --skip
 
 scibasic
 ^^^^^^^^
@@ -201,7 +201,7 @@ scibasic
 Running ``muse_scibasic`` is straightforward and can be done on all exposures
 with::
 
-    $ musered process_exp --scibasic
+    $ musered process-exp --scibasic
 
 One can also give an exposure name to process a specific exposure.
 
@@ -211,7 +211,7 @@ standard
 Reduces a standard exposure including both the ``muse_scibasic`` and the
 ``muse_standard`` steps::
 
-    $ musered process_exp --standard
+    $ musered process-exp --standard
 
 scipost
 ^^^^^^^
@@ -219,13 +219,13 @@ scipost
 ``muse_scipost`` takes a lot of options and sometimes needs to be run multiple
 times with different sets of options. The command to run is::
 
-    $ musered process_exp --scipost
+    $ musered process-exp --scipost
 
 To run it with different options, for instance to produce more quickly images
 for the offset computation, the parameters block can be specified with
 ``--params``::
 
-    $ musered process_exp --scipost --params muse_scipost_rec
+    $ musered process-exp --scipost --params muse_scipost_rec
 
 This would use a ``muse_scipost_rec`` block in the settings file, where the
 Raman correction and the sky subtraction are deactivated:
@@ -239,7 +239,7 @@ Computing offsets
 
 To compute the offsets between exposures, with the ``muse_exp_align`` recipe::
 
-    $ musered compute_offsets IC4406
+    $ musered exp-align IC4406
 
 A method can be specified with ``--method`` but currently only the ``drs``
 method is implemented. This name must be used later to set the ``OFFSET_LIST``
@@ -259,14 +259,14 @@ in the parameters, with also sky subtraction and saving additional outputs:
 
 And run with::
 
-    $ musered process_exp --scipost
+    $ musered process-exp --scipost
 
 Combining exposures
 ^^^^^^^^^^^^^^^^^^^
 
 To combine the exposures, with the ``muse_exp_combine`` recipe::
 
-    $ musered exp_combine IC4406
+    $ musered exp-combine IC4406
 
 And with the parameters with the ``OFFSET_LIST`` frame:
 
