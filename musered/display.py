@@ -12,7 +12,7 @@ WeatherTranslate = dict(Photometric='PH',Clear='CL',ThinCirrus='TN',
                        ThickCirrus='TK',Cloudy='CO',Windy='W')
 WeatherColors = dict(PH='green',CL='blue',TN='magenta',TK='red',CO='black',W='cyan')
 
-def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k', symbol='o', explist=[], return_pval=False):
+def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k', symbol='o', explist=[], return_pval=False, std=False, scol='black'):
     """Display QA values for selection of nights
 
     Parameters
@@ -35,6 +35,10 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k
         list of exposures to display with unfilled symbol
     return_pval: bool
         if True the plotted dates and values are returned
+    std: bool
+        if true plot also observed std stars
+    scol: str
+        color of std line
     """
     # perform selection with join
     qatab = mr.db[mr.tables[tabname]].table
@@ -51,6 +55,10 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k
     dates = [parse_datetime(exp['name']) for exp in exps if exp['name'] not in explist]
     vals = [exp[colname] for exp in exps if exp['name'] not in explist]
     ax.plot_date(dates, vals, marker=symbol, color=color)
+    if std: # display std stars observation
+        wdates = [datetime.datetime.strptime(dt['name'], '%Y-%m-%dT%H:%M:%S.%f') for dt in mr.raw.find(DPR_TYPE='STD', night=nights)]
+        for wt in wdates:
+            ax.axvline(wt, color=scol, ls='--', alpha=0.7)
     if return_pval:
         pdates = dates
         pvals = vals
@@ -74,7 +82,7 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k
     if return_pval:
         return (pdates,pvals)
 
-def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=False, color='k', symbol='o', explist=[]):
+def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=False, color='k', symbol='o', explist=[], std=False, scol='black'):
     """Display QA values for selection of runs
 
     Parameters
@@ -99,6 +107,10 @@ def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=F
         type of symbol
     explist: list of str
         list of exposures to display with unfilled symbol
+    std: bool
+        if true plot also observed std stars
+    scol: str
+        color of std line
     """
     if runs is None:
         runs = mr.runs
@@ -107,8 +119,9 @@ def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=F
     lvals = []
     for ax,run in zip(axlist,runs):
         nights = np.unique([e['night'] for e in mr.raw.find(run=run, name=mr.exposures['MXDF'])])
+        nights = nights.tolist()
         dates,vals = display_nights(ax, mr, tabname, colname, nights=nights, weather=weather, color=color, 
-                       symbol=symbol, explist=explist, return_pval=True)
+                       symbol=symbol, explist=explist, return_pval=True, std=std, scol=scol)
         lvals += vals
         ax.set_title(run)
  
