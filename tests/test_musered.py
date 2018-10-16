@@ -137,13 +137,14 @@ def test_info(mr):
         """)
 
 
-def test_info_exp(mr, capsys, caplog):
+def test_info_exp(mr, caplog):
     # test missing exp/night
+    mr.set_loglevel('DEBUG')
     mr.info_exp('2017-06-20')
     assert caplog.records[0].message == '2017-06-20 not found'
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '2017-06-16T01:34:56.867'])
+    result = runner.invoke(cli, ['info', '--exp', '2017-06-16T01:34:56.867'])
     assert result.exit_code == 0
     out = result.output.splitlines()
     for line in ['★ GTO logs:',
@@ -153,6 +154,15 @@ def test_info_exp(mr, capsys, caplog):
                  '★ Recipe: muse_scipost',
                  '★ Recipe: muse_scipost_make_cube']:
         assert line in out
+
+
+def test_info_night(mr, caplog):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--night', '2017-06-15',
+                                 '--recipe', 'bias'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    assert '★ Recipe: muse_bias' in out
 
 
 def test_info_raw(mr, capsys, caplog):
@@ -168,14 +178,16 @@ def test_info_raw(mr, capsys, caplog):
         'Could not find exposures for 2017-06-20'
 
 
-def test_info_qc(mr, capsys):
-    mr.info_qc('MASTER_FLAT', date_list='2017-06-17')
-    captured = capsys.readouterr()
-    assert len(captured.out.splitlines()) == 29  # 24 rows + header + expname
+def test_info_qc(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT',
+                                 '--date', '2017-06-17'])
+    assert result.exit_code == 0
+    assert len(result.output.splitlines()) == 29  # 24 rows + header + expname
 
-    mr.info_qc('MASTER_FLAT')
-    captured = capsys.readouterr()
-    assert len(captured.out.splitlines()) == 29 * 3  # 3 nights
+    result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT'])
+    assert result.exit_code == 0
+    assert len(result.output.splitlines()) == 29 * 3  # 3 nights
 
 
 def test_get_table(mr):

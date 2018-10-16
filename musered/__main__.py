@@ -109,16 +109,16 @@ def info(mr, short, datasets, nights, runs, exps, raw, qc, date, run,
          night, exp, recipe):
     """Print info about raw and reduced data, or night or exposure."""
 
-    if datasets:
-        mr.list_datasets()
-    if nights:
-        mr.list_nights()
-    if runs:
-        mr.list_runs()
-    if exps:
-        mr.list_exposures()
-
-    if raw:
+    if any([datasets, nights, exps, runs]):
+        if datasets:
+            mr.list_datasets()
+        if nights:
+            mr.list_nights()
+        if runs:
+            mr.list_runs()
+        if exps:
+            mr.list_exposures()
+    elif raw:
         mr.info_raw(raw)
     elif qc:
         mr.info_qc(qc, date_list=date)
