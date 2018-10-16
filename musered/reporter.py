@@ -13,7 +13,7 @@ from mpdaf.obj import Image
 from sqlalchemy import sql
 
 from .recipes import recipe_classes
-from .utils import query_count_to_table
+from .utils import query_count_to_table, normalize_recipe_name
 
 try:
     from IPython.display import display, HTML
@@ -28,8 +28,9 @@ class TextFormatter:
     show_text = print
 
     def show_table(self, t, **kwargs):
-        kwargs.setdefault('max_lines', -1)
-        t.pprint(**kwargs)
+        if t is not None:
+            kwargs.setdefault('max_lines', -1)
+            t.pprint(**kwargs)
 
 
 class HTMLFormatter:
@@ -40,8 +41,9 @@ class HTMLFormatter:
         display(HTML(f'<p>{text}</p>'))
 
     def show_table(self, t, **kwargs):
-        kwargs.setdefault('max_width', -1)
-        display(HTML(t._base_repr_(html=True, **kwargs)))
+        if t is not None:
+            kwargs.setdefault('max_width', -1)
+            display(HTML(t._base_repr_(html=True, **kwargs)))
 
 
 class Reporter:
@@ -81,7 +83,7 @@ class Reporter:
             self.fmt.show_text(f'- {name}')
             self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
-    def info(self):
+    def info(self, date_list=None, run=None):
         """Print a summary of the raw and reduced data."""
         self.fmt.show_text(f'Reduction version {self.version}')
         self.fmt.show_text(f'{self.raw.count()} files\n')
@@ -97,7 +99,8 @@ class Reporter:
             # uninteresting objects to exclude from the report
             excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
                         'WAVE,MASK')
-            t = query_count_to_table(self.db, 'raw', exclude_obj=excludes)
+            t = query_count_to_table(self.db, 'raw', exclude_obj=excludes,
+                                     date_list=date_list, run=run)
             self.fmt.show_table(t)
 
         if len(self.reduced) == 0:
@@ -110,40 +113,47 @@ class Reporter:
                 self.db, self.tables['reduced'], where=sql.and_(
                     redc.DPR_CATG == 'CALIB',
                     redc.DPR_TYPE.notlike('%STD%')
-                ))
+                ), date_list=date_list, run=run, calib=True)
             if t:
                 self.fmt.show_table(t)
 
             self.fmt.show_title(f'\nProcessed standard:\n')
             t = query_count_to_table(
                 self.db, self.tables['reduced'],
-                where=redc.DPR_TYPE.like('%STD%'))
+                where=redc.DPR_TYPE.like('%STD%'),
+                date_list=date_list, run=run)
             if t:
                 self.fmt.show_table(t)
 
             self.fmt.show_title(f'\nProcessed science data:\n')
             t = query_count_to_table(
                 self.db, self.tables['reduced'],
-                where=redc.DPR_CATG == 'SCIENCE')
+                where=redc.DPR_CATG == 'SCIENCE',
+                date_list=date_list, run=run)
             if t:
                 self.fmt.show_table(t)
 
-    def info_exp(self, expname, full=True):
+    def info_exp(self, expname, full=True, recipes=None):
         """Print information about a given exposure or night."""
+        if recipes:
+            recipes = [normalize_recipe_name(name) for name in recipes]
+
         res = defaultdict(list)
         for r in self.reduced.find(name=expname):
+            if recipes and r['recipe_name'] not in recipes:
+                continue
             res[r['recipe_name']].append(r)
 
         res = list(res.values())
         res.sort(key=lambda x: x[0]['date_run'])
 
         if len(res) == 0:
-            self.logger.warning('%s not found', expname)
+            self.logger.debug('%s not found', expname)
             return
 
         click.secho(f'\n {expname} \n', fg='green', bold=True, reverse=True)
 
-        if 'gto_logs' in self.db:
+        if not recipes and 'gto_logs' in self.db:
             click.secho(f"★ GTO logs:", fg='green', bold=True)
             colors = dict(A='green', B='yellow', C='orange')
             for log in self.db['gto_logs'].find(name=expname):
@@ -156,7 +166,7 @@ class Reporter:
                     print("- {fdate}\t{fauthor}\t\t{fcomment}".format(**log))
             print()
 
-        if 'weather_conditions' in self.db:
+        if not recipes and 'weather_conditions' in self.db:
             click.secho(f"★ Weather Conditions:", fg='green', bold=True)
             table = self.db['weather_conditions']
             for log in table.find(night=res[0][0]['night'], order_by='Time'):

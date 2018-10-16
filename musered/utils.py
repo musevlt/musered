@@ -234,18 +234,36 @@ def parse_qc_keywords(flist):
     return rows
 
 
-def query_count_to_table(db, tablename, exclude_obj=None, where=None):
+def query_count_to_table(db, tablename, exclude_obj=None, where=None,
+                         date_list=None, run=None, calib=False):
     datecol = 'night' if tablename == 'raw' else 'name'
     countcol = 'OBJECT' if tablename == 'raw' else 'recipe_name'
     c = db[tablename].table.c
 
-    whereclause = [c[datecol].isnot(None), c[countcol].isnot(None)]
+    if date_list:
+        if len(date_list) == 1:
+            whereclause = [c[datecol].like(f'%{date_list[0]}%')]
+        else:
+            whereclause = [c[datecol].in_(date_list)]
+    elif run is not None:
+        whereclause = [db['raw'].table.c['run'].like(f'%{run}%')]
+    else:
+        whereclause = [c[datecol].isnot(None)]
+
+    whereclause.append(c[countcol].isnot(None))
     if where is not None:
         whereclause.append(where)
 
     query = (sql.select([c[datecol], c[countcol], func.count()])
              .where(sql.and_(*whereclause))
              .group_by(c[datecol], c[countcol]))
+
+    if run and tablename != 'raw':
+        # FIXME: does not work for calib
+        query = query.select_from(
+            db[tablename].table.join(
+                db['raw'].table, db['raw'].table.c[datecol] == c[datecol])
+        )
 
     # reorganize rows to have types (in columns) per night (rows)
     rows = defaultdict(dict)

@@ -89,37 +89,46 @@ def update_qc(mr, type, recipe):
     mr.update_qc(dpr_types=type, recipe_name=recipe)
 
 
-@click.argument('dateobs', nargs=-1)
 @click.option('--short', is_flag=True, help='shortened output for --exp')
-@click.option('--datasets', is_flag=True, help='list datasets')
-@click.option('--nights', is_flag=True, help='list nights')
-@click.option('--runs', is_flag=True, help='list runs')
-@click.option('--exps', is_flag=True, help='list exposures')
-@click.option('--raw', is_flag=True, help='list raw exposures for a night')
+@click.option('--datasets', is_flag=True, help='list all datasets')
+@click.option('--nights', is_flag=True, help='list all nights')
+@click.option('--runs', is_flag=True, help='list all runs')
+@click.option('--exps', is_flag=True, help='list all exposures')
+@click.option('--raw', multiple=True, help='list raw exposures for a night')
 @click.option('--qc', help='show QC keywords')
+@click.option('--date', multiple=True, help='show info for a given date')
+@click.option('--run', help='show info for a given run')
+@click.option('-n', '--night', multiple=True,
+              help='show reduction log for a night')
+@click.option('-e', '--exp', multiple=True,
+              help='show reduction log for an exposure')
+@click.option('-r', '--recipe', multiple=True,
+              help='recipe name to show (for --night and --exp)')
 @click.pass_obj
-def info(mr, dateobs, short, datasets, nights, runs, exps, raw, qc):
+def info(mr, short, datasets, nights, runs, exps, raw, qc, date, run,
+         night, exp, recipe):
     """Print info about raw and reduced data, or night or exposure."""
 
-    if any([datasets, nights, exps, runs]):
-        if datasets:
-            mr.list_datasets()
-        if nights:
-            mr.list_nights()
-        if runs:
-            mr.list_runs()
-        if exps:
-            mr.list_exposures()
-    elif raw:
-        mr.info_raw(dateobs)
+    if datasets:
+        mr.list_datasets()
+    if nights:
+        mr.list_nights()
+    if runs:
+        mr.list_runs()
+    if exps:
+        mr.list_exposures()
+
+    if raw:
+        mr.info_raw(raw)
     elif qc:
-        mr.info_qc(qc, date_list=dateobs)
+        mr.info_qc(qc, date_list=date)
+    elif exp or night:
+        dateobs = mr.prepare_dates(exp or night,
+                                   datecol='name' if exp else 'night')
+        for date in dateobs:
+            mr.info_exp(date, full=not short, recipes=recipe)
     else:
-        if len(dateobs) == 0:
-            mr.info()
-        else:
-            for date in dateobs:
-                mr.info_exp(date, full=not short)
+        mr.info(date_list=date, run=run)
 
 
 @click.option('-r', '--recipe', multiple=True)

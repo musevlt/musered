@@ -131,10 +131,11 @@ class MuseRed(Reporter):
             select = select.distinct(col)
         return [x[0] for x in self.execute(select)]
 
-    def select_dates(self, dpr_type, table='raw', column='name', **kwargs):
+    def select_dates(self, dpr_type=None, table='raw', column='name',
+                     **kwargs):
         """Select the list of dates to process."""
         tbl = self.db[self.tables.get(table, table)]
-        wc = (tbl.table.c.DPR_TYPE == dpr_type)
+        wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
         dates = self.select_column(column, where=wc, table=table, **kwargs)
         return list(sorted(dates))
 
@@ -482,10 +483,11 @@ class MuseRed(Reporter):
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
                            name=name, OBJECT=OBJECT, recipe_name=recipe_name)
 
-    def _prepare_dates(self, dates, DPR_TYPE, datecol):
+    def prepare_dates(self, dates, DPR_TYPE=None, datecol='name'):
         """Compute the list of dates (nights, exposures) to process."""
 
-        alldates = self.select_dates(DPR_TYPE, column=datecol, distinct=True)
+        alldates = self.select_dates(dpr_type=DPR_TYPE, column=datecol,
+                                     distinct=True)
 
         if dates is None:
             date_list = alldates
@@ -496,11 +498,10 @@ class MuseRed(Reporter):
             date_list = []
             for date in dates:
                 if date in self.runs:
-                    d = self.select_column(
-                        datecol, distinct=True,
-                        where=((self.rawc.run == date) &
-                               (self.rawc.DPR_TYPE == DPR_TYPE))
-                    )
+                    where = (self.rawc.run == date)
+                    if DPR_TYPE is not None:
+                        where &= (self.rawc.DPR_TYPE == DPR_TYPE)
+                    d = self.select_column(datecol, distinct=True, where=where)
                     if d:
                         date_list += d
                 elif date in alldates:
@@ -525,7 +526,8 @@ class MuseRed(Reporter):
         recipe_cls = recipe_classes[normalize_recipe_name(recipe_name)]
 
         # get the list of nights to process
-        dates = self._prepare_dates(dates, recipe_cls.DPR_TYPE, 'night')
+        dates = self.prepare_dates(dates, DPR_TYPE=recipe_cls.DPR_TYPE,
+                                   datecol='night')
 
         self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
                               **kwargs)
@@ -538,7 +540,7 @@ class MuseRed(Reporter):
         if dates is None and dataset:
             dates = self.exposures[dataset]
         else:
-            dates = self._prepare_dates(dates, 'OBJECT', 'name')
+            dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
 
         recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
                                             recipe_name)
@@ -576,7 +578,7 @@ class MuseRed(Reporter):
         recipe_std = recipe_classes['muse_standard']
 
         # get the list of dates to process
-        dates = self._prepare_dates(dates, 'STD', 'name')
+        dates = self.prepare_dates(dates, DPR_TYPE='STD')
 
         # run muse_scibasic with specific parameters (tag: STD)
         recipe = self._instantiate_recipe(recipe_std, 'muse_standard',
