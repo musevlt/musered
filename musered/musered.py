@@ -256,18 +256,20 @@ class MuseRed(Reporter):
     def clean(self, recipe_list=None, date_list=None, night_list=None,
               remove_files=True, dry_run=False):
         """Remove database entries and files."""
-        for attr in (recipe_list, date_list, night_list):
+        for attr in (date_list, night_list):
             if attr and isinstance(attr, str):
                 raise ValueError(f'{attr} should be a list')
+        if isinstance(recipe_list, str):
+            recipe_list = [recipe_list]
 
         kwargs = {}
         if recipe_list:
             kwargs = {'recipe_name': [normalize_recipe_name(rec)
                                       for rec in recipe_list]}
         if date_list:
-            kwargs['name'] = date_list
+            kwargs['name'] = self.prepare_dates(date_list, datecol='name')
         if night_list:
-            kwargs['night'] = night_list
+            kwargs['night'] = self.prepare_dates(night_list, datecol='night')
 
         count = len(list(self.reduced.distinct('name', **kwargs)))
 
