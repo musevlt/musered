@@ -38,6 +38,7 @@ class CalibFinder:
         self.conf = conf
         self.static_path = self.conf['muse_calib_path']
         self.static_conf = self.conf['static_calib']
+        self.excludes = self.conf.get('frames_exclude', {})
         self.logger = logging.getLogger(__name__)
 
     @lazyproperty
@@ -97,6 +98,11 @@ class CalibFinder:
         """Return calibration files for a given night, type, and mode."""
         res = self.table.find_one(night=night, INS_MODE=ins_mode,
                                   DPR_TYPE=dpr_type)
+        excludes = self.excludes.get(dpr_type, [])
+        if res['night'] in excludes:
+            # TODO: do the same for exposures
+            self.logger.info('%s for night %s is excluded', dpr_type, night)
+            res = None
 
         if res is None and day_off is not None:
             if isinstance(night, str):
@@ -108,9 +114,13 @@ class CalibFinder:
                                           INS_MODE=ins_mode,
                                           DPR_TYPE=dpr_type)
                 if res is not None:
-                    self.logger.warning('Using %s from night %s',
-                                        dpr_type, night + off)
-                    break
+                    if res['night'] in excludes:
+                        self.logger.info('%s for night %s is excluded',
+                                         dpr_type, night + off)
+                    else:
+                        self.logger.warning('Using %s from night %s',
+                                            dpr_type, night + off)
+                        break
 
         if res is None:
             raise ValueError(f'could not find {dpr_type} for night {night}')
