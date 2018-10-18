@@ -122,7 +122,8 @@ def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=F
         nights = nights.tolist()
         dates,vals = display_nights(ax, mr, tabname, colname, nights=nights, weather=weather, color=color, 
                        symbol=symbol, explist=explist, return_pval=True, std=std, scol=scol)
-        lvals += vals
+        if len(vals) > 0 and vals is not None:
+            lvals += [v for v in vals if v is not None]
         ax.set_title(run)
  
     if median:
