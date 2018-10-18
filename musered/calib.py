@@ -99,7 +99,7 @@ class CalibFinder:
         res = self.table.find_one(night=night, INS_MODE=ins_mode,
                                   DPR_TYPE=dpr_type)
         excludes = self.excludes.get(dpr_type, [])
-        if res['night'] in excludes:
+        if res is not None and res['night'] in excludes:
             # TODO: do the same for exposures
             self.logger.info('%s for night %s is excluded', dpr_type, night)
             res = None
