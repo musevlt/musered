@@ -29,7 +29,7 @@ def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, force, dry_run):
     if len(date) == 0:
         dates = list(itertools.chain.from_iterable(mr.exposures.values()))
     else:
-        dates = mr._prepare_dates(date, 'OBJECT', 'name')
+        dates = mr.prepare_dates(date, 'OBJECT', 'name')
 
     kwargs = dict(dates=dates, skip=not force, dry_run=dry_run)
 
@@ -52,10 +52,10 @@ def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
                            name=dates)
     if skip:
         exists = _find_existing_exp(mr.qa_reduced, 'IM_vers')
+        rows = [row for row in rows if row['name'] not in exists]
+    logger.info(f'found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
-        if skip and row['name'] in exists:
-            continue
         tabname = f"{row['path']}/IMPHOT.fits"
         imphot = _imphot(tabname)
         imphot['IM_vers'] = row['recipe_version']
@@ -76,10 +76,10 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
                            name=dates)
     if skip:
         exists = _find_existing_exp(mr.qa_reduced, 'skyB')
+        rows = [row for row in rows if row['name'] not in exists]
+    logger.info(f'found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
-        if skip and row['name'] in exists:
-            continue
         skyname = row['path'] + '/SKY_SPECTRUM_0001.fits'
         skytab = Table.read(skyname)
         skyflux = _sky(skytab)
@@ -94,11 +94,11 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
 def qa_sparta(mr, dates=None, skip=True, dry_run=False):
     rows = mr.raw.find(name=dates)
     if skip:
-        exists = _find_existing_exp(mr.qa_raw, 'SP_see')
+        exists = _find_existing_exp(mr.qa_raw, 'SP_See')
+        rows = [row for row in rows if row['name'] not in exists]
+    logger.info(f'found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
-        if skip and row['name'] in exists:
-            continue
         rawname = row['path']
         tab = Table.read(rawname, hdu='SPARTA_ATM_DATA')
         sparta_dict = _sparta(tab)
@@ -114,9 +114,9 @@ def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     rows = mr.raw.find(name=dates)
     if skip:
         exists = _find_existing_exp(mr.qa_raw, 'PR_vers')
+        rows = [row for row in rows if row['name'] not in exists]
+    logger.info(f'found {len(rows)} exposures in database to process')
     for row in rows:
-        if skip and row['name'] in exists:
-            continue
         rawname = row['path']
         psfrec_dict = _psfrec(rawname)
         logger.debug('Name %s PSFRec %s', row['name'], psfrec_dict)
