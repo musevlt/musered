@@ -271,10 +271,10 @@ class MuseRed(Reporter):
         if night_list:
             kwargs['night'] = self.prepare_dates(night_list, datecol='night')
 
-        count = len(list(self.reduced.distinct('name', **kwargs)))
+        count = len(set(o['name'] for o in self.reduced.find(**kwargs)))
 
         if remove_files:
-            for item in self.reduced.distinct('path', **kwargs):
+            for item in set(o['path'] for o in self.reduced.find(**kwargs)):
                 if os.path.exists(item['path']):
                     self.logger.info('Remove %s', item['path'])
                     if not dry_run:
