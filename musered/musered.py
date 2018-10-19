@@ -91,7 +91,7 @@ class MuseRed(Reporter):
         """Return the list of runs for which data is available."""
         if 'run' not in self.raw.columns:
             return []
-        return self.select_column('run', distinct=True)
+        return sorted(self.select_column('run', distinct=True))
 
     @lazyproperty
     def exposures(self):
