@@ -14,6 +14,40 @@ SPECIAL_FRAMES = ('OUTPUT_WCS', 'OFFSET_LIST', 'SKY_MASK', 'AUTOCAL_FACTORS')
 """Frames that can be set manually (to a file path) in the settings."""
 
 
+def get_file_from_date(files_dict: dict, date: str) -> str:
+    """Find a file that match a date requirement.
+
+    Examples
+    --------
+
+    >>> import datetime
+    >>> astrometry = {
+    ...     'astrometry_wcs_wfm_gto26.fits': {
+    ...         'start_date': datetime.date(2018, 8, 11),
+    ...         'end_date': datetime.date(2018, 8, 26) },
+    ...     'astrometry_wcs_wfm_gto27.fits': {
+    ...         'start_date': datetime.date(2018, 9, 4),
+    ...         'end_date': datetime.date(2018, 9, 15) },
+    ... }
+    >>> from musered.calib import get_file_from_date
+    >>> get_file_from_date(astrometry, '2018-08-13')
+    'astrometry_wcs_wfm_gto26.fits'
+    >>> get_file_from_date(astrometry, '2018-09-10')
+    'astrometry_wcs_wfm_gto27.fits'
+    >>> get_file_from_date(astrometry, '2018-01-01')
+
+    """
+    file = None
+    dateobj = parse_date(date)
+    for item, val in files_dict.items():
+        start_date = val.get('start_date', datetime.date.min)
+        end_date = val.get('end_date', datetime.date.max)
+        if start_date <= dateobj <= end_date:
+            file = item
+            break
+    return file
+
+
 class CalibFinder:
     """Handles calibration frames.
 
@@ -72,16 +106,11 @@ class CalibFinder:
         if catg in self.static_conf:
             # if catg is defined in the conf file, try to find a static calib
             # file that matched the date requirement
-            for item, val in self.static_conf[catg].items():
-                if date is None:
-                    file = item
-                    break
-                dateobj = parse_date(date)
-                start_date = val.get('start_date', datetime.date.min)
-                end_date = val.get('end_date', datetime.date.max)
-                if start_date <= dateobj <= end_date:
-                    file = item
-                    break
+            if date is None:
+                # no date: take the first item
+                file = next(self.static_conf[catg].values())
+            else:
+                file = get_file_from_date(self.static_conf[catg], date)
 
         if file is None:
             # found nothing, use default from the static calib directory
@@ -188,7 +217,15 @@ class CalibFinder:
                 if frame in frames_conf:
                     # Special handling for these optional frames :
                     # use directly the value from settings
-                    framedict[frame] = frames_conf[frame]
+                    if isinstance(frames_conf[frame], str):
+                        framedict[frame] = frames_conf[frame]
+                    elif isinstance(frames_conf[frame], dict):
+                        file = get_file_from_date(frames_conf[frame], night)
+                        if file is not None:
+                            framedict[frame] = file
+                    else:
+                        raise ValueError(f'unknown format for frame {frame}, '
+                                         f'it should be a str or dict')
 
                     # except for OFFSET_LIST, that can be set to a name that
                     # can be found in the database
