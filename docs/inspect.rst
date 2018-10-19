@@ -46,11 +46,11 @@ Reduction log for a night or exposure
 This allows to see all the recipes that have been executed for a given night or
 exposure, with the execution date, log file, output directory, etc.:
 
-.. program-output:: musered info 2017-06-17
+.. program-output:: musered info --night 2017-06-17
    :prompt:
    :cwd: _static
 
-.. program-output:: musered info 2017-06-16T01:46:25.000
+.. program-output:: musered info --exp 2017-06-16T01:46:25.866
    :prompt:
    :cwd: _static
 
@@ -59,7 +59,7 @@ QC parameters
 
 To view the QC parameters for a given type (``DPR_TYPE``) and night or exposure:
 
-.. program-output:: musered info --qc MASTER_FLAT 2017-06-17
+.. program-output:: musered info --qc MASTER_FLAT --date 2017-06-17
    :prompt:
    :cwd: _static
 

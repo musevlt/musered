@@ -22,4 +22,3 @@ which provides all the methods corresponding to the command-line sub-commands:
 
 .. automodapi:: musered
    :no-heading:
-

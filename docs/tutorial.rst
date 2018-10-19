@@ -46,7 +46,7 @@ For instance to define a `IC4406` dataset:
    :start-at: datasets
    :end-at: obs_targ_name
 
-See the next paragraph for the meaning of *archive_filter*.
+See the next paragraph for the meaning of ``archive_filter``.
 
 
 Data retrieval
@@ -54,13 +54,13 @@ Data retrieval
 
 Retrieving a dataset is done with `Astroquery
 <https://astroquery.readthedocs.io/en/latest/eso/eso.html>`__. To find all the
-possible query options for Muse, to use in the *archive_filter* for your
+possible query options for Muse, to use in the ``archive_filter`` for your
 dataset, use this::
 
     $ musered retrieve-data --help-query
 
-In the IC4406 example we just use the target name, but it may be needed to
-specify also dates, instrument mode, etc.
+In the IC4406 example we just use the target name, but it is also possible to
+specify dates, instrument mode, or a programme ID.
 
 Once a dataset is defined in the settings file, its data files can be retrieved
 with this command::
@@ -96,6 +96,13 @@ run manually if needed, with::
 This command can be run each time new data are retrieved, and by default it will
 add only the new files that are not yet in the database.
 
+During this step, the ``raw`` table is created or updated with FITS keywords
+from all FITS files found in the ``raw_path`` directory. It will also ingest the
+weather conditions from the text files downloaded from the ESO archive, in the
+``weather_conditions`` table. And if the ``GTO_logs`` setting is filled with
+some GTO database from ``muselog``, the ranks and comments from observer teams
+are also ingested.
+
 
 Inspecting the database
 -----------------------
@@ -121,7 +128,9 @@ the temporary directory), and the example below shows how to set
    :end-at: saveimages
 
 By default the parameters for a recipe must be set in a block with the recipe
-name, but this can also be specified with ``--params``.
+name, but this can also be specified with ``--params`` which can be used to run
+the same recipe with different sets of paramaters.  The paramater names and
+values are the same as the DRS ones.
 
 Frames associations
 ^^^^^^^^^^^^^^^^^^^
@@ -231,8 +240,8 @@ This would use a ``muse_scipost_rec`` block in the settings file, where the
 Raman correction and the sky subtraction are deactivated:
 
 .. literalinclude:: _static/settings.yml
-   :start-at: muse_scipost_rec
-   :end-at: skymethod
+   :start-at: # Example of a special version of scipost
+   :end-at: save
 
 Computing offsets
 ^^^^^^^^^^^^^^^^^
@@ -254,7 +263,7 @@ cubes. Now that we have computed offsets, we can use the ``OFFSET_LIST`` frame
 in the parameters, with also sky subtraction and saving additional outputs:
 
 .. literalinclude:: _static/settings.yml
-   :start-at: muse_scipost
+   :start-at: muse_scipost:
    :end-at: save
 
 And run with::
@@ -270,11 +279,15 @@ To combine the exposures, with the ``muse_exp_combine`` recipe::
 
 And with the parameters with the ``OFFSET_LIST`` frame:
 
-.. code-block:: yaml
+.. literalinclude:: _static/settings.yml
+   :start-at: muse_exp_combine:
+   :end-at: OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
 
-    muse_exp_combine:
-      frames:
-         OFFSET_LIST: drs
+It is also possible to use MPDAF to combine the data cubes:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: muse_exp_combine_mpdaf:
+   :end-at: version
 
 Setting custom frames
 ^^^^^^^^^^^^^^^^^^^^^
