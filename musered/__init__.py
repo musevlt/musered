@@ -4,6 +4,7 @@ import warnings
 
 from .musered import MuseRed  # noqa
 from .recipes import *  # noqa
+from .settings import RAW_FITS_KEYWORDS
 
 warnings.simplefilter('ignore', category=UnitsWarning)
 

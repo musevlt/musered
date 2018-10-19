@@ -1,7 +1,5 @@
 """This module contains all default settings."""
 
-# This is the list of keywords that are read from the raw FITS files and
-# ingested in the database.
 RAW_FITS_KEYWORDS = """
 ARCFILE                  / Archive File Name
 DATE-OBS                 / Observing date
@@ -35,6 +33,10 @@ ESO TEL AMBI WINDDIR     / [deg] Observatory ambient wind direction
 ESO TEL AMBI WINDSP      / [m/s] Observatory ambient wind speed queri
 ESO TEL MOON DEC
 ESO TEL MOON RA
+"""
+"""
+This is the list of keywords that are read from the raw FITS files and
+ingested in the database.
 """
 
 # FIXME: do we need all this ?
