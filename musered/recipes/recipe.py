@@ -83,8 +83,6 @@ class BaseRecipe:
 
         if output_dir is not None:
             self.output_dir = output_dir
-        elif self.output_dir is None:
-            self.output_dir = self.output_frames[0]
 
     @property
     def calib_frames(self):
@@ -238,6 +236,9 @@ class Recipe(BaseRecipe):
             self.DPR_TYPE = self.DPR_TYPES.get(self._recipe.tag,
                                                self._recipe.tag)
 
+        elif self.output_dir is None:
+            self.output_dir = self.output_frames[0]
+
         self._recipe.output_dir = self.output_dir if use_drs_output else None
         self._recipe.temp_dir = temp_dir
 
@@ -256,7 +257,7 @@ class Recipe(BaseRecipe):
 
     @property
     def calib_frames(self):
-        return set(dict(self.calib).keys())
+        return set(dict(iter(self.calib)).keys())
 
     @property
     def output_frames(self):
@@ -286,7 +287,7 @@ class Recipe(BaseRecipe):
         info.update({'user_time': self.results.stat.user_time,
                      'sys_time': self.results.stat.sys_time})
         if include_files:
-            calib = dict(self.calib)
+            calib = dict(iter(self.calib))
             info['raw'] = json.dumps(self.raw) if json_col else self.raw
             info['calib'] = json.dumps(calib) if json_col else calib
         return info
