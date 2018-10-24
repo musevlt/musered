@@ -9,11 +9,11 @@ from astropy.io import fits
 from astropy.table import Table
 from collections import defaultdict
 from glob import iglob
-from mpdaf.obj import Image
+from mpdaf.obj import Image, Cube
 from sqlalchemy import sql
 
 from .recipes import recipe_classes
-from .utils import query_count_to_table, normalize_recipe_name
+from .utils import query_count_to_table, normalize_recipe_name, get_exp_name
 
 try:
     from IPython.display import display, HTML
@@ -21,6 +21,8 @@ except ImportError:
     IPYTHON = False
 else:
     IPYTHON = True
+
+FILTER_KEY = 'ESO DRS MUSE FILTER NAME'
 
 
 class TextFormatter:
@@ -263,7 +265,7 @@ class Reporter:
             self.fmt.show_table(t, **kwargs)
 
     def show_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
-                    filt='white', ncols=4, figsize=4, limit=None,
+                    filt='white', ncols=4, figsize=4, limit=None, date=None,
                     catalog=None, zoom_center=None, zoom_size=None, **kwargs):
         """Show images on a grid.
 
@@ -293,40 +295,26 @@ class Reporter:
             Additional parameters are passed to `mpdaf.obj.Image.plot`.
 
         """
-        dataset = dataset or list(self.datasets.keys())[0]
-        res = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                     recipe_name=recipe_name, _limit=limit))
-
-        filters = [filt] if isinstance(filt, str) else filt
-        filtkey = 'ESO DRS MUSE FILTER NAME'
-
-        flist = []
-        for r in res:
-            for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits"):
-                try:
-                    filtr = fits.getval(f, filtkey)
-                except KeyError:
-                    filtr = None
-                if filtr and filters and filtr not in filters:
-                    continue
-                flist.append((r['name'], filtr, f))
+        hdulist = self.export_images(recipe_name, dataset=dataset, date=date,
+                                     DPR_TYPE=DPR_TYPE, filt=filt, limit=limit)
 
         if catalog is not None:
             tbl = Table.read(catalog)
             skycoords = np.array([tbl['dec'], tbl['ra']])
 
-        nrows = int(np.ceil(len(flist) / ncols))
+        nrows = int(np.ceil(len(hdulist[1:]) / ncols))
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True,
                                  figsize=(figsize*ncols, figsize*nrows),
                                  gridspec_kw={'wspace': 0, 'hspace': 0})
 
-        for (name, filtr, fname), ax in zip(sorted(flist), axes.flat):
-            im = Image(fname)
+        for hdu, ax in zip(hdulist[1:], axes.flat):
+            im = Image(data=hdu.data)
             if zoom_size is not None and zoom_center is not None:
                 im = im.subimage(zoom_center, zoom_size, unit_center=None,
                                  unit_size=None)
             im.plot(ax=ax, **kwargs)
-            title = f'{name} ({filtr})' if filtr else name
+            filtr = hdu.header[FILTER_KEY]
+            title = f'{hdu.name} ({filtr})' if filtr else hdu.name
             ax.text(10, im.shape[1] - 25, title)
 
             if catalog is not None:
@@ -334,7 +322,7 @@ class Reporter:
                 sel = (x > 0) & (x < im.shape[0]) & (y > 0) & (y < im.shape[1])
                 ax.scatter(x[sel], y[sel], c='r', marker='+')
 
-        for ax in axes.flat[len(flist):]:
+        for ax in axes.flat[len(hdulist[1:]):]:
             ax.axis('off')
         for ax in axes.flat:
             ax.set_xticks([])
@@ -342,3 +330,65 @@ class Reporter:
             ax.set_aspect('equal')
 
         return fig
+
+    def export_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
+                      filt='white', limit=None, outname=None, cube=False,
+                      date=None):
+        """Export images as HDUs or cube.
+
+        Parameters
+        ----------
+        recipe_name : str
+            Recipe for which images are shown.
+        dataset : str, optional
+            Dataset for which images are shown.
+        DPR_TYPE : str, optional
+            Type of images to show.
+        filt : str, optional
+            Filter, default to white.
+        limit : int
+            Maximum number of images to show.
+
+        """
+        dataset = dataset or list(self.datasets.keys())[0]
+        recipe_name = normalize_recipe_name(recipe_name)
+        kwargs = {}
+        if date:
+            kwargs['name'] = self.prepare_dates(date, DPR_TYPE='OBJECT')
+        res = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
+                                     recipe_name=recipe_name, _limit=limit,
+                                     order_by='name', **kwargs))
+
+        filters = [filt] if isinstance(filt, str) else filt
+
+        imgs = []
+        for r in res:
+            for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits"):
+                try:
+                    filtr = fits.getval(f, FILTER_KEY)
+                except KeyError:
+                    filtr = None
+                if filtr and filters and filtr not in filters:
+                    continue
+                im = Image(f, convert_float64=False)
+                imgs.append(im)
+
+        self.logger.info('Found %d images', len(imgs))
+        if cube:
+            cube = Cube(data=np.ma.array([im.data for im in imgs]),
+                        var=np.ma.array([im.data for im in imgs]),
+                        wcs=imgs[0].wcs)
+            if outname:
+                cube.write(outname, savemask='nan')
+            return cube
+        else:
+            hdul = fits.HDUList([fits.PrimaryHDU()])
+            for im in imgs:
+                hdr = im.primary_header.copy()
+                hdr.update(im.wcs.to_header())
+                hdu = fits.ImageHDU(data=im.data.filled(np.nan), header=hdr)
+                hdu.name = get_exp_name(im.filename)
+                hdul.append(hdu)
+            if outname:
+                hdul.writeto(outname, savemask='nan')
+            return hdul
