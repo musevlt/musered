@@ -1,0 +1,10 @@
+include README.md
+include tox.ini
+
+graft docs
+graft musered
+
+prune docs/api
+prune docs/_build
+
+global-exclude *.py[cod] __pycache__ *.so .directory _githash.py .git
