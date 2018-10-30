@@ -679,6 +679,19 @@ class MuseRed(Reporter):
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
+    def std_combine(self, run=None, **kwargs):
+        """Combine std stars."""
+
+        recipe_name = kwargs.get('params_name') or 'muse_std_combine'
+        recipe_conf = self._get_recipe_conf(recipe_name)
+        kwargs.setdefault('params_name', 'muse_std_combine')
+        from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
+        recipe_cls = recipe_classes['muse_std_combine']
+
+        DPR_TYPE = recipe_cls.DPR_TYPE
+
+        self._run_recipe_simple(recipe_cls, name, run, **kwargs)
+
     def _get_recipe_conf(self, recipe_name, item=None):
         """Get config dict foldr a recipe."""
         recipe_conf = self.conf['recipes'].get(recipe_name, {})

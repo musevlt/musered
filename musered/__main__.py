@@ -253,9 +253,17 @@ def exp_combine(mr, dataset, method, params):
     mr.exp_combine(dataset, params_name=params, method=method, name=None)
 
 
+@click.argument('run')
+@click.option('--params', help='name of the parameters block')
+@click.pass_obj
+def std_combine(mr, run, params):
+    """Combine std exposures for a given run."""
+    mr.std_combine(run, params_name=params)
+
+
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
             update_qa, process_exp, exp_align, exp_combine, shell,
-            check_integrity):
+            check_integrity, std_combine):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
 # loading plugins
