@@ -145,7 +145,7 @@ class BaseRecipe:
             for key, value in params.items():
                 self.param[key] = value
 
-        for key, value in dict(self.param).items():
+        for key, value in dict(iter(self.param)).items():
             default = (self.param[key].default
                        if isinstance(self.param, ParameterList)
                        else self.default_params.get(key, ''))
