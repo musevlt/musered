@@ -28,7 +28,7 @@ copyright = '2018, Simon Conseil, CRAL'
 author = 'Simon Conseil'
 
 # The short X.Y version
-version = re.match('\d+\.\d+', pkgmeta['__version__']).group()
+version = re.match(r'\d+\.\d+', pkgmeta['__version__']).group()
 # The full version, including alpha/beta/rc tags.
 release = pkgmeta['__version__']
 
@@ -123,6 +123,7 @@ html_static_path = ['_static']
 #
 # html_sidebars = {}
 
+html_last_updated_fmt = '%b %d, %Y'
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
