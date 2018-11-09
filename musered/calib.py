@@ -85,8 +85,9 @@ class CalibFinder:
         """Dict of static files indexed by PRO.CATG."""
         cat = defaultdict(list)
         for f in self.static_files:
-            key = fits.getval(os.path.join(self.static_path, f),
-                              'ESO PRO CATG', ext=0)
+            if f.endswith(('.fits', '.fits.fz', '.fits.gz')):
+                key = fits.getval(os.path.join(self.static_path, f),
+                                  'ESO PRO CATG', ext=0)
             cat[key].append(f)
         return cat
 
