@@ -9,5 +9,6 @@
 _githash.py
 api/
 build/
+dist/
 docs/_build
 htmlcov/
