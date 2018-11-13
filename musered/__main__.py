@@ -6,7 +6,7 @@ import sys
 import yaml
 
 from .musered import MuseRed
-from .scripts.retrieve_data import retrieve_data
+from .scripts.retrieve_data import retrieve_data, check_integrity
 from .scripts.update_qa import update_qa
 from .scripts.shell import shell
 from .version import __version__
@@ -254,7 +254,8 @@ def exp_combine(mr, dataset, method, params):
 
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
-            update_qa, process_exp, exp_align, exp_combine, shell):
+            update_qa, process_exp, exp_align, exp_combine, shell,
+            check_integrity):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
 # loading plugins

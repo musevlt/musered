@@ -3,6 +3,9 @@ import inspect
 import logging
 import os
 import sys
+from astropy.io import fits
+from collections import Counter
+from musered.utils import upsert_many
 
 
 @click.argument('dataset', nargs=-1)
@@ -107,3 +110,45 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, force,
 
     if not dry_run and not no_update_db:
         mr.update_db()
+
+
+@click.option('--report', is_flag=True, help="report integrity checks")
+@click.pass_obj
+def check_integrity(mr, report):
+    checksum_col = 'valid_checksum'
+
+    if report:
+        if checksum_col not in mr.raw.columns:
+            print(f'{len(mr.raw)} files, not verified.')
+            return
+
+        count = Counter(mr.select_column('valid_checksum', notnull=False))
+        print(f'{len(mr.raw)} files')
+        print(f'verified     : {count[True]}')
+        print(f'not verified : {count[None]}')
+        print(f'invalid      : {count[False]}')
+        if count[False] > 0:
+            print('\nList of invalid files:')
+            print('\n'.join(o['path']
+                            for o in mr.raw.find(valid_checksum=False)))
+        return
+
+    kw = {checksum_col: None} if checksum_col in mr.raw.columns else {}
+    nrows = mr.raw.count(**kw)
+    rows = []
+    try:
+        for i, row in enumerate(mr.raw.find(**kw), start=1):
+            with fits.open(row['path'], checksum=True) as hdul:
+                for hdu in hdul:
+                    if not hdu._checksum_valid or not hdu._datasum_valid:
+                        print(f"{i}/{nrows} : {row['path']} : INVALID")
+                        rows.append({'id': row['id'], checksum_col: False})
+                        break
+                else:
+                    nhdus = len(hdul)
+                    print(f"{i}/{nrows} : {row['path']} : {nhdus} valid HDUs")
+                    rows.append({'id': row['id'], checksum_col: True})
+    except KeyboardInterrupt:
+        print('Saving results before exit...')
+
+    upsert_many(mr.db, 'raw', rows, ['id'])
