@@ -115,6 +115,7 @@ def retrieve_data(mr, dataset, username, help_query, dry_run, force,
 @click.option('--report', is_flag=True, help="report integrity checks")
 @click.pass_obj
 def check_integrity(mr, report):
+    """Test raw files checksum."""
     checksum_col = 'valid_checksum'
 
     if report:
