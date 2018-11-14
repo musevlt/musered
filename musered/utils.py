@@ -524,3 +524,7 @@ def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
         print(query)
     return db.query(query)
 
+
+def all_subclasses(cls):
+    return set(cls.__subclasses__()).union(
+        [s for c in cls.__subclasses__() for s in all_subclasses(c)])

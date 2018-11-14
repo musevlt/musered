@@ -599,6 +599,7 @@ class MuseRed(Reporter):
                   **kwargs):
         """Compute offsets between exposures."""
 
+        recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         filt = recipe_conf.get('filt', filt)
@@ -647,6 +648,7 @@ class MuseRed(Reporter):
                     params_name=None, **kwargs):
         """Combine exposures."""
 
+        recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
 
@@ -666,6 +668,7 @@ class MuseRed(Reporter):
                     params_name=None, **kwargs):
         """Combine std stars."""
 
+        recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
         recipe_cls = recipe_classes[recipe_name]

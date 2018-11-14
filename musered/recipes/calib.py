@@ -67,8 +67,3 @@ class SKYFLAT(CalibRecipe):
     n_inputs_min = 3
     n_inputs_rec = 8
     use_illum = True
-
-
-calib_classes = {cls.recipe_name: cls for cls in CalibRecipe.__subclasses__()}
-
-__all__ = tuple(cls.__name__ for cls in CalibRecipe.__subclasses__())

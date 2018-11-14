@@ -9,7 +9,7 @@ import time
 from cpl.param import ParameterList
 from mpdaf.log import setup_logging
 
-__all__ = ('init_cpl_params', 'Recipe', 'PythonRecipe')
+__all__ = ('init_cpl_params', 'BaseRecipe', 'Recipe', 'PythonRecipe')
 
 
 def init_cpl_params(recipe_path=None, esorex_msg=None, esorex_msg_format=None,
