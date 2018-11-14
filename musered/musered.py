@@ -375,7 +375,8 @@ class MuseRed(Reporter):
         """
         recipe_name = params_name or recipe_cls.recipe_name
         if calib:
-            label = datecol = namecol = 'night'
+            label = 'calibration sequence'
+            datecol = namecol = 'TPL_START'
         else:
             label = 'exposure'
             datecol = 'DATE_OBS'
@@ -541,7 +542,7 @@ class MuseRed(Reporter):
         recipe_cls = get_recipe_cls(recipe_name)
         # get the list of nights to process
         dates = self.prepare_dates(dates, DPR_TYPE=recipe_cls.DPR_TYPE,
-                                   datecol='night')
+                                   datecol='TPL_START')
         self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
                               params_name=params_name, **kwargs)
 
