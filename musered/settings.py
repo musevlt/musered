@@ -31,8 +31,9 @@ ESO TEL AIRM END         / Airmass at end
 ESO TEL AIRM START       / Airmass at start
 ESO TEL AMBI WINDDIR     / [deg] Observatory ambient wind direction
 ESO TEL AMBI WINDSP      / [m/s] Observatory ambient wind speed queri
-ESO TEL MOON DEC
-ESO TEL MOON RA
+ESO TEL MOON DEC         / [deg] DEC (J2000)
+ESO TEL MOON RA          / [deg] RA (J2000)
+ESO TPL START            / TPL start time
 """
 """
 This is the list of keywords that are read from the raw FITS files and
