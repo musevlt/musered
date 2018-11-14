@@ -1,7 +1,6 @@
-import logging
-import mpdaf
+import numpy as np
 from astropy.io import fits
-from mpdaf.obj import CubeList, CubeMosaic
+from astropy.table import Table
 from os.path import join
 
 from .recipe import PythonRecipe
@@ -9,12 +8,23 @@ from .recipe import PythonRecipe
 __version__ = '0.1'
 
 
-def do_combine(run)
-    logger = logging.getLogger('musered')
-    logger.info('Combining standard stars for run %s', run)
-    #if run not in mr.runs
+def combine_std_median(flist, outf=None, lmin=4500, lmax=9500, nl=3700,
+                       **kwargs):
+    lb = np.linspace(lmin, lmax, nl)
 
-    logger.info('Saving std: %s', std_resp)
+    resp = []
+    for stdf in flist:
+        std = Table.read(stdf)
+        resp.append(np.interp(lb, std['lambda'], std['response']))
+
+    med = np.median(resp, axis=0)
+    stdcomb = Table([lb, med], names=('lambda', 'response'))
+
+    with fits.open(flist[0]) as inhdul:
+        hdul = fits.HDUList([inhdul[0].copy(), fits.table_to_hdu(stdcomb)])
+    if outf is not None:
+        hdul.writeto(outf, overwrite=True)
+    return hdul
 
 
 class STDCOMBINE(PythonRecipe):
@@ -26,12 +36,14 @@ class STDCOMBINE(PythonRecipe):
     version = __version__
 
     default_params = dict(
-        version=None,
-            )
+        method='median'
+    )
 
-    def _run(self, run, *args, **kwargs):
-        out = dict(
-            std_resp =join(self.output_dir, f'STD_RESPONSE_{run}.fits'),
-        )
-        do_combine(run, out['std_resp'], **self.param)
-        return out
+    def _run(self, flist, *args, **kwargs):
+        method = self.param['method']
+        self.logger.info('Combining standard stars with %s', method)
+        outf = join(self.output_dir, f'STD_RESPONSE_{method}.fits')
+        if method == 'median':
+            combine_std_median(flist, outf=outf, **self.param)
+        else:
+            raise ValueError(f'unknown method {method}')
