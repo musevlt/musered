@@ -93,6 +93,7 @@ def update_qc(mr, type, recipe):
 @click.option('--datasets', is_flag=True, help='list all datasets')
 @click.option('--nights', is_flag=True, help='list all nights')
 @click.option('--runs', is_flag=True, help='list all runs')
+@click.option('--calibs', is_flag=True, help='list calibration sequences')
 @click.option('--exps', is_flag=True, help='list all exposures')
 @click.option('--raw', multiple=True, help='list raw exposures for a night')
 @click.option('--qc', help='show QC keywords')
@@ -105,17 +106,19 @@ def update_qc(mr, type, recipe):
 @click.option('-r', '--recipe', multiple=True,
               help='recipe name to show (for --night and --exp)')
 @click.pass_obj
-def info(mr, short, datasets, nights, runs, exps, raw, qc, date, run,
+def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
          night, exp, recipe):
     """Print info about raw and reduced data, or night or exposure."""
 
-    if any([datasets, nights, exps, runs]):
+    if any([datasets, nights, exps, runs, calibs]):
         if datasets:
             mr.list_datasets()
         if nights:
             mr.list_nights()
         if runs:
             mr.list_runs()
+        if calibs:
+            mr.list_calibs()
         if exps:
             mr.list_exposures()
     elif raw:

@@ -78,6 +78,12 @@ class Reporter:
             self.fmt.show_text(f"- {name} : {run['start_date']} - "
                                f"{run['end_date']}, {nexp} exposures")
 
+    def list_calibs(self):
+        """Print the list of calibration sequences."""
+        self.fmt.show_title('Calibrations:')
+        for x in sorted(self.calib_exposures):
+            self.fmt.show_text(f'- {x}')
+
     def list_exposures(self):
         """Print the list of exposures."""
         self.fmt.show_title('Exposures:')

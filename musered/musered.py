@@ -94,6 +94,14 @@ class MuseRed(Reporter):
         return sorted(self.select_column('run', distinct=True))
 
     @lazyproperty
+    def calib_exposures(self):
+        """Return the list of calibration sequences (TPL.START)."""
+        if 'night' not in self.raw.columns:
+            return []
+        return sorted(self.select_column('TPL_START', distinct=True,
+                                         where=self.rawc.DPR_CATG == 'CALIB'))
+
+    @lazyproperty
     def exposures(self):
         """Return a dict of science exposure per target."""
         if 'night' not in self.raw.columns:
