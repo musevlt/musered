@@ -412,6 +412,9 @@ def parse_weather_conditions(mr, force=False):
         if tbl['Comment'].dtype.kind != 'U':
             tbl.replace_column('Comment', [str(s) for s in tbl['Comment']])
 
+        if tbl.masked:
+            tbl = tbl.filled()
+
         dates = []
         for row in tbl:
             night = row['night']
