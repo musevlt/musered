@@ -239,7 +239,14 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
 @click.pass_obj
 def exp_align(mr, dataset, method, name, params, filter, date, force):
     """Compute offsets between exposures."""
-    mr.exp_align(dataset, method=method, filt=filter, name=name,
+    if method == 'drs':
+        recipe_name = 'muse_exp_align'
+    elif method == 'imphot':
+        recipe_name = 'imphot'
+    else:
+        raise ValueError(f'unknown method {method}')
+
+    mr.exp_align(dataset, recipe_name=recipe_name, filt=filter, name=name,
                  params_name=params, exps=date, force=force)
 
 
@@ -250,7 +257,15 @@ def exp_align(mr, dataset, method, name, params, filter, date, force):
 @click.pass_obj
 def exp_combine(mr, dataset, method, params):
     """Compute offsets between exposures."""
-    mr.exp_combine(dataset, params_name=params, method=method, name=None)
+    if method == 'drs':
+        recipe_name = 'muse_exp_combine'
+    elif method == 'mpdaf':
+        recipe_name = 'mpdaf_combine'
+    else:
+        raise ValueError(f'unknown method {method}')
+
+    mr.exp_combine(dataset, params_name=params, recipe_name=recipe_name,
+                   name=None)
 
 
 @click.argument('run')

@@ -101,21 +101,18 @@ recipes:
     # recipes were run a produced the same type of file, this allows to specify
     # the recipe from which files are used.
     from_recipe: muse_scipost_rec
-
-    # these are the default values, using the drs method
-    method: drs
     filt: white
 
+  imphot:
     # and this is using imphot:
-    # method: imphot
-    # params:
-    #   fix_beta: 2.5
-    #   hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
-    #   # hst_filters_dir: '{workdir}/reduced/{version}/hst_filters'
-    #   # hst_outdir: '{workdir}/reduced/{version}/imphot-hst-images'
-    #   hst_img_dir: '{workdir}/HST/XUDF'
-    #   hst_basename: 'hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits'
-    #   hst_resample_each: True
+    params:
+      fix_beta: 2.5
+      hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
+      # hst_filters_dir: '{workdir}/reduced/{version}/hst_filters'
+      # hst_outdir: '{workdir}/reduced/{version}/imphot-hst-images'
+      hst_img_dir: '{workdir}/HST/XUDF'
+      hst_basename: 'hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits'
+      hst_resample_each: True
 
   muse_scipost:
     # scipost using offsets (OFFSET_LIST computed with the drs method, or a
@@ -133,9 +130,8 @@ recipes:
 
   muse_exp_combine:
     from_recipe: muse_scipost
-    # Default is to use the drs method, where one can specify an OFFSET_LIST
+    # This is with the drs method, where one can specify an OFFSET_LIST
     # frame (see above). Other option is to use MPDAF, see below.
-    method: drs
     frames:
       # OFFSET_LIST: drs
       OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
@@ -157,12 +153,11 @@ recipes:
     init:
       output_dir: 'scipost_cubes'
 
-  muse_exp_combine_mpdaf:
+  mpdaf_combine:
     # Example of cube combination with MPDAF. For this we need cubes that have
     # been produced on the same grid (same OUTPUT_WCS), which is achieved here
     # with muse_scipost_make_cube.
     from_recipe: muse_scipost_make_cube
-    method: mpdaf
     params:
       method: sigclip
       version: 0.1

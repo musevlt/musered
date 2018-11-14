@@ -522,7 +522,7 @@ class MuseRed(Reporter):
         return date_list
 
     def process_calib(self, recipe_name, dates=None, skip=False,
-                      **kwargs):
+                      params_name=None, **kwargs):
         """Run a calibration recipe."""
 
         recipe_cls = recipe_classes[normalize_recipe_name(recipe_name)]
@@ -532,10 +532,10 @@ class MuseRed(Reporter):
                                    datecol='night')
 
         self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
-                              **kwargs)
+                              params_name=params_name, **kwargs)
 
     def process_exp(self, recipe_name, dates=None, dataset=None, skip=False,
-                    **kwargs):
+                    params_name=None, **kwargs):
         """Run a science recipe."""
 
         # get the list of dates to process
@@ -544,8 +544,7 @@ class MuseRed(Reporter):
         else:
             dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
 
-        recipe_conf = self._get_recipe_conf(kwargs.get('params_name') or
-                                            recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
 
         if recipe_name == 'superflat':
             # Build a Table (name, run, path)
@@ -570,20 +569,22 @@ class MuseRed(Reporter):
         recipe_cls = recipe_classes[recipe_name]
         use_reduced = recipe_name not in ('muse_scibasic', )
         self._run_recipe_loop(recipe_cls, dates, skip=skip,
-                              use_reduced=use_reduced, **kwargs)
+                              params_name=params_name, use_reduced=use_reduced,
+                              **kwargs)
 
-    def process_standard(self, dates=None, skip=False, **kwargs):
+    def process_standard(self, recipe_name='muse_standard', dates=None,
+                         skip=False, **kwargs):
         """Reduce a standard exposure, running both muse_scibasic and
         muse_standard.
         """
         recipe_sci = recipe_classes['muse_scibasic']
-        recipe_std = recipe_classes['muse_standard']
+        recipe_std = recipe_classes[recipe_name]
 
         # get the list of dates to process
         dates = self.prepare_dates(dates, DPR_TYPE='STD')
 
         # run muse_scibasic with specific parameters (tag: STD)
-        recipe = self._instantiate_recipe(recipe_std, 'muse_standard',
+        recipe = self._instantiate_recipe(recipe_std, recipe_name,
                                           verbose=False)
         recipe_kw = {'tag': 'STD', 'output_dir': recipe.output_dir}
         self._run_recipe_loop(recipe_sci, dates, skip=skip,
@@ -593,38 +594,27 @@ class MuseRed(Reporter):
         self._run_recipe_loop(recipe_std, dates, skip=skip, use_reduced=True,
                               **kwargs)
 
-    def exp_align(self, dataset, method='drs', filt='white', name=None,
-                  exps=None, force=False, **kwargs):
+    def exp_align(self, dataset, recipe_name='muse_exp_align', filt='white',
+                  params_name=None, name=None, exps=None, force=False,
+                  **kwargs):
         """Compute offsets between exposures."""
 
-        recipe_name = kwargs.get('params_name') or 'muse_exp_align'
-        recipe_conf = self._get_recipe_conf(recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
-        method = recipe_conf.get('method', method)
         filt = recipe_conf.get('filt', filt)
-        processed = []
+        recipe_cls = recipe_classes[recipe_name]
 
-        if method == 'drs':
-            recipe_cls = recipe_classes['muse_exp_align']
-        elif method == 'imphot':
-            recipe_cls = recipe_classes['imphot']
-            # by default use params from the muse_exp_align block
-            if not kwargs.get('params_name'):
-                kwargs['params_name'] = 'muse_exp_align'
-
-            if not force:
-                # Find already processed files
-                processed = [r['name'] for r in self.reduced.find(
-                    OBJECT=dataset, DPR_TYPE='IMPHOT',
-                    recipe_name=kwargs['params_name']
-                )]
-                kwargs['processed'] = processed
-                self.logger.debug('Found %d processed exps', len(processed))
-        else:
-            raise ValueError(f'unknown method {method}')
+        if recipe_name == 'imphot' and not force:
+            # Find already processed files
+            processed = [r['name'] for r in self.reduced.find(
+                OBJECT=dataset, DPR_TYPE='IMPHOT',
+                recipe_name=kwargs['params_name']
+            )]
+            kwargs['processed'] = processed
+            self.logger.debug('Found %d processed exps', len(processed))
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_conf.get('name') or f'OFFSET_LIST_{method}'
+        name = name or recipe_conf.get('name') or recipe_name
 
         # get the list of dates to process
         if exps:
@@ -637,13 +627,13 @@ class MuseRed(Reporter):
         flist = [f for r in query
                  for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")]
 
-        if method == 'drs' and filt:
+        if recipe_name == 'muse_exp_align' and filt:
             flist = [f for f in flist
                      if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
-        if method == 'imphot':
+        if recipe_name == 'imphot':
             # Special case to insert IMPHOT result files in the table
             info = self.reduced.find_one(name=name)
             del info['id']
@@ -653,24 +643,17 @@ class MuseRed(Reporter):
             upsert_many(self.db, self.reduced.name, rows,
                         keys=('name', 'recipe_name', 'DPR_TYPE'))
 
-    def exp_combine(self, dataset, method='drs', name=None, **kwargs):
+    def exp_combine(self, dataset, recipe_name='muse_exp_combine', name=None,
+                    params_name=None, **kwargs):
         """Combine exposures."""
 
-        recipe_name = kwargs.get('params_name') or 'muse_exp_combine'
-        recipe_conf = self._get_recipe_conf(recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
-        method = recipe_conf.get('method', method)
 
-        if method == 'drs':
-            recipe_cls = recipe_classes['muse_exp_combine']
-        elif method == 'mpdaf':
-            recipe_cls = recipe_classes['mpdaf_combine']
-            kwargs.setdefault('params_name', 'muse_exp_combine')
-        else:
-            raise ValueError(f'unknown method {method}')
+        recipe_cls = recipe_classes[recipe_name]
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or method
+        name = name or recipe_name
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
@@ -679,15 +662,13 @@ class MuseRed(Reporter):
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
-    def std_combine(self, run, name=None, **kwargs):
+    def std_combine(self, run, recipe_name='muse_std_combine', name=None,
+                    params_name=None, **kwargs):
         """Combine std stars."""
 
-        recipe_name = kwargs.get('params_name') or 'muse_std_combine'
-        recipe_conf = self._get_recipe_conf(recipe_name)
-        kwargs.setdefault('params_name', 'muse_std_combine')
+        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
-        recipe_cls = recipe_classes['muse_std_combine']
-
+        recipe_cls = recipe_classes[recipe_name]
         DPR_TYPE = recipe_cls.DPR_TYPE
         name = name or run
 
@@ -696,10 +677,11 @@ class MuseRed(Reporter):
                  for r in self.reduced.find(DPR_TYPE=DPR_TYPE,
                                             recipe_name=from_recipe)]
 
-        self._run_recipe_simple(recipe_cls, name, run, flist, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, run, flist,
+                                params_name=params_name, **kwargs)
 
     def _get_recipe_conf(self, recipe_name, item=None):
-        """Get config dict foldr a recipe."""
+        """Get config dict for a recipe."""
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
         if item is not None:
             return recipe_conf.get(item, {})
