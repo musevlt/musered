@@ -95,11 +95,16 @@ class MuseRed(Reporter):
 
     @lazyproperty
     def calib_exposures(self):
-        """Return the list of calibration sequences (TPL.START)."""
+        """Return the calibration sequences (TPL.START) for each DPR_TYPE."""
         if 'night' not in self.raw.columns:
             return []
-        return sorted(self.select_column('TPL_START', distinct=True,
-                                         where=self.rawc.DPR_CATG == 'CALIB'))
+        out = defaultdict(list)
+        for dpr_type, name in self.execute(
+                sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
+                .where(self.rawc.DPR_TYPE.isnot(None))
+                .group_by(self.rawc.DPR_TYPE, self.rawc.TPL_START)):
+            out[dpr_type].append(name)
+        return out
 
     @lazyproperty
     def exposures(self):

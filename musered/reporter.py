@@ -81,8 +81,9 @@ class Reporter:
     def list_calibs(self):
         """Print the list of calibration sequences."""
         self.fmt.show_title('Calibrations:')
-        for x in sorted(self.calib_exposures):
-            self.fmt.show_text(f'- {x}')
+        for dpr_type, explist in sorted(self.calib_exposures.items()):
+            self.fmt.show_text(f'- {dpr_type}')
+            self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
     def list_exposures(self):
         """Print the list of exposures."""
