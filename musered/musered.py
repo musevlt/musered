@@ -672,12 +672,31 @@ class MuseRed(Reporter):
         DPR_TYPE = recipe_cls.DPR_TYPE
         name = name or method
 
-        # get the list of dates to process
+        # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
                  for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                             recipe_name=from_recipe)]
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
+
+    def std_combine(self, run, name=None, **kwargs):
+        """Combine std stars."""
+
+        recipe_name = kwargs.get('params_name') or 'muse_std_combine'
+        recipe_conf = self._get_recipe_conf(recipe_name)
+        kwargs.setdefault('params_name', 'muse_std_combine')
+        from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
+        recipe_cls = recipe_classes['muse_std_combine']
+
+        DPR_TYPE = recipe_cls.DPR_TYPE
+        name = name or run
+
+        # get the list of files to process
+        flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
+                 for r in self.reduced.find(DPR_TYPE=DPR_TYPE,
+                                            recipe_name=from_recipe)]
+
+        self._run_recipe_simple(recipe_cls, name, run, flist, **kwargs)
 
     def _get_recipe_conf(self, recipe_name, item=None):
         """Get config dict foldr a recipe."""
