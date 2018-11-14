@@ -12,8 +12,8 @@ from glob import iglob
 from mpdaf.obj import Image, Cube
 from sqlalchemy import sql
 
-from .recipes import recipe_classes
-from .utils import query_count_to_table, normalize_recipe_name, get_exp_name
+from .recipes import recipe_classes, normalize_recipe_name
+from .utils import query_count_to_table, get_exp_name
 
 try:
     from IPython.display import display, HTML

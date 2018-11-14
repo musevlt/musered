@@ -155,23 +155,6 @@ def normalize_keyword(key):
     return key.replace(' ', '_').replace('-', '_')
 
 
-def normalize_recipe_name(recipe_name):
-    """Add 'muse_' if needed for the DRS recipe names.
-
-    >>> normalize_recipe_name('scibasic')
-    'muse_scibasic'
-    >>> normalize_recipe_name('muse_scibasic')
-    'muse_scibasic'
-
-    """
-    from .recipes import recipe_classes
-    if recipe_name in recipe_classes:
-        return recipe_name
-    elif not recipe_name.startswith('muse_'):
-        recipe_name = 'muse_' + recipe_name
-    return recipe_name
-
-
 def parse_raw_keywords(flist, runs=None):
     logger = logging.getLogger(__name__)
     rows = []
@@ -510,7 +493,7 @@ def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
         columns = tables
 
     if keys is None:
-        keys = [('name','name')]*(len(tables)-1)
+        keys = [('name', 'name')]*(len(tables)-1)
 
     query = sql.select(columns, use_labels=use_labels,
                        whereclause=whereclause, **params)

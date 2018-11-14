@@ -17,11 +17,11 @@ from os.path import join
 from sqlalchemy import sql
 
 from .calib import CalibFinder
-from .recipes import recipe_classes, init_cpl_params
+from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
 from .reporter import Reporter
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
-                    parse_qc_keywords, ProgressBar, normalize_recipe_name,
-                    parse_gto_db, upsert_many, parse_weather_conditions)
+                    parse_qc_keywords, ProgressBar, parse_gto_db, upsert_many,
+                    parse_weather_conditions)
 from .version import __version__
 
 __all__ = ('MuseRed', )
@@ -525,12 +525,10 @@ class MuseRed(Reporter):
                       params_name=None, **kwargs):
         """Run a calibration recipe."""
 
-        recipe_cls = recipe_classes[normalize_recipe_name(recipe_name)]
-
+        recipe_cls = get_recipe_cls(recipe_name)
         # get the list of nights to process
         dates = self.prepare_dates(dates, DPR_TYPE=recipe_cls.DPR_TYPE,
                                    datecol='night')
-
         self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
                               params_name=params_name, **kwargs)
 
@@ -565,9 +563,8 @@ class MuseRed(Reporter):
             kwargs['exposures'] = Table(rows=exps,
                                         names=('name', 'run', 'path'))
 
-        recipe_name = normalize_recipe_name(recipe_name)
-        recipe_cls = recipe_classes[recipe_name]
-        use_reduced = recipe_name not in ('muse_scibasic', )
+        recipe_cls = get_recipe_cls(recipe_name)
+        use_reduced = recipe_cls.recipe_name not in ('muse_scibasic', )
         self._run_recipe_loop(recipe_cls, dates, skip=skip,
                               params_name=params_name, use_reduced=use_reduced,
                               **kwargs)
@@ -577,8 +574,8 @@ class MuseRed(Reporter):
         """Reduce a standard exposure, running both muse_scibasic and
         muse_standard.
         """
-        recipe_sci = recipe_classes['muse_scibasic']
-        recipe_std = recipe_classes[recipe_name]
+        recipe_sci = get_recipe_cls('muse_scibasic')
+        recipe_std = get_recipe_cls(recipe_name)
 
         # get the list of dates to process
         dates = self.prepare_dates(dates, DPR_TYPE='STD')
@@ -603,7 +600,7 @@ class MuseRed(Reporter):
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         filt = recipe_conf.get('filt', filt)
-        recipe_cls = recipe_classes[recipe_name]
+        recipe_cls = get_recipe_cls(recipe_name)
 
         if recipe_name == 'imphot' and not force:
             # Find already processed files
@@ -648,14 +645,12 @@ class MuseRed(Reporter):
                     params_name=None, **kwargs):
         """Combine exposures."""
 
-        recipe_name = normalize_recipe_name(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
+        recipe_cls = get_recipe_cls(recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or
+                                            recipe_cls.recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
-
-        recipe_cls = recipe_classes[recipe_name]
-
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_name
+        name = name or recipe_cls.recipe_name
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
@@ -668,10 +663,10 @@ class MuseRed(Reporter):
                     params_name=None, **kwargs):
         """Combine std stars."""
 
-        recipe_name = normalize_recipe_name(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
+        recipe_cls = get_recipe_cls(recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or
+                                            recipe_cls.recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
-        recipe_cls = recipe_classes[recipe_name]
         DPR_TYPE = recipe_cls.DPR_TYPE
         name = name or run
 
