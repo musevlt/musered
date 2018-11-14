@@ -126,34 +126,49 @@ class CalibFinder:
 
     def find_calib(self, night, dpr_type, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
-        res = self.table.find_one(night=night, INS_MODE=ins_mode,
-                                  DPR_TYPE=dpr_type)
-        excludes = self.excludes.get(dpr_type, [])
-        if res is not None and res['night'] in excludes:
-            # TODO: do the same for exposures
-            self.logger.info('%s for night %s is excluded', dpr_type, night)
-            res = None
+        info = self.logger.info
+        excludes = self.excludes.get(dpr_type)
 
-        if res is None and day_off is not None:
+        # Find calib for the given night, mode and type
+        res = {o['name']: o for o in self.table.find(
+            night=night, INS_MODE=ins_mode, DPR_TYPE=dpr_type)}
+
+        # Check if some calib must be excluded
+        # TODO: do the same for exposures
+        if res and excludes:
+            for name in excludes:
+                if name in res:
+                    info('%s for night %s is excluded', dpr_type, night)
+                    del res[name]
+
+        # If no calib was found, iterate on the days before/after
+        if not res and day_off is not None:
             if isinstance(night, str):
                 night = parse_date(night)
             for off, direction in itertools.product(range(1, day_off + 1),
                                                     (1, -1)):
                 off = datetime.timedelta(days=off * direction)
-                res = self.table.find_one(night=(night + off).isoformat(),
-                                          INS_MODE=ins_mode,
-                                          DPR_TYPE=dpr_type)
-                if res is not None:
-                    if res['night'] in excludes:
-                        self.logger.info('%s for night %s is excluded',
-                                         dpr_type, night + off)
-                    else:
-                        self.logger.warning('Using %s from night %s',
-                                            dpr_type, night + off)
-                        break
+                res = {o['name']: o for o in self.table.find(
+                    night=(night + off).isoformat(), INS_MODE=ins_mode,
+                    DPR_TYPE=dpr_type)}
+                if res and excludes:
+                    for name in excludes:
+                        if name in res:
+                            info('%s for night %s is excluded', dpr_type,
+                                 night)
+                            del res[name]
+                if res:
+                    info('Using %s from night %s', dpr_type, night + off)
+                    break
 
-        if res is None:
+        if not res:
             raise ValueError(f'could not find {dpr_type} for night {night}')
+        if len(res) == 1:
+            # only one result, use it
+            res = res.popitem()[1]
+        elif len(res) > 1:
+            # several results, need to choose
+            raise NotImplementedError
 
         flist = sorted(glob(f"{res['path']}/{dpr_type}*.fits"))
         if len(flist) not in (1, 24):

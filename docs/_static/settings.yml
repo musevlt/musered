@@ -67,12 +67,16 @@ retrieve_data:
   username: MUSE-GTO
   store_password: True
 
+# frames_exclude:
+#   MASTER_FLAT:
+#     - "2018-10-07"
+
 # Parameters for recipes. Can be used to specify additional parameters.
 recipes:
 
   muse_wavecal:
     # This can be used to change the frames excluded by default
-    # frames:
+    # frames, or to specify a file for a given frame
     #   exclude: MASTER_DARK
     #   include: [MASTER_FLAT]
     params:
@@ -97,14 +101,13 @@ recipes:
       save: 'cube,autocal'
 
   muse_exp_align:
-    # by default a recipe finds frames using only DPR.TYPE. But if several
-    # recipes were run a produced the same type of file, this allows to specify
-    # the recipe from which files are used.
+    # Compute offsets with the DRS.
+    # from_recipe allows to specify the recipe from which files are used.
     from_recipe: muse_scipost_rec
     filt: white
 
   imphot:
-    # and this is using imphot:
+    # Compute offsets with the Imphot.
     params:
       fix_beta: 2.5
       hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
