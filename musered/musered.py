@@ -288,10 +288,10 @@ class MuseRed(Reporter):
 
         if remove_files:
             for item in set(o['path'] for o in self.reduced.find(**kwargs)):
-                if os.path.exists(item['path']):
-                    self.logger.info('Remove %s', item['path'])
+                if os.path.exists(item):
+                    self.logger.info('Remove %s', item)
                     if not dry_run:
-                        shutil.rmtree(item['path'])
+                        shutil.rmtree(item)
 
         self.logger.info('Remove %d exposures/nights from the database', count)
         if not dry_run:
