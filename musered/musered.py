@@ -626,7 +626,7 @@ class MuseRed(Reporter):
             self.logger.debug('Found %d processed exps', len(processed))
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_conf.get('name') or recipe_name
+        name = name or recipe_conf.get('name') or dataset
 
         # get the list of dates to process
         if exps:
@@ -664,7 +664,7 @@ class MuseRed(Reporter):
                                             recipe_cls.recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_cls.recipe_name
+        name = name or recipe_conf.get('name') or dataset
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
