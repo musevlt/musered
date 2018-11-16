@@ -636,7 +636,8 @@ class MuseRed(Reporter):
             self.logger.debug('Found %d processed exps', len(processed))
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_conf.get('name') or dataset
+        name = (name or recipe_conf.get('name') or 'OFFSET_LIST_{}'.format(
+            'drs' if recipe_name == 'muse_exp_align' else recipe_name))
 
         # get the list of dates to process
         if exps:
@@ -669,12 +670,14 @@ class MuseRed(Reporter):
                     params_name=None, **kwargs):
         """Combine exposures."""
 
+        recipe_name = normalize_recipe_name(recipe_name)
         recipe_cls = get_recipe_cls(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or
-                                            recipe_cls.recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_conf.get('name') or dataset
+        name_dict = {'muse_exp_combine': 'drs', 'mpdaf_combine': 'mpdaf'}
+        name = (name or recipe_conf.get('name') or '{}_{}'.format(
+            dataset, name_dict.get(recipe_name, recipe_name)))
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
