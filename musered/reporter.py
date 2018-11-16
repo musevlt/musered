@@ -142,7 +142,7 @@ class Reporter:
             if t:
                 self.fmt.show_table(t)
 
-    def info_exp(self, expname, full=True, recipes=None):
+    def info_exp(self, expname, full=True, recipes=None, show_weather=True):
         """Print information about a given exposure or night."""
         if recipes:
             recipes = [normalize_recipe_name(name) for name in recipes]
@@ -163,19 +163,23 @@ class Reporter:
         click.secho(f'\n {expname} \n', fg='green', bold=True, reverse=True)
 
         if not recipes and 'gto_logs' in self.db:
-            click.secho(f"★ GTO logs:", fg='green', bold=True)
-            colors = dict(A='green', B='yellow', C='orange')
-            for log in self.db['gto_logs'].find(name=expname):
-                if log['flag']:
-                    rk = log['flag']
-                    log['rk'] = click.style(f'Rank {rk}', reverse=True,
-                                            fg=colors.get(rk, 'red'))
-                    print("- {date}\t{author}\t{rk}\t{comment}".format(**log))
-                if log['fdate']:
-                    print("- {fdate}\t{fauthor}\t\t{fcomment}".format(**log))
-            print()
+            logs = list(self.db['gto_logs'].find(name=expname))
+            if logs:
+                click.secho(f"★ GTO logs:", fg='green', bold=True)
+                colors = dict(A='green', B='yellow', C='orange')
+                for log in logs:
+                    if log['flag']:
+                        rk = log['flag']
+                        log['rk'] = click.style(f'Rank {rk}', reverse=True,
+                                                fg=colors.get(rk, 'red'))
+                        print("- {date}\t{author}\t{rk}\t{comment}"
+                              .format(**log))
+                    if log['fdate']:
+                        print("- {fdate}\t{fauthor}\t\t{fcomment}"
+                              .format(**log))
+                print()
 
-        if not recipes and 'weather_conditions' in self.db:
+        if show_weather and not recipes and 'weather_conditions' in self.db:
             click.secho(f"★ Weather Conditions:", fg='green', bold=True)
             table = self.db['weather_conditions']
             for log in table.find(night=res[0][0]['night'], order_by='Time'):
@@ -258,7 +262,7 @@ class Reporter:
             date_list = [date_list]
         else:
             date_list = self.prepare_dates(date_list, datecol='name',
-                                           DPR_TYPE=dpr_type)
+                                           table=dpr_type)
 
         recipe_cls = recipe_classes[table.find_one()['recipe_name']]
         cols = ['filename', 'hdu', 'DATE_OBS', 'INS_MODE']

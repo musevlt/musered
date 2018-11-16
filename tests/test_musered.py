@@ -160,14 +160,18 @@ def test_info_exp(mr, caplog):
         assert line in out
 
 
-# FIXME: update info --night
-# def test_info_night(mr, caplog):
-#     runner = CliRunner()
-#     result = runner.invoke(cli, ['info', '--night', '2017-06-15',
-#                                  '--recipe', 'bias'])
-#     assert result.exit_code == 0
-#     out = result.output.splitlines()
-#     assert '★ Recipe: muse_bias' in out
+def test_info_night(mr, caplog):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info', '--night', '2017-06-15',
+                                 '--recipe', 'bias'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    assert '★ Recipe: muse_bias' in out
+
+    result = runner.invoke(cli, ['info', '--night', '2017-06-15', '--short'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    assert '★ Recipe: muse_bias' in out
 
 
 def test_info_raw(mr, capsys, caplog):
@@ -200,8 +204,8 @@ def test_info_qc(mr):
     assert len(result.output.splitlines()) == 29 * 3  # 3 nights
 
 
-def test_get_table(mr):
-    tbl = mr.get_table('raw')
+def test_get_astropy_table(mr):
+    tbl = mr.get_astropy_table('raw')
     assert len(tbl) == 155
     assert tbl.colnames[:10] == [
         'id', 'name', 'filename', 'path', 'night', 'run', 'ARCFILE',

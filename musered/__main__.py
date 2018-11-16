@@ -126,10 +126,16 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
     elif qc:
         mr.info_qc(qc, date_list=date)
     elif exp or night:
-        dateobs = mr.prepare_dates(exp or night,
-                                   datecol='name' if exp else 'night')
+        if exp:
+            dateobs = mr.prepare_dates(exp, datecol='name')
+            show_weather = True
+        else:
+            dateobs = mr.prepare_dates(night, datecol='name', table='reduced')
+            show_weather = False
+
         for date in dateobs:
-            mr.info_exp(date, full=not short, recipes=recipe)
+            mr.info_exp(date, full=not short, recipes=recipe,
+                        show_weather=show_weather)
     else:
         mr.info(date_list=date, run=run)
 

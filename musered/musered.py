@@ -129,6 +129,12 @@ class MuseRed(Reporter):
         name = self.tables.get(name, name)
         if name not in self.db:
             raise ValueError('unknown table')
+        return self.db[name]
+
+    def get_astropy_table(self, name):
+        name = self.tables.get(name, name)
+        if name not in self.db:
+            raise ValueError('unknown table')
         return load_table(self.db, name)
 
     def select_column(self, name, notnull=True, distinct=False,
@@ -280,9 +286,11 @@ class MuseRed(Reporter):
             kwargs = {'recipe_name': [normalize_recipe_name(rec)
                                       for rec in recipe_list]}
         if date_list:
-            kwargs['name'] = self.prepare_dates(date_list, datecol='name')
+            kwargs['name'] = self.prepare_dates(date_list, datecol='name',
+                                                table='reduced')
         if night_list:
-            kwargs['night'] = self.prepare_dates(night_list, datecol='night')
+            kwargs['night'] = self.prepare_dates(night_list, datecol='night',
+                                                 table='reduced')
 
         count = len(set(o['name'] for o in self.reduced.find(**kwargs)))
 
@@ -499,18 +507,8 @@ class MuseRed(Reporter):
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
                            name=name, OBJECT=OBJECT, recipe_name=recipe_name)
 
-    def prepare_dates(self, dates, DPR_TYPE=None, datecol='name'):
+    def prepare_dates(self, dates, DPR_TYPE=None, datecol='name', table='raw'):
         """Compute the list of dates (nights, exposures) to process."""
-
-        if DPR_TYPE is None:
-            table = 'raw'
-        elif DPR_TYPE in self.select_column('DPR_TYPE', distinct=True):
-            table = 'raw'
-        elif DPR_TYPE in self.select_column('DPR_TYPE', distinct=True,
-                                            table='reduced'):
-            table = 'reduced'
-        else:
-            raise ValueError(f'{DPR_TYPE} not found')
 
         alldates = self.select_dates(dpr_type=DPR_TYPE, column=datecol,
                                      distinct=True, table=table)
@@ -522,12 +520,22 @@ class MuseRed(Reporter):
                 dates = [dates]
 
             date_list = []
+            tbl = self.get_table(table).table
             for date in dates:
                 if date in self.runs:
-                    where = (self.rawc.run == date)
+                    where = (tbl.c.run == date)
                     if DPR_TYPE is not None:
-                        where &= (self.rawc.DPR_TYPE == DPR_TYPE)
-                    d = self.select_column(datecol, distinct=True, where=where)
+                        where &= (tbl.c.DPR_TYPE == DPR_TYPE)
+                    d = self.select_column(datecol, distinct=True, where=where,
+                                           table=table)
+                    if d:
+                        date_list += d
+                elif date in self.nights:
+                    where = (tbl.c.night == date)
+                    if DPR_TYPE is not None:
+                        where &= (tbl.c.DPR_TYPE == DPR_TYPE)
+                    d = self.select_column(datecol, distinct=True, where=where,
+                                           table=table)
                     if d:
                         date_list += d
                 elif date in alldates:
