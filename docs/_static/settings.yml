@@ -152,7 +152,7 @@ recipes:
 
       # The OUTPUT_WCS used here was computed by running first muse_exp_combine
       # with method: drs (it is the datacube combined with the DRS).
-      OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/drs/DATACUBE_FINAL.fits'
+      OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/IC4406/DATACUBE_FINAL.fits'
     init:
       output_dir: 'scipost_cubes'
 

@@ -256,6 +256,9 @@ class Reporter:
             date_list = [o['DATE_OBS'] for o in table.distinct('DATE_OBS')]
         elif isinstance(date_list, str):
             date_list = [date_list]
+        else:
+            date_list = self.prepare_dates(date_list, datecol='name',
+                                           DPR_TYPE=dpr_type)
 
         recipe_cls = recipe_classes[table.find_one()['recipe_name']]
         cols = ['filename', 'hdu', 'DATE_OBS', 'INS_MODE']

@@ -502,8 +502,18 @@ class MuseRed(Reporter):
     def prepare_dates(self, dates, DPR_TYPE=None, datecol='name'):
         """Compute the list of dates (nights, exposures) to process."""
 
+        if DPR_TYPE is None:
+            table = 'raw'
+        elif DPR_TYPE in self.select_column('DPR_TYPE', distinct=True):
+            table = 'raw'
+        elif DPR_TYPE in self.select_column('DPR_TYPE', distinct=True,
+                                            table='reduced'):
+            table = 'reduced'
+        else:
+            raise ValueError(f'{DPR_TYPE} not found')
+
         alldates = self.select_dates(dpr_type=DPR_TYPE, column=datecol,
-                                     distinct=True)
+                                     distinct=True, table=table)
 
         if dates is None:
             date_list = alldates

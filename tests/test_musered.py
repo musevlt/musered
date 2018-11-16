@@ -107,13 +107,19 @@ def test_info(mr):
 
         Processed calib data:
 
-           name    muse_bias muse_flat muse_lsf muse_twilight muse_wavecal
-        ---------- --------- --------- -------- ------------- ------------
-        2017-06-13         1        --       --            --           --
-        2017-06-15         1         3        1            --            2
-        2017-06-17         1         3        1            --            2
-        2017-06-18        --         3        1             2            2
-        2017-06-19         1        --       --            --           --
+                name        muse_bias muse_flat muse_lsf muse_twilight muse_wavecal
+        ------------------- --------- --------- -------- ------------- ------------
+        2017-06-14T09:01:03         1        --       --            --           --
+        2017-06-16T10:40:27         1        --       --            --           --
+        2017-06-16T12:15:46        --         3       --            --           --
+        2017-06-16T12:32:03        --        --        1            --            2
+        2017-06-18T11:03:09         1        --       --            --           --
+        2017-06-18T12:35:49        --         3       --            --           --
+        2017-06-18T12:51:47        --        --        1            --            2
+        2017-06-18T22:04:55        --        --       --             2           --
+        2017-06-19T12:04:11        --         3       --            --           --
+        2017-06-19T12:20:06        --        --        1            --            2
+        2017-06-20T10:38:50         1        --       --            --           --
 
         Processed standard:
 
@@ -123,17 +129,15 @@ def test_info(mr):
 
         Processed science data:
 
-                  name          muse_exp_align ... muse_scipost_rec
-        ----------------------- -------------- ... ----------------
-        2017-06-16T01:34:56.867             -- ...                2
-        2017-06-16T01:37:47.867             -- ...                2
-        2017-06-16T01:40:40.868             -- ...                2
-        2017-06-16T01:43:32.868             -- ...                2
-        2017-06-16T01:46:25.866             -- ...                2
-        2017-06-16T01:49:19.866             -- ...                2
-                OFFSET_LIST_drs              2 ...               --
-                            drs             -- ...               --
-                          mpdaf             -- ...               --
+                  name          mpdaf_combine ... muse_scipost_rec
+        ----------------------- ------------- ... ----------------
+        2017-06-16T01:34:56.867            -- ...                2
+        2017-06-16T01:37:47.867            -- ...                2
+        2017-06-16T01:40:40.868            -- ...                2
+        2017-06-16T01:43:32.868            -- ...                2
+        2017-06-16T01:46:25.866            -- ...                2
+        2017-06-16T01:49:19.866            -- ...                2
+                         IC4406             5 ...               --
         """)
 
 
@@ -181,7 +185,12 @@ def test_info_raw(mr, capsys, caplog):
 def test_info_qc(mr):
     runner = CliRunner()
     result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT',
-                                 '--date', '2017-06-17'])
+                                 '--date', '2017-06-16T12:15:46'])
+    assert result.exit_code == 0
+    assert len(result.output.splitlines()) == 29  # 24 rows + header + expname
+
+    result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT',
+                                 '--date', '2017-06-16T*'])
     assert result.exit_code == 0
     assert len(result.output.splitlines()) == 29  # 24 rows + header + expname
 
@@ -210,9 +219,12 @@ def test_select_date(mr):
         '2017-06-18T22:09:50.110',
         '2017-06-18T22:11:12.111'
     ]
-
     assert mr.select_dates('MASTER_BIAS', table='reduced') == [
-        '2017-06-13', '2017-06-15', '2017-06-17', '2017-06-19']
+        '2017-06-14T09:01:03',
+        '2017-06-16T10:40:27',
+        '2017-06-18T11:03:09',
+        '2017-06-20T10:38:50'
+    ]
 
 
 def test_process_calib(mr, caplog):
@@ -221,15 +233,15 @@ def test_process_calib(mr, caplog):
     result = runner.invoke(cli, ['process-calib', '--dry-run'])
     assert result.exit_code == 0
     assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
-        Running muse_bias for 4 nights
+        Running muse_bias for 4 calibration sequences
         Already processed, nothing to do
-        Running muse_flat for 3 nights
+        Running muse_flat for 3 calibration sequences
         Already processed, nothing to do
-        Running muse_wavecal for 3 nights
+        Running muse_wavecal for 3 calibration sequences
         Already processed, nothing to do
-        Running muse_lsf for 3 nights
+        Running muse_lsf for 3 calibration sequences
         Already processed, nothing to do
-        Running muse_twilight for 1 nights
+        Running muse_twilight for 1 calibration sequences
         Already processed, nothing to do
     """).splitlines()
 
