@@ -262,7 +262,7 @@ class Reporter:
             date_list = [date_list]
         else:
             date_list = self.prepare_dates(date_list, datecol='name',
-                                           table=dpr_type)
+                                           DPR_TYPE=dpr_type, table='reduced')
 
         recipe_cls = recipe_classes[table.find_one()['recipe_name']]
         cols = ['filename', 'hdu', 'DATE_OBS', 'INS_MODE']
