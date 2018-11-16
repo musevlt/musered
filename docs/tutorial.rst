@@ -22,7 +22,7 @@ recipes.
 
 See also the :doc:`settings` example.
 
-The first part of the file contains general variables, like the corking
+The first part of the file contains general variables, like the working
 directory; the raw, reduced and calibration paths; version numbers; and logging
 level:
 
@@ -40,6 +40,10 @@ Dataset definition
 
 The first important step in the organisation of the reduction is the concept of
 *dataset*. This defines a set of files that are retrieved and reduced together.
+This also means that *musered* can be used to reduce several datasets at the
+same time, which can be handy when they were observed in the same nights and
+share the same calibrations.
+
 For instance to define a `IC4406` dataset:
 
 .. literalinclude:: _static/settings.yml
@@ -54,13 +58,14 @@ Data retrieval
 
 Retrieving a dataset is done with `Astroquery
 <https://astroquery.readthedocs.io/en/latest/eso/eso.html>`__. To find all the
-possible query options for Muse, to use in the ``archive_filter`` for your
-dataset, use this::
+possible query options for Muse, that can be uses with the ``archive_filter``
+setting, use this::
 
     $ musered retrieve-data --help-query
 
-In the IC4406 example we just use the target name, but it is also possible to
-specify dates, instrument mode, or a programme ID.
+``archive_filter`` must then contain a list of key/value items, defining a query
+on the ESO archive.  For the IC4406 example we just use the target name, but it
+is also possible to specify dates, instrument mode, or a programme ID.
 
 Once a dataset is defined in the settings file, its data files can be retrieved
 with this command::
@@ -80,8 +85,8 @@ is done for the calibration files, so only the missing files are retrieved.
     at the next execution the missing calibrations will not be downloaded.
 
     This is fixed with Astroquery 0.3.9.dev582 (``pip install
-    astroquery==0.3.9.dev582``). Adding the ``--force`` flag will do the query
-    with all OBJECT files.
+    astroquery==0.3.9.dev582``) and using the ``--force`` option which will
+    force the query to be done with all OBJECT files.
 
 
 Ingesting metadata in a database
@@ -178,9 +183,9 @@ Calibrations
 ^^^^^^^^^^^^
 
 Processing the calibrations is done with the ``musered process-calib`` command.
-The different steps can be run for a given night or for all nights, and the
-``--skip`` parameter allows to avoid reprocessing the nights that have already
-been processed.
+The different steps can be run for a given night or for all nights. By default
+the calibrations that have already been processed are not reprocessed, but this
+can be forced with the ``--force`` flag.
 
 The currently available steps and the related command-line options are:
 
@@ -195,14 +200,13 @@ By default, when no option is given, all steps except ``muse_dark`` are run.
 The ``MASTER_DARK`` frames are also excluded from the inputs of the other
 recipes.
 
-For instance, to run the ``muse_bias`` recipe for a given night::
+For instance, to run the ``muse_bias`` recipe for a given day::
 
-    $ musered process-calib --bias 2017-06-15
+    $ musered process-calib --bias "2017-06-16*"
 
-Or to run ``muse_flat`` recipe for all nights, skipping already processed
-nights::
+Or to run ``muse_flat`` recipe for all nights::
 
-    $ musered process-calib --flat --skip
+    $ musered process-calib --flat
 
 scibasic
 ^^^^^^^^
@@ -250,9 +254,11 @@ To compute the offsets between exposures, with the ``muse_exp_align`` recipe::
 
     $ musered exp-align IC4406
 
-A method can be specified with ``--method`` but currently only the ``drs``
-method is implemented. This name must be used later to set the ``OFFSET_LIST``
-frame in the parameters.
+A method can be specified with ``--method``. The default is ``drs`` which
+corresponds to the ``muse_exp_align`` recipe, and it is also possible to use
+``imphot`` with ``--method=imphot``. The ``--name`` option can be used to give
+a name (default to the dataset name) to identify later the ``OFFSET_LIST``
+frame.
 
 Creating recentered cubes
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -260,7 +266,7 @@ Creating recentered cubes
 It can be useful to create individual cubes for each exposures, to verify the
 quality of each cube, measure the FWHM, or for doing some post-processing on the
 cubes. Now that we have computed offsets, we can use the ``OFFSET_LIST`` frame
-in the parameters, with also sky subtraction and saving additional outputs:
+in the parameters, also with sky subtraction and saving additional outputs:
 
 .. literalinclude:: _static/settings.yml
    :start-at: muse_scipost:
@@ -283,10 +289,19 @@ And with the parameters with the ``OFFSET_LIST`` frame:
    :start-at: muse_exp_combine:
    :end-at: OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
 
-It is also possible to use MPDAF to combine the data cubes:
+It is also possible to use MPDAF to combine the data cube. For this we need
+data cubes, which can be produced directly with ``muse_scipost`` or later from
+the pixtables. The ``muse_scipost_make_cube`` recipe allows to create cubes
+from ``PIXTABLE_REDUCED``::
+
+   $ musered process-exp --makecube
 
 .. literalinclude:: _static/settings.yml
-   :start-at: muse_exp_combine_mpdaf:
+   :start-at: muse_scipost_make_cube:
+   :end-at: output_dir
+
+.. literalinclude:: _static/settings.yml
+   :start-at: mpdaf_combine:
    :end-at: version
 
 Setting custom frames
