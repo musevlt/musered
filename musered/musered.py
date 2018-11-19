@@ -16,7 +16,7 @@ from glob import glob, iglob
 from os.path import join
 from sqlalchemy import sql
 
-from .calib import CalibFinder
+from .frames import FramesFinder
 from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
 from .reporter import Reporter
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
@@ -62,7 +62,7 @@ class MuseRed(Reporter):
             setattr(self, attrname, self.db.create_table(tablename))
 
         self.execute = self.db.executable.execute
-        self.calib = CalibFinder(self.reduced, self.conf)
+        self.frames = FramesFinder(self.reduced, self.conf)
 
         # configure cpl
         cpl_conf = self.conf['cpl']
@@ -103,7 +103,7 @@ class MuseRed(Reporter):
                 sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
                 .where(self.rawc.DPR_TYPE.isnot(None))
                 .group_by(self.rawc.DPR_TYPE, self.rawc.TPL_START)):
-            if self.calib.is_valid(name, dpr_type):
+            if self.frames.is_valid(name, dpr_type):
                 out[dpr_type].append(name)
         return out
 
@@ -117,7 +117,7 @@ class MuseRed(Reporter):
                 sql.select([self.rawc.OBJECT, self.rawc.name])
                 .order_by(self.rawc.name)
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
-            if self.calib.is_valid(name, 'OBJECT'):
+            if self.frames.is_valid(name, 'OBJECT'):
                 out[obj].append(name)
         return out
 
@@ -158,7 +158,7 @@ class MuseRed(Reporter):
         tbl = self.db[self.tables.get(table, table)]
         wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
         dates = self.select_column(column, where=wc, table=table, **kwargs)
-        dates = self.calib.filter_valid(dates, dpr_type=dpr_type)
+        dates = self.frames.filter_valid(dates, dpr_type=dpr_type)
         return list(sorted(dates))
 
     def update_db(self, force=False):
@@ -461,7 +461,7 @@ class MuseRed(Reporter):
             else:
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
-            kwargs.update(self.calib.get_frames(
+            kwargs.update(self.frames.get_frames(
                 recipe, night=night, ins_mode=ins_mode,
                 recipe_conf=recipe_conf, OBJECT=res[0]['OBJECT']))
 
@@ -505,8 +505,8 @@ class MuseRed(Reporter):
         recipe_conf = self._get_recipe_conf(recipe_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name)
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
-        kwargs.update(self.calib.get_frames(recipe, recipe_conf=recipe_conf,
-                                            OBJECT=OBJECT))
+        kwargs.update(self.frames.get_frames(recipe, recipe_conf=recipe_conf,
+                                             OBJECT=OBJECT))
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
@@ -534,7 +534,7 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
-                        d = self.calib.filter_valid(d, dpr_type=DPR_TYPE)
+                        d = self.frames.filter_valid(d, dpr_type=DPR_TYPE)
                         date_list += d
                 elif date in self.nights:
                     where = (tbl.c.night == date)
@@ -543,7 +543,7 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
-                        d = self.calib.filter_valid(d, dpr_type=DPR_TYPE)
+                        d = self.frames.filter_valid(d, dpr_type=DPR_TYPE)
                         date_list += d
                 elif date in alldates:
                     date_list.append(date)

@@ -48,7 +48,7 @@ def get_file_from_date(files_dict: dict, date: str) -> str:
     return file
 
 
-class CalibFinder:
+class FramesFinder:
     """Handles calibration frames.
 
     It must be instantiated with a settings dict containing the directory with
