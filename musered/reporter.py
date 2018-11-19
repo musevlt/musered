@@ -227,13 +227,12 @@ class Reporter:
                                 print(f'  - {k:{maxlen}s} : {line}')
             print()
 
-    def info_raw(self, night, **kwargs):
-        """Print information about raw exposures for a given night."""
-        rows = list(self.raw.find(night=night))
+    def info_raw(self, **kwargs):
+        """Print information about raw exposures for a given night or type."""
+
+        rows = list(self.raw.find(**kwargs))
         if len(rows) == 0:
-            rows = list(self.raw.find(run=night))
-        if len(rows) == 0:
-            self.logger.error('Could not find exposures for %s', night)
+            self.logger.error('Could not find exposures')
             return
 
         t = Table(rows=rows, names=rows[0].keys())
@@ -249,7 +248,7 @@ class Reporter:
             col.name = (col.name.replace('TEL_', '').replace('OCS_SGS_', '')
                         .replace('INS_', ''))
         t.sort('name')
-        self.fmt.show_table(t, max_width=-1, **kwargs)
+        self.fmt.show_table(t, max_width=-1)
 
     def info_qc(self, dpr_type, date_list=None, **kwargs):
         if dpr_type not in self.db:

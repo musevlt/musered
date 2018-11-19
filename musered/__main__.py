@@ -122,7 +122,7 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
         if exps:
             mr.list_exposures()
     elif raw:
-        mr.info_raw(raw)
+        mr.info_raw(night=raw)
     elif qc:
         mr.info_qc(qc, date_list=date)
     elif exp or night:
