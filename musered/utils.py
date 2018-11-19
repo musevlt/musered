@@ -159,6 +159,7 @@ def parse_raw_keywords(flist, runs=None):
     logger = logging.getLogger(__name__)
     rows = []
     runs = runs or {}
+    now = datetime.datetime.now().isoformat()
     keywords = [k.split('/')[0].strip()
                 for k in RAW_FITS_KEYWORDS.splitlines() if k]
 
@@ -172,7 +173,9 @@ def parse_raw_keywords(flist, runs=None):
         hdr = fits.getheader(f, ext=0)
         row = OrderedDict([('name', get_exp_name(f)),
                            ('filename', os.path.basename(f)),
-                           ('path', f), ('night', None)])
+                           ('path', f),
+                           ('night', None),
+                           ('date_import', now)])
 
         if 'DATE-OBS' in hdr:
             date = parse_datetime(hdr['DATE-OBS'])

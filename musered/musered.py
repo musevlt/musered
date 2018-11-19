@@ -162,10 +162,8 @@ class MuseRed(Reporter):
         """Create or update the database containing FITS keywords."""
 
         # Already parsed raw files
-        try:
-            known_files = self.select_column('filename')
-        except Exception:
-            known_files = []
+        known_files = (self.select_column('filename')
+                       if 'filename' in self.raw.columns else [])
 
         # Get the list of FITS files in the raw directory
         nskip = 0
