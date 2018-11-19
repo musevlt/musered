@@ -268,3 +268,22 @@ def test_process_exp(mr, caplog):
         Running muse_scipost for 6 exposures
         Already processed, nothing to do
     """).splitlines()
+
+
+def test_clean(mr, caplog):
+    caplog.set_level(logging.INFO)
+    runner = CliRunner()
+    result = runner.invoke(cli, ['clean', '-r', 'bias'])
+    assert result.exit_code == 0
+    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+        Dry-run mode, nothing will be done
+        Would remove 4 exposures/nights from the database
+    """).splitlines()
+
+    caplog.clear()
+    result = runner.invoke(cli, ['clean', '-n', '2017-06-13'])
+    assert result.exit_code == 0
+    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+        Dry-run mode, nothing will be done
+        Would remove 1 exposures/nights from the database
+    """).splitlines()

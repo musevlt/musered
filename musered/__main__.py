@@ -143,13 +143,14 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
 @click.option('-r', '--recipe', multiple=True)
 @click.option('-d', '--date', multiple=True)
 @click.option('-n', '--night', multiple=True)
-@click.option('--dry-run', is_flag=True, help='do not run the recipe')
+@click.option('--force', is_flag=True,
+              help='nothing is done if this is not set')
 @click.option('--keep-files', is_flag=True, help='do not delete files')
 @click.pass_obj
-def clean(mr, recipe, date, night, dry_run, keep_files):
+def clean(mr, recipe, date, night, force, keep_files):
     """Remove data and database entries for a given recipe and dates."""
     mr.clean(recipe_list=recipe, date_list=date, night_list=night,
-             remove_files=not keep_files, dry_run=dry_run)
+             remove_files=not keep_files, force=force)
 
 
 @click.argument('date', nargs=-1)
@@ -179,7 +180,8 @@ def process_calib(mr, date, force, dry_run, bias, dark, flat, wavecal, lsf,
     for step in ('bias', 'dark', 'flat', 'wavecal', 'lsf', 'twilight'):
         if locals()[step] or (step != 'dark' and run_all):
             if force:
-                mr.clean(f'muse_{step}', date_list=date, remove_files=False)
+                mr.clean(f'muse_{step}', date_list=date, remove_files=False,
+                         force=True)
             mr.process_calib(step, dates=date, skip=not force, dry_run=dry_run)
 
 

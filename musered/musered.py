@@ -273,7 +273,7 @@ class MuseRed(Reporter):
             self.logger.info('inserted %d rows', len(rows))
 
     def clean(self, recipe_list=None, date_list=None, night_list=None,
-              remove_files=True, dry_run=False):
+              remove_files=True, force=False):
         """Remove database entries and files."""
         for attr in (date_list, night_list):
             if attr and isinstance(attr, str):
@@ -293,16 +293,20 @@ class MuseRed(Reporter):
                                                  table='reduced')
 
         count = len(set(o['name'] for o in self.reduced.find(**kwargs)))
+        action = 'Remove' if force else 'Would remove'
+        if not force:
+            self.logger.info('Dry-run mode, nothing will be done')
 
         if remove_files:
             for item in set(o['path'] for o in self.reduced.find(**kwargs)):
                 if os.path.exists(item):
-                    self.logger.info('Remove %s', item)
-                    if not dry_run:
+                    self.logger.info('%s %s', action, item)
+                    if force:
                         shutil.rmtree(item)
 
-        self.logger.info('Remove %d exposures/nights from the database', count)
-        if not dry_run:
+        self.logger.info('%s %d exposures/nights from the database',
+                         action, count)
+        if force:
             self.reduced.delete(**kwargs)
 
     def find_illum(self, night, ref_temp, ref_mjd_date):
