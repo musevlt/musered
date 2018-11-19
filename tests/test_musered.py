@@ -184,9 +184,8 @@ def test_info_raw(mr, capsys, caplog):
     assert len(out) == 39
 
     # test missing exp/night
-    mr.info_raw('2017-06-20')
-    assert caplog.records[0].message == \
-        'Could not find exposures for 2017-06-20'
+    mr.info_raw(night='2017-06-20')
+    assert caplog.records[0].message == 'Could not find exposures'
 
 
 def test_info_qc(mr):
@@ -227,7 +226,6 @@ def test_select_date(mr):
         '2017-06-18T22:11:12.111'
     ]
     assert mr.select_dates('MASTER_BIAS', table='reduced') == [
-        '2017-06-14T09:01:03',
         '2017-06-16T10:40:27',
         '2017-06-18T11:03:09',
         '2017-06-20T10:38:50'
@@ -240,7 +238,7 @@ def test_process_calib(mr, caplog):
     result = runner.invoke(cli, ['process-calib', '--dry-run'])
     assert result.exit_code == 0
     assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
-        Running muse_bias for 4 calibration sequences
+        Running muse_bias for 3 calibration sequences
         Already processed, nothing to do
         Running muse_flat for 3 calibration sequences
         Already processed, nothing to do

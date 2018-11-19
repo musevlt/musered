@@ -1,11 +1,11 @@
 import datetime
-import itertools
 import logging
 import os
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob
+from itertools import chain, product
 
 from .settings import STATIC_FRAMES
 from .utils import parse_date
@@ -70,10 +70,13 @@ class CalibFinder:
     def __init__(self, table, conf):
         self.table = table
         self.conf = conf
+        self.logger = logging.getLogger(__name__)
         self.static_path = self.conf['muse_calib_path']
         self.static_conf = self.conf['static_calib']
-        self.excludes = self.conf.get('frames_exclude', {})
-        self.logger = logging.getLogger(__name__)
+
+        # frames settings
+        self.frames = self.conf.get('frames', {})
+        self.excludes = self.frames.setdefault('exclude', {})
 
     @lazyproperty
     def static_files(self):
@@ -90,6 +93,20 @@ class CalibFinder:
                                   'ESO PRO CATG', ext=0)
             cat[key].append(f)
         return cat
+
+    def is_valid(self, name, dpr_type=None):
+        """Check if an exposure is valid (i.e. not excluded)."""
+        if dpr_type:
+            return name not in self.excludes.get(dpr_type, [])
+        else:
+            return name not in chain.from_iterable(self.excludes.values())
+
+    def filter_valid(self, names, dpr_type=None):
+        if dpr_type:
+            exc = self.excludes.get(dpr_type, [])
+        else:
+            exc = list(chain.from_iterable(self.excludes.values()))
+        return [name for name in names if name not in exc]
 
     def get_static(self, catg, date=None):
         """Return a static calib file.
@@ -145,8 +162,7 @@ class CalibFinder:
         if not res and day_off is not None:
             if isinstance(night, str):
                 night = parse_date(night)
-            for off, direction in itertools.product(range(1, day_off + 1),
-                                                    (1, -1)):
+            for off, direction in product(range(1, day_off + 1), (1, -1)):
                 off = datetime.timedelta(days=off * direction)
                 res = {o['name']: o for o in self.table.find(
                     night=(night + off).isoformat(), INS_MODE=ins_mode,

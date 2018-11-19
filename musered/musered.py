@@ -103,7 +103,8 @@ class MuseRed(Reporter):
                 sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
                 .where(self.rawc.DPR_TYPE.isnot(None))
                 .group_by(self.rawc.DPR_TYPE, self.rawc.TPL_START)):
-            out[dpr_type].append(name)
+            if self.calib.is_valid(name, dpr_type):
+                out[dpr_type].append(name)
         return out
 
     @lazyproperty
@@ -116,7 +117,8 @@ class MuseRed(Reporter):
                 sql.select([self.rawc.OBJECT, self.rawc.name])
                 .order_by(self.rawc.name)
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
-            out[obj].append(name)
+            if self.calib.is_valid(name, 'OBJECT'):
+                out[obj].append(name)
         return out
 
     def set_loglevel(self, level, cpl=False):
@@ -156,6 +158,7 @@ class MuseRed(Reporter):
         tbl = self.db[self.tables.get(table, table)]
         wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
         dates = self.select_column(column, where=wc, table=table, **kwargs)
+        dates = self.calib.filter_valid(dates, dpr_type=dpr_type)
         return list(sorted(dates))
 
     def update_db(self, force=False):
@@ -531,6 +534,7 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
+                        d = self.calib.filter_valid(d, dpr_type=DPR_TYPE)
                         date_list += d
                 elif date in self.nights:
                     where = (tbl.c.night == date)
@@ -539,6 +543,7 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
+                        d = self.calib.filter_valid(d, dpr_type=DPR_TYPE)
                         date_list += d
                 elif date in alldates:
                     date_list.append(date)

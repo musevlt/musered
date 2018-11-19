@@ -237,7 +237,7 @@ class Reporter:
 
         t = Table(rows=rows, names=rows[0].keys())
         t.keep_columns([
-            'name', 'EXPTIME', 'OBJECT',
+            'name', 'EXPTIME', 'OBJECT', 'TPL_START',
             # 'DPR_CATG', 'DPR_TYPE',
             'INS_DROT_POSANG', 'INS_MODE', 'INS_TEMP7_VAL',
             'OCS_SGS_AG_FWHMX_MED', 'OCS_SGS_AG_FWHMY_MED',

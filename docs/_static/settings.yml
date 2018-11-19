@@ -67,9 +67,12 @@ retrieve_data:
   username: MUSE-GTO
   store_password: True
 
-# frames_exclude:
-#   MASTER_FLAT:
-#     - "2018-10-07"
+frames:
+  exclude:
+    BIAS:
+      - "2017-06-14T09:01:03"
+    MASTER_BIAS:
+      - "2017-06-14T09:01:03"
 
 # Parameters for recipes. Can be used to specify additional parameters.
 recipes:
