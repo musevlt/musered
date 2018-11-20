@@ -1,10 +1,10 @@
 import datetime
+import glob
 import logging
 import os
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
-from glob import glob
 from itertools import chain, product
 
 from .settings import STATIC_FRAMES
@@ -29,7 +29,6 @@ def get_file_from_date(files_dict: dict, date: str) -> str:
     ...         'start_date': datetime.date(2018, 9, 4),
     ...         'end_date': datetime.date(2018, 9, 15) },
     ... }
-    >>> from musered.calib import get_file_from_date
     >>> get_file_from_date(astrometry, '2018-08-13')
     'astrometry_wcs_wfm_gto26.fits'
     >>> get_file_from_date(astrometry, '2018-09-10')
@@ -126,7 +125,7 @@ class FramesFinder:
             # file that matched the date requirement
             if date is None:
                 # no date: take the first item
-                file = next(self.static_conf[catg].values())
+                file = list(self.static_conf[catg].keys())[0]
             else:
                 file = get_file_from_date(self.static_conf[catg], date)
 
@@ -186,7 +185,7 @@ class FramesFinder:
             # several results, need to choose
             raise NotImplementedError
 
-        flist = sorted(glob(f"{res['path']}/{dpr_type}*.fits"))
+        flist = sorted(glob.glob(f"{res['path']}/{dpr_type}*.fits"))
         if len(flist) not in (1, 24):
             raise ValueError(f'found {len(flist)} {dpr_type} files '
                              f'instead of (1, 24)')
@@ -277,9 +276,10 @@ class FramesFinder:
                 # If path or glob pattern is specified in settings
                 val = frames_conf[frame]
                 if '*' in val:
-                    framedict[frame] = sorted(glob(val))
+                    framedict[frame] = sorted(glob.glob(val))
                 else:
-                    framedict[frame] = sorted(glob(f"{val}/{frame}*.fits"))
+                    framedict[frame] = sorted(
+                        glob.glob(f"{val}/{frame}*.fits"))
                 debug('- from conf: %s', framedict[frame])
 
             else:

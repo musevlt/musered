@@ -1,10 +1,11 @@
+import glob
 import logging
 import os
 import pytest
 import textwrap
 from click.testing import CliRunner
 
-from musered import MuseRed
+from musered import MuseRed, get_recipe_cls
 from musered.__main__ import cli
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))
@@ -285,3 +286,68 @@ def test_clean(mr, caplog):
         Dry-run mode, nothing will be done
         Would remove 1 exposures/nights from the database
     """).splitlines()
+
+
+def test_frames(mr, monkeypatch):
+    if not os.path.exists(mr.conf['muse_calib_path']):
+        pytest.skip('static calib directory is missing')
+
+    frames = mr.frames
+    assert 'raman_lines.fits' in frames.static_files
+    assert frames.static_by_catg['RAMAN_LINES'] == ['raman_lines.fits']
+
+    assert frames.is_valid('2017-06-16T10:40:27')
+    assert frames.is_valid('2017-06-16T10:40:27', dpr_type='MASTER_BIAS')
+    assert not mr.frames.is_valid('2017-06-14T09:01:03')
+
+    assert frames.get_static('STD_FLUX_TABLE').endswith('std_flux_table.fits')
+    assert frames.get_static('GEOMETRY_TABLE')\
+        .endswith('geometry_table_wfm_gto17.fits')
+    assert frames.get_static('GEOMETRY_TABLE', date='2017-09-21')\
+        .endswith('geometry_table_wfm_gto19.fits')
+
+    def mockglob(path):
+        # monkey patch glob which is used to return the list of files
+        return [path] * 24
+
+    with monkeypatch.context() as m:
+        m.setattr(glob, 'glob', mockglob)
+        res = frames.find_calib('2017-06-17', 'MASTER_BIAS', 'WFM-AO-N')
+        assert len(res) == 24
+        assert res[0].endswith(
+            '2017-06-18T11:03:09.WFM-AO-N/MASTER_BIAS*.fits')
+
+    # test night with excluded MASTER_BIAS, should raise an error
+    with pytest.raises(ValueError):
+        frames.find_calib('2017-06-13', 'MASTER_BIAS', 'WFM-AO-N')
+
+    # test night without MASTER_BIAS, should raise an error
+    with pytest.raises(ValueError):
+        res = frames.find_calib('2017-06-18', 'MASTER_BIAS', 'WFM-AO-N')
+
+    # now allow a 1 day offset
+    with monkeypatch.context() as m:
+        m.setattr(glob, 'glob', mockglob)
+        res = frames.find_calib('2017-06-18', 'MASTER_BIAS', 'WFM-AO-N',
+                                day_off=1)
+        assert len(res) == 24
+        assert res[0].endswith(
+            '2017-06-20T10:38:50.WFM-AO-N/MASTER_BIAS*.fits')
+
+    def mockisfile(path):
+        # monkey patch isfile
+        print(path)
+        return True
+
+    recipe_cls = get_recipe_cls('scipost')
+    recipe = mr._instantiate_recipe(recipe_cls, recipe_cls.recipe_name)
+    recipe_conf = mr._get_recipe_conf('muse_scipost')
+    with monkeypatch.context() as m:
+        m.setattr(glob, 'glob', mockglob)
+        m.setattr(os.path, 'isfile', mockisfile)
+        res = frames.get_frames(recipe, night='2017-06-17',
+                                ins_mode='WFM-AO-N', recipe_conf=recipe_conf)
+    assert sorted(res.keys()) == [
+        'ASTROMETRY_WCS', 'EXTINCT_TABLE', 'FILTER_LIST', 'LSF_PROFILE',
+        'OFFSET_LIST', 'RAMAN_LINES', 'SKY_LINES', 'STD_RESPONSE',
+        'STD_TELLURIC']
