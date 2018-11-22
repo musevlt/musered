@@ -479,6 +479,7 @@ class MuseRed(Reporter):
                 recipe, keys=('name', 'recipe_name', 'DPR_TYPE'), **{
                     'night': night,
                     'name': res[0][namecol],
+                    'run': res[0]['run'],
                     'recipe_name': recipe_name,
                     'DATE_OBS': res[0][datecol],
                     'DPR_CATG': res[0]['DPR_CATG'],
@@ -490,7 +491,7 @@ class MuseRed(Reporter):
                 log.info('===================================================')
 
     def _run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
-                           params_name=None, **kwargs):
+                           params_name=None, save_kwargs=None, **kwargs):
         """Run a recipe once, simpler than _run_recipe_loop.
 
         This is to run recipes like exp_align, exp_combine. Takes a list of
@@ -510,7 +511,8 @@ class MuseRed(Reporter):
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
-                           name=name, OBJECT=OBJECT, recipe_name=recipe_name)
+                           name=name, OBJECT=OBJECT, recipe_name=recipe_name,
+                           **(save_kwargs or {}))
 
     def prepare_dates(self, dates, DPR_TYPE=None, datecol='name', table='raw'):
         """Compute the list of dates (nights, exposures) to process."""
@@ -633,7 +635,7 @@ class MuseRed(Reporter):
     def exp_align(self, dataset, recipe_name='muse_exp_align', filt='white',
                   params_name=None, name=None, exps=None, force=False,
                   **kwargs):
-        """Compute offsets between exposures."""
+        """Compute offsets between exposures of a dataset."""
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
@@ -683,7 +685,7 @@ class MuseRed(Reporter):
 
     def exp_combine(self, dataset, recipe_name='muse_exp_combine', name=None,
                     params_name=None, **kwargs):
-        """Combine exposures."""
+        """Combine exposures for a dataset."""
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_cls = get_recipe_cls(recipe_name)
@@ -703,7 +705,7 @@ class MuseRed(Reporter):
 
     def std_combine(self, run, recipe_name='muse_std_combine', name=None,
                     params_name=None, **kwargs):
-        """Combine std stars."""
+        """Combine std stars for a run."""
 
         recipe_cls = get_recipe_cls(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or
@@ -714,11 +716,12 @@ class MuseRed(Reporter):
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-                 for r in self.reduced.find(DPR_TYPE=DPR_TYPE,
+                 for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
                                             recipe_name=from_recipe)]
 
-        self._run_recipe_simple(recipe_cls, name, run, flist,
-                                params_name=params_name, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, flist,
+                                params_name=params_name,
+                                save_kwargs={'run': run}, **kwargs)
 
     def _get_recipe_conf(self, recipe_name, item=None):
         """Get config dict for a recipe."""
