@@ -126,18 +126,8 @@ class Reporter:
                 self.reduced, date_list=date_list, run=run, calib=True,
                 exclude_names=exclude_names, datecol='night',
                 countcol='recipe_name',
-                where=sql.and_(
-                    redc.DPR_CATG == 'CALIB',
-                    redc.DPR_TYPE.notlike('%STD%')
-                ))
-            if t:
-                self.fmt.show_table(t)
-
-            self.fmt.show_title(f'\nProcessed standard:\n')
-            t = query_count_to_table(
-                self.reduced, where=redc.DPR_TYPE.like('%STD%'),
-                date_list=date_list, run=run, exclude_names=exclude_names,
-                datecol='name', countcol='recipe_name')
+                where=redc.DPR_CATG == 'CALIB',
+            )
             if t:
                 self.fmt.show_table(t)
 
