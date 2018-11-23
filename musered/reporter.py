@@ -92,13 +92,15 @@ class Reporter:
             self.fmt.show_text(f'- {name}')
             self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
-    def info(self, date_list=None, run=None):
+    def info(self, date_list=None, run=None, filter_excludes=True):
         """Print a summary of the raw and reduced data."""
         self.fmt.show_text(f'Reduction version {self.version}')
         self.fmt.show_text(f'{self.raw.count()} files\n')
         self.list_datasets()
         print()
         self.list_runs()
+
+        exclude_names = self.frames.get_excludes() if filter_excludes else None
 
         # count files per night and per type, raw data, then reduced
         self.fmt.show_title(f'\nRaw data:\n')
@@ -108,8 +110,10 @@ class Reporter:
             # uninteresting objects to exclude from the report
             excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
                         'WAVE,MASK')
-            t = query_count_to_table(self.db, 'raw', exclude_obj=excludes,
-                                     date_list=date_list, run=run)
+            t = query_count_to_table(self.raw, exclude_obj=excludes,
+                                     date_list=date_list, run=run,
+                                     exclude_names=exclude_names,
+                                     datecol='night', countcol='OBJECT')
             self.fmt.show_table(t)
 
         if len(self.reduced) == 0:
@@ -119,26 +123,29 @@ class Reporter:
             redc = self.reduced.table.c
             self.fmt.show_title(f'\nProcessed calib data:\n')
             t = query_count_to_table(
-                self.db, self.tables['reduced'], where=sql.and_(
+                self.reduced, date_list=date_list, run=run, calib=True,
+                exclude_names=exclude_names, datecol='night',
+                countcol='recipe_name',
+                where=sql.and_(
                     redc.DPR_CATG == 'CALIB',
                     redc.DPR_TYPE.notlike('%STD%')
-                ), date_list=date_list, run=run, calib=True)
+                ))
             if t:
                 self.fmt.show_table(t)
 
             self.fmt.show_title(f'\nProcessed standard:\n')
             t = query_count_to_table(
-                self.db, self.tables['reduced'],
-                where=redc.DPR_TYPE.like('%STD%'),
-                date_list=date_list, run=run)
+                self.reduced, where=redc.DPR_TYPE.like('%STD%'),
+                date_list=date_list, run=run, exclude_names=exclude_names,
+                datecol='name', countcol='recipe_name')
             if t:
                 self.fmt.show_table(t)
 
             self.fmt.show_title(f'\nProcessed science data:\n')
             t = query_count_to_table(
-                self.db, self.tables['reduced'],
-                where=redc.DPR_CATG == 'SCIENCE',
-                date_list=date_list, run=run)
+                self.reduced, where=redc.DPR_CATG == 'SCIENCE',
+                date_list=date_list, run=run, exclude_names=exclude_names,
+                datecol='name', countcol='recipe_name')
             if t:
                 self.fmt.show_table(t)
 

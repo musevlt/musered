@@ -106,9 +106,11 @@ def update_qc(mr, type, recipe):
               help='show reduction log for an exposure')
 @click.option('-r', '--recipe', multiple=True,
               help='recipe name to show (for --night and --exp)')
+@click.option('--excluded', is_flag=True,
+              help='show excluded exps (for --info)')
 @click.pass_obj
 def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
-         night, exp, recipe):
+         night, exp, recipe, excluded):
     """Print info about raw and reduced data, or night or exposure."""
 
     if any([datasets, nights, exps, runs, calibs]):
@@ -139,7 +141,7 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
             mr.info_exp(date, full=not short, recipes=recipe,
                         show_weather=show_weather)
     else:
-        mr.info(date_list=date, run=run)
+        mr.info(date_list=date, run=run, filter_excludes=not excluded)
 
 
 @click.option('-r', '--recipe', multiple=True)
