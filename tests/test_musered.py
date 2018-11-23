@@ -297,7 +297,7 @@ def test_frames(mr, monkeypatch):
     assert frames.static_by_catg['RAMAN_LINES'] == ['raman_lines.fits']
 
     assert frames.is_valid('2017-06-16T10:40:27')
-    assert frames.is_valid('2017-06-16T10:40:27', dpr_type='MASTER_BIAS')
+    assert frames.is_valid('2017-06-16T10:40:27', DPR_TYPE='MASTER_BIAS')
     assert not mr.frames.is_valid('2017-06-14T09:01:03')
 
     assert frames.get_static('STD_FLUX_TABLE').endswith('std_flux_table.fits')

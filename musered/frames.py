@@ -5,7 +5,7 @@ import os
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
-from itertools import chain, product
+from itertools import product
 
 from .settings import STATIC_FRAMES
 from .utils import parse_date
@@ -50,32 +50,25 @@ def get_file_from_date(files_dict: dict, date: str) -> str:
 class FramesFinder:
     """Handles calibration frames.
 
-    It must be instantiated with a settings dict containing the directory with
-    the default static calibration files ('muse_calib_path'), and a settings
-    dict that can be used to define time periods where a given calibration file
-    is valid ('static_calib').
-
     Parameters
     ----------
-    table : dataset.Table
-        Table with reduced calibrations.
-    conf : dict
-        Settings dictionary.
+    mr : musered.MuseRed
+        MuseRed object.
 
     """
 
     STATIC_FRAMES = STATIC_FRAMES
 
-    def __init__(self, table, conf):
-        self.table = table
-        self.conf = conf
+    def __init__(self, mr):
+        self.mr = mr
+        self.conf = mr.conf
         self.logger = logging.getLogger(__name__)
         self.static_path = self.conf['muse_calib_path']
         self.static_conf = self.conf['static_calib']
 
         # frames settings
         self.frames = self.conf.get('frames', {})
-        self.excludes = self.frames.setdefault('exclude', {})
+        self._excludes = {}
 
     @lazyproperty
     def static_files(self):
@@ -93,18 +86,45 @@ class FramesFinder:
             cat[key].append(f)
         return cat
 
-    def is_valid(self, name, dpr_type=None):
-        """Check if an exposure is valid (i.e. not excluded)."""
-        if dpr_type:
-            return name not in self.excludes.get(dpr_type, [])
-        else:
-            return name not in chain.from_iterable(self.excludes.values())
+    def get_excludes(self, DPR_TYPE=None):
+        """List of excluded files for each DPR_TYPE."""
 
-    def filter_valid(self, names, dpr_type=None):
-        if dpr_type:
-            exc = self.excludes.get(dpr_type, [])
-        else:
-            exc = list(chain.from_iterable(self.excludes.values()))
+        # the global list of excluded files is stored with the __all__ key
+        key = '__all__' if DPR_TYPE is None else DPR_TYPE
+        # check if the list is already computed
+        if key in self._excludes:
+            return self._excludes[key]
+
+        conf = self.frames.get('exclude', {})
+        if DPR_TYPE and DPR_TYPE not in conf:
+            self._excludes[key] = []
+            return []
+
+        # use the exclude setting to build the list of excluded files
+        exc = []
+        raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
+        for dpr, items in conf.items():
+            if DPR_TYPE and dpr != DPR_TYPE:
+                pass
+            table = self.mr.get_table('raw' if dpr in raw_types else 'reduced')
+            for item in items:
+                if isinstance(item, str):
+                    exc.append(item)
+                elif isinstance(item, dict):
+                    # if the item is a dict use the keys/values to query the db
+                    exc += [o['name'] for o in table.find(**item)]
+                else:
+                    raise ValueError(f'wrong format for {DPR_TYPE} excludes')
+
+        self._excludes[key] = sorted(set(exc))
+        return self._excludes[key]
+
+    def is_valid(self, name, DPR_TYPE=None):
+        """Check if an exposure is valid (i.e. not excluded)."""
+        return name not in self.get_excludes(DPR_TYPE)
+
+    def filter_valid(self, names, DPR_TYPE=None):
+        exc = self.get_excludes(DPR_TYPE)
         return [name for name in names if name not in exc]
 
     def get_static(self, catg, date=None):
@@ -143,14 +163,13 @@ class FramesFinder:
     def find_calib(self, night, dpr_type, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
         info = self.logger.info
-        excludes = self.excludes.get(dpr_type)
+        excludes = self.get_excludes(dpr_type)
 
         # Find calib for the given night, mode and type
-        res = {o['name']: o for o in self.table.find(
+        res = {o['name']: o for o in self.mr.reduced.find(
             night=night, INS_MODE=ins_mode, DPR_TYPE=dpr_type)}
 
         # Check if some calib must be excluded
-        # TODO: do the same for exposures
         if res and excludes:
             for name in excludes:
                 if name in res:
@@ -163,7 +182,7 @@ class FramesFinder:
                 night = parse_date(night)
             for off, direction in product(range(1, day_off + 1), (1, -1)):
                 off = datetime.timedelta(days=off * direction)
-                res = {o['name']: o for o in self.table.find(
+                res = {o['name']: o for o in self.mr.reduced.find(
                     night=(night + off).isoformat(), INS_MODE=ins_mode,
                     DPR_TYPE=dpr_type)}
                 if res and excludes:
@@ -262,7 +281,7 @@ class FramesFinder:
                     # can be found in the database
                     if frame == 'OFFSET_LIST' and \
                             not os.path.isfile(framedict[frame]):
-                        off = self.table.find_one(
+                        off = self.mr.reduced.find_one(
                             DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
                             name=framedict[frame])
                         if off is None:

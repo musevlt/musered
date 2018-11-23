@@ -62,7 +62,7 @@ class MuseRed(Reporter):
             setattr(self, attrname, self.db.create_table(tablename))
 
         self.execute = self.db.executable.execute
-        self.frames = FramesFinder(self.reduced, self.conf)
+        self.frames = FramesFinder(self)
 
         # configure cpl
         cpl_conf = self.conf['cpl']
@@ -142,8 +142,7 @@ class MuseRed(Reporter):
     def select_column(self, name, notnull=True, distinct=False,
                       where=None, table='raw'):
         """Select values from a column of the database."""
-        table = self.tables.get(table, table)
-        col = self.db[table].table.c[name]
+        col = self.get_table(table).table.c[name]
         wc = col.isnot(None) if notnull else None
         if where is not None:
             wc = sql.and_(where, wc)
@@ -155,10 +154,10 @@ class MuseRed(Reporter):
     def select_dates(self, dpr_type=None, table='raw', column='name',
                      **kwargs):
         """Select the list of dates to process."""
-        tbl = self.db[self.tables.get(table, table)]
+        tbl = self.get_table(table)
         wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
         dates = self.select_column(column, where=wc, table=table, **kwargs)
-        dates = self.frames.filter_valid(dates, dpr_type=dpr_type)
+        dates = self.frames.filter_valid(dates, DPR_TYPE=dpr_type)
         return list(sorted(dates))
 
     def update_db(self, force=False):
@@ -536,7 +535,7 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
-                        d = self.frames.filter_valid(d, dpr_type=DPR_TYPE)
+                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE)
                         date_list += d
                 elif date in self.nights:
                     where = (tbl.c.night == date)
@@ -545,7 +544,7 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
-                        d = self.frames.filter_valid(d, dpr_type=DPR_TYPE)
+                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE)
                         date_list += d
                 elif date in alldates:
                     date_list.append(date)
