@@ -16,7 +16,7 @@ __all__ = [cls.__name__ for cls in all_subclasses(BaseRecipe)] + [
 
 
 def normalize_recipe_name(recipe_name):
-    """Add 'muse_' if needed for the DRS recipe names.
+    """Add ``muse_`` prefix if needed for the DRS recipe names.
 
     >>> normalize_recipe_name('scibasic')
     'muse_scibasic'

@@ -159,6 +159,7 @@ def parse_raw_keywords(flist, runs=None):
     logger = logging.getLogger(__name__)
     rows = []
     runs = runs or {}
+    now = datetime.datetime.now().isoformat()
     keywords = [k.split('/')[0].strip()
                 for k in RAW_FITS_KEYWORDS.splitlines() if k]
 
@@ -172,7 +173,9 @@ def parse_raw_keywords(flist, runs=None):
         hdr = fits.getheader(f, ext=0)
         row = OrderedDict([('name', get_exp_name(f)),
                            ('filename', os.path.basename(f)),
-                           ('path', f), ('night', None)])
+                           ('path', f),
+                           ('night', None),
+                           ('date_import', now)])
 
         if 'DATE-OBS' in hdr:
             date = parse_datetime(hdr['DATE-OBS'])
@@ -217,23 +220,27 @@ def parse_qc_keywords(flist):
     return rows
 
 
-def query_count_to_table(db, tablename, exclude_obj=None, where=None,
-                         date_list=None, run=None, calib=False):
-    datecol = 'night' if tablename == 'raw' else 'name'
-    countcol = 'OBJECT' if tablename == 'raw' else 'recipe_name'
-    c = db[tablename].table.c
+def query_count_to_table(table, exclude_obj=None, where=None,
+                         date_list=None, run=None, calib=False, datecol='name',
+                         countcol='OBJECT', exclude_names=None):
+    c = table.table.c
 
     if date_list:
         if len(date_list) == 1:
             whereclause = [c[datecol].like(f'%{date_list[0]}%')]
         else:
             whereclause = [c[datecol].in_(date_list)]
-    elif run is not None:
-        whereclause = [db['raw'].table.c['run'].like(f'%{run}%')]
+    elif run is not None and 'run' in c:
+        whereclause = [c['run'].like(f'%{run}%')]
     else:
         whereclause = [c[datecol].isnot(None)]
 
     whereclause.append(c[countcol].isnot(None))
+
+    if exclude_obj is not None:
+        whereclause.append(c.OBJECT.notin_(exclude_obj))
+    if exclude_names is not None:
+        whereclause.append(c.name.notin_(exclude_names))
     if where is not None:
         whereclause.append(where)
 
@@ -241,19 +248,10 @@ def query_count_to_table(db, tablename, exclude_obj=None, where=None,
              .where(sql.and_(*whereclause))
              .group_by(c[datecol], c[countcol]))
 
-    if run and tablename != 'raw':
-        # FIXME: does not work for calib
-        query = query.select_from(
-            db[tablename].table.join(
-                db['raw'].table, db['raw'].table.c[datecol] == c[datecol])
-        )
-
     # reorganize rows to have types (in columns) per night (rows)
     rows = defaultdict(dict)
     keys = set()
-    for name, obj, count in db.executable.execute(query):
-        if exclude_obj and obj in exclude_obj:
-            continue
+    for name, obj, count in table.db.executable.execute(query):
         rows[name]['name'] = name
         rows[name][obj] = count
         keys.add(obj)
@@ -271,13 +269,10 @@ def query_count_to_table(db, tablename, exclude_obj=None, where=None,
     for col in t.columns.values()[1:]:
         col[col == 0] = np.ma.masked
 
-    # if only_one:
-    #     for col in t.columns.values()[1:]:
-    #         # shorten recipe names
-    #         col.name = col.name.replace('muse_', '')
-    #         # here it would print the number of frames for a recipe,
-    #         # which is not the goal. replace with 1...
-    #         # col[col > 0] = 1
+    for col in t.columns.values()[1:]:
+        # shorten recipe names
+        col.name = col.name.replace('muse_', '')
+
     return t
 
 

@@ -16,7 +16,7 @@ from glob import glob, iglob
 from os.path import join
 from sqlalchemy import sql
 
-from .calib import CalibFinder
+from .frames import FramesFinder
 from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
 from .reporter import Reporter
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
@@ -62,7 +62,7 @@ class MuseRed(Reporter):
             setattr(self, attrname, self.db.create_table(tablename))
 
         self.execute = self.db.executable.execute
-        self.calib = CalibFinder(self.reduced, self.conf)
+        self.frames = FramesFinder(self)
 
         # configure cpl
         cpl_conf = self.conf['cpl']
@@ -95,11 +95,17 @@ class MuseRed(Reporter):
 
     @lazyproperty
     def calib_exposures(self):
-        """Return the list of calibration sequences (TPL.START)."""
+        """Return the calibration sequences (TPL.START) for each DPR_TYPE."""
         if 'night' not in self.raw.columns:
             return []
-        return sorted(self.select_column('TPL_START', distinct=True,
-                                         where=self.rawc.DPR_CATG == 'CALIB'))
+        out = defaultdict(list)
+        for dpr_type, name in self.execute(
+                sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
+                .where(self.rawc.DPR_TYPE.isnot(None))
+                .group_by(self.rawc.DPR_TYPE, self.rawc.TPL_START)):
+            if self.frames.is_valid(name, dpr_type):
+                out[dpr_type].append(name)
+        return out
 
     @lazyproperty
     def exposures(self):
@@ -111,7 +117,8 @@ class MuseRed(Reporter):
                 sql.select([self.rawc.OBJECT, self.rawc.name])
                 .order_by(self.rawc.name)
                 .where(self.rawc.DPR_TYPE == 'OBJECT')):
-            out[obj].append(name)
+            if self.frames.is_valid(name, 'OBJECT'):
+                out[obj].append(name)
         return out
 
     def set_loglevel(self, level, cpl=False):
@@ -124,13 +131,18 @@ class MuseRed(Reporter):
         name = self.tables.get(name, name)
         if name not in self.db:
             raise ValueError('unknown table')
+        return self.db[name]
+
+    def get_astropy_table(self, name):
+        name = self.tables.get(name, name)
+        if name not in self.db:
+            raise ValueError('unknown table')
         return load_table(self.db, name)
 
     def select_column(self, name, notnull=True, distinct=False,
                       where=None, table='raw'):
         """Select values from a column of the database."""
-        table = self.tables.get(table, table)
-        col = self.db[table].table.c[name]
+        col = self.get_table(table).table.c[name]
         wc = col.isnot(None) if notnull else None
         if where is not None:
             wc = sql.and_(where, wc)
@@ -142,19 +154,18 @@ class MuseRed(Reporter):
     def select_dates(self, dpr_type=None, table='raw', column='name',
                      **kwargs):
         """Select the list of dates to process."""
-        tbl = self.db[self.tables.get(table, table)]
+        tbl = self.get_table(table)
         wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
         dates = self.select_column(column, where=wc, table=table, **kwargs)
+        dates = self.frames.filter_valid(dates, DPR_TYPE=dpr_type)
         return list(sorted(dates))
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
 
         # Already parsed raw files
-        try:
-            known_files = self.select_column('filename')
-        except Exception:
-            known_files = []
+        known_files = (self.select_column('filename')
+                       if 'filename' in self.raw.columns else [])
 
         # Get the list of FITS files in the raw directory
         nskip = 0
@@ -262,7 +273,7 @@ class MuseRed(Reporter):
             self.logger.info('inserted %d rows', len(rows))
 
     def clean(self, recipe_list=None, date_list=None, night_list=None,
-              remove_files=True, dry_run=False):
+              remove_files=True, force=False):
         """Remove database entries and files."""
         for attr in (date_list, night_list):
             if attr and isinstance(attr, str):
@@ -275,21 +286,27 @@ class MuseRed(Reporter):
             kwargs = {'recipe_name': [normalize_recipe_name(rec)
                                       for rec in recipe_list]}
         if date_list:
-            kwargs['name'] = self.prepare_dates(date_list, datecol='name')
+            kwargs['name'] = self.prepare_dates(date_list, datecol='name',
+                                                table='reduced')
         if night_list:
-            kwargs['night'] = self.prepare_dates(night_list, datecol='night')
+            kwargs['night'] = self.prepare_dates(night_list, datecol='night',
+                                                 table='reduced')
 
         count = len(set(o['name'] for o in self.reduced.find(**kwargs)))
+        action = 'Remove' if force else 'Would remove'
+        if not force:
+            self.logger.info('Dry-run mode, nothing will be done')
 
         if remove_files:
             for item in set(o['path'] for o in self.reduced.find(**kwargs)):
-                if os.path.exists(item['path']):
-                    self.logger.info('Remove %s', item['path'])
-                    if not dry_run:
-                        shutil.rmtree(item['path'])
+                if os.path.exists(item):
+                    self.logger.info('%s %s', action, item)
+                    if force:
+                        shutil.rmtree(item)
 
-        self.logger.info('Remove %d exposures/nights from the database', count)
-        if not dry_run:
+        self.logger.info('%s %d exposures/nights from the database',
+                         action, count)
+        if force:
             self.reduced.delete(**kwargs)
 
     def find_illum(self, night, ref_temp, ref_mjd_date):
@@ -370,7 +387,8 @@ class MuseRed(Reporter):
         """
         recipe_name = params_name or recipe_cls.recipe_name
         if calib:
-            label = datecol = namecol = 'night'
+            label = 'calibration sequence'
+            datecol = namecol = 'TPL_START'
         else:
             label = 'exposure'
             datecol = 'DATE_OBS'
@@ -442,7 +460,7 @@ class MuseRed(Reporter):
             else:
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
-            kwargs.update(self.calib.get_frames(
+            kwargs.update(self.frames.get_frames(
                 recipe, night=night, ins_mode=ins_mode,
                 recipe_conf=recipe_conf, OBJECT=res[0]['OBJECT']))
 
@@ -460,6 +478,7 @@ class MuseRed(Reporter):
                 recipe, keys=('name', 'recipe_name', 'DPR_TYPE'), **{
                     'night': night,
                     'name': res[0][namecol],
+                    'run': res[0]['run'],
                     'recipe_name': recipe_name,
                     'DATE_OBS': res[0][datecol],
                     'DPR_CATG': res[0]['DPR_CATG'],
@@ -471,7 +490,7 @@ class MuseRed(Reporter):
                 log.info('===================================================')
 
     def _run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
-                           params_name=None, **kwargs):
+                           params_name=None, save_kwargs=None, **kwargs):
         """Run a recipe once, simpler than _run_recipe_loop.
 
         This is to run recipes like exp_align, exp_combine. Takes a list of
@@ -486,18 +505,19 @@ class MuseRed(Reporter):
         recipe_conf = self._get_recipe_conf(recipe_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name)
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
-        kwargs.update(self.calib.get_frames(recipe, recipe_conf=recipe_conf,
-                                            OBJECT=OBJECT))
+        kwargs.update(self.frames.get_frames(recipe, recipe_conf=recipe_conf,
+                                             OBJECT=OBJECT))
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
-                           name=name, OBJECT=OBJECT, recipe_name=recipe_name)
+                           name=name, OBJECT=OBJECT, recipe_name=recipe_name,
+                           **(save_kwargs or {}))
 
-    def prepare_dates(self, dates, DPR_TYPE=None, datecol='name'):
+    def prepare_dates(self, dates, DPR_TYPE=None, datecol='name', table='raw'):
         """Compute the list of dates (nights, exposures) to process."""
 
         alldates = self.select_dates(dpr_type=DPR_TYPE, column=datecol,
-                                     distinct=True)
+                                     distinct=True, table=table)
 
         if dates is None:
             date_list = alldates
@@ -506,13 +526,25 @@ class MuseRed(Reporter):
                 dates = [dates]
 
             date_list = []
+            tbl = self.get_table(table).table
             for date in dates:
                 if date in self.runs:
-                    where = (self.rawc.run == date)
+                    where = (tbl.c.run == date)
                     if DPR_TYPE is not None:
-                        where &= (self.rawc.DPR_TYPE == DPR_TYPE)
-                    d = self.select_column(datecol, distinct=True, where=where)
+                        where &= (tbl.c.DPR_TYPE == DPR_TYPE)
+                    d = self.select_column(datecol, distinct=True, where=where,
+                                           table=table)
                     if d:
+                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE)
+                        date_list += d
+                elif date in self.nights:
+                    where = (tbl.c.night == date)
+                    if DPR_TYPE is not None:
+                        where &= (tbl.c.DPR_TYPE == DPR_TYPE)
+                    d = self.select_column(datecol, distinct=True, where=where,
+                                           table=table)
+                    if d:
+                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE)
                         date_list += d
                 elif date in alldates:
                     date_list.append(date)
@@ -536,7 +568,7 @@ class MuseRed(Reporter):
         recipe_cls = get_recipe_cls(recipe_name)
         # get the list of nights to process
         dates = self.prepare_dates(dates, DPR_TYPE=recipe_cls.DPR_TYPE,
-                                   datecol='night')
+                                   datecol='TPL_START')
         self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
                               params_name=params_name, **kwargs)
 
@@ -602,7 +634,7 @@ class MuseRed(Reporter):
     def exp_align(self, dataset, recipe_name='muse_exp_align', filt='white',
                   params_name=None, name=None, exps=None, force=False,
                   **kwargs):
-        """Compute offsets between exposures."""
+        """Compute offsets between exposures of a dataset."""
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
@@ -620,7 +652,8 @@ class MuseRed(Reporter):
             self.logger.debug('Found %d processed exps', len(processed))
 
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_conf.get('name') or recipe_name
+        name = (name or recipe_conf.get('name') or 'OFFSET_LIST_{}'.format(
+            'drs' if recipe_name == 'muse_exp_align' else recipe_name))
 
         # get the list of dates to process
         if exps:
@@ -651,14 +684,16 @@ class MuseRed(Reporter):
 
     def exp_combine(self, dataset, recipe_name='muse_exp_combine', name=None,
                     params_name=None, **kwargs):
-        """Combine exposures."""
+        """Combine exposures for a dataset."""
 
+        recipe_name = normalize_recipe_name(recipe_name)
         recipe_cls = get_recipe_cls(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or
-                                            recipe_cls.recipe_name)
+        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         DPR_TYPE = recipe_cls.DPR_TYPE
-        name = name or recipe_cls.recipe_name
+        name_dict = {'muse_exp_combine': 'drs', 'mpdaf_combine': 'mpdaf'}
+        name = (name or recipe_conf.get('name') or '{}_{}'.format(
+            dataset, name_dict.get(recipe_name, recipe_name)))
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
@@ -669,7 +704,7 @@ class MuseRed(Reporter):
 
     def std_combine(self, run, recipe_name='muse_std_combine', name=None,
                     params_name=None, **kwargs):
-        """Combine std stars."""
+        """Combine std stars for a run."""
 
         recipe_cls = get_recipe_cls(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or
@@ -680,11 +715,12 @@ class MuseRed(Reporter):
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-                 for r in self.reduced.find(DPR_TYPE=DPR_TYPE,
+                 for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
                                             recipe_name=from_recipe)]
 
-        self._run_recipe_simple(recipe_cls, name, run, flist,
-                                params_name=params_name, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, flist,
+                                params_name=params_name,
+                                save_kwargs={'run': run}, **kwargs)
 
     def _get_recipe_conf(self, recipe_name, item=None):
         """Get config dict for a recipe."""

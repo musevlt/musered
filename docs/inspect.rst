@@ -46,7 +46,7 @@ Reduction log for a night or exposure
 This allows to see all the recipes that have been executed for a given night or
 exposure, with the execution date, log file, output directory, etc.:
 
-.. program-output:: musered info --night 2017-06-17
+.. program-output:: musered info --night 2017-06-17 --short
    :prompt:
    :cwd: _static
 

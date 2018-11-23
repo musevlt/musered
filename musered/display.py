@@ -17,7 +17,7 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k
 
     Parameters
     ----------
-    mr: MuseRed 
+    mr: MuseRed
         Musered object
     tabname: str
         QA table name (qa_raw, qa_reduced)
@@ -50,7 +50,7 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k
         wc = None
     exps = list(join_tables(mr.db, [qatab.name,mr.raw.name], columns=cols, use_labels=False, whereclause=wc))
     if weather:
-        w = mr.get_table('weather_conditions')
+        w = mr.get_astropy_table('weather_conditions')
 
     dates = [parse_datetime(exp['name']) for exp in exps if exp['name'] not in explist]
     vals = [exp[colname] for exp in exps if exp['name'] not in explist]
@@ -78,7 +78,7 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True, color='k
             wt = datetime.datetime.strptime(e['date'], '%Y-%m-%dT%H:%M:%S')
             wcond = [WeatherTranslate[el] for el in e['Conditions'].split(',')]
             wcol = WeatherColors[wcond[0]]
-            ax.axvline(wt, color=wcol, alpha=0.5) 
+            ax.axvline(wt, color=wcol, alpha=0.5)
     if return_pval:
         return (pdates,pvals)
 
@@ -89,7 +89,7 @@ def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=F
     ----------
     axlist: list of axes
         list of axis (number of axis must be equal to the list of runs)
-    mr: MuseRed 
+    mr: MuseRed
         Musered object
     tabname: str
         QA table name (qa_raw, qa_reduced)
@@ -120,12 +120,12 @@ def display_runs(axlist, mr, tabname, colname, runs=None, weather=True, median=F
     for ax,run in zip(axlist,runs):
         nights = np.unique([e['night'] for e in mr.raw.find(run=run, name=mr.exposures['MXDF'])])
         nights = nights.tolist()
-        dates,vals = display_nights(ax, mr, tabname, colname, nights=nights, weather=weather, color=color, 
+        dates,vals = display_nights(ax, mr, tabname, colname, nights=nights, weather=weather, color=color,
                        symbol=symbol, explist=explist, return_pval=True, std=std, scol=scol)
         if len(vals) > 0 and vals is not None:
             lvals += [v for v in vals if v is not None]
         ax.set_title(run)
- 
+
     if median:
         med = np.median(lvals)
         for ax in axlist:

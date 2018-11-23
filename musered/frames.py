@@ -1,11 +1,11 @@
 import datetime
-import itertools
+import glob
 import logging
 import os
 from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
-from glob import glob
+from itertools import product
 
 from .settings import STATIC_FRAMES
 from .utils import parse_date
@@ -29,7 +29,6 @@ def get_file_from_date(files_dict: dict, date: str) -> str:
     ...         'start_date': datetime.date(2018, 9, 4),
     ...         'end_date': datetime.date(2018, 9, 15) },
     ... }
-    >>> from musered.calib import get_file_from_date
     >>> get_file_from_date(astrometry, '2018-08-13')
     'astrometry_wcs_wfm_gto26.fits'
     >>> get_file_from_date(astrometry, '2018-09-10')
@@ -48,32 +47,28 @@ def get_file_from_date(files_dict: dict, date: str) -> str:
     return file
 
 
-class CalibFinder:
+class FramesFinder:
     """Handles calibration frames.
-
-    It must be instantiated with a settings dict containing the directory with
-    the default static calibration files ('muse_calib_path'), and a settings
-    dict that can be used to define time periods where a given calibration file
-    is valid ('static_calib').
 
     Parameters
     ----------
-    table : dataset.Table
-        Table with reduced calibrations.
-    conf : dict
-        Settings dictionary.
+    mr : musered.MuseRed
+        MuseRed object.
 
     """
 
     STATIC_FRAMES = STATIC_FRAMES
 
-    def __init__(self, table, conf):
-        self.table = table
-        self.conf = conf
+    def __init__(self, mr):
+        self.mr = mr
+        self.conf = mr.conf
+        self.logger = logging.getLogger(__name__)
         self.static_path = self.conf['muse_calib_path']
         self.static_conf = self.conf['static_calib']
-        self.excludes = self.conf.get('frames_exclude', {})
-        self.logger = logging.getLogger(__name__)
+
+        # frames settings
+        self.frames = self.conf.get('frames', {})
+        self._excludes = {}
 
     @lazyproperty
     def static_files(self):
@@ -90,6 +85,47 @@ class CalibFinder:
                                   'ESO PRO CATG', ext=0)
             cat[key].append(f)
         return cat
+
+    def get_excludes(self, DPR_TYPE=None):
+        """List of excluded files for each DPR_TYPE."""
+
+        # the global list of excluded files is stored with the __all__ key
+        key = '__all__' if DPR_TYPE is None else DPR_TYPE
+        # check if the list is already computed
+        if key in self._excludes:
+            return self._excludes[key]
+
+        conf = self.frames.get('exclude', {})
+        if DPR_TYPE and DPR_TYPE not in conf:
+            self._excludes[key] = []
+            return []
+
+        # use the exclude setting to build the list of excluded files
+        exc = []
+        raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
+        for dpr, items in conf.items():
+            if DPR_TYPE and dpr != DPR_TYPE:
+                pass
+            table = self.mr.get_table('raw' if dpr in raw_types else 'reduced')
+            for item in items:
+                if isinstance(item, str):
+                    exc.append(item)
+                elif isinstance(item, dict):
+                    # if the item is a dict use the keys/values to query the db
+                    exc += [o['name'] for o in table.find(**item)]
+                else:
+                    raise ValueError(f'wrong format for {DPR_TYPE} excludes')
+
+        self._excludes[key] = sorted(set(exc))
+        return self._excludes[key]
+
+    def is_valid(self, name, DPR_TYPE=None):
+        """Check if an exposure is valid (i.e. not excluded)."""
+        return name not in self.get_excludes(DPR_TYPE)
+
+    def filter_valid(self, names, DPR_TYPE=None):
+        exc = self.get_excludes(DPR_TYPE)
+        return [name for name in names if name not in exc]
 
     def get_static(self, catg, date=None):
         """Return a static calib file.
@@ -109,7 +145,7 @@ class CalibFinder:
             # file that matched the date requirement
             if date is None:
                 # no date: take the first item
-                file = next(self.static_conf[catg].values())
+                file = list(self.static_conf[catg].keys())[0]
             else:
                 file = get_file_from_date(self.static_conf[catg], date)
 
@@ -126,36 +162,49 @@ class CalibFinder:
 
     def find_calib(self, night, dpr_type, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
-        res = self.table.find_one(night=night, INS_MODE=ins_mode,
-                                  DPR_TYPE=dpr_type)
-        excludes = self.excludes.get(dpr_type, [])
-        if res is not None and res['night'] in excludes:
-            # TODO: do the same for exposures
-            self.logger.info('%s for night %s is excluded', dpr_type, night)
-            res = None
+        info = self.logger.info
+        excludes = self.get_excludes(dpr_type)
 
-        if res is None and day_off is not None:
+        # Find calib for the given night, mode and type
+        res = {o['name']: o for o in self.mr.reduced.find(
+            night=night, INS_MODE=ins_mode, DPR_TYPE=dpr_type)}
+
+        # Check if some calib must be excluded
+        if res and excludes:
+            for name in excludes:
+                if name in res:
+                    info('%s for night %s is excluded', dpr_type, night)
+                    del res[name]
+
+        # If no calib was found, iterate on the days before/after
+        if not res and day_off is not None:
             if isinstance(night, str):
                 night = parse_date(night)
-            for off, direction in itertools.product(range(1, day_off + 1),
-                                                    (1, -1)):
+            for off, direction in product(range(1, day_off + 1), (1, -1)):
                 off = datetime.timedelta(days=off * direction)
-                res = self.table.find_one(night=(night + off).isoformat(),
-                                          INS_MODE=ins_mode,
-                                          DPR_TYPE=dpr_type)
-                if res is not None:
-                    if res['night'] in excludes:
-                        self.logger.info('%s for night %s is excluded',
-                                         dpr_type, night + off)
-                    else:
-                        self.logger.warning('Using %s from night %s',
-                                            dpr_type, night + off)
-                        break
+                res = {o['name']: o for o in self.mr.reduced.find(
+                    night=(night + off).isoformat(), INS_MODE=ins_mode,
+                    DPR_TYPE=dpr_type)}
+                if res and excludes:
+                    for name in excludes:
+                        if name in res:
+                            info('%s for night %s is excluded', dpr_type,
+                                 night)
+                            del res[name]
+                if res:
+                    info('Using %s from night %s', dpr_type, night + off)
+                    break
 
-        if res is None:
+        if not res:
             raise ValueError(f'could not find {dpr_type} for night {night}')
+        if len(res) == 1:
+            # only one result, use it
+            res = res.popitem()[1]
+        elif len(res) > 1:
+            # several results, need to choose
+            raise NotImplementedError
 
-        flist = sorted(glob(f"{res['path']}/{dpr_type}*.fits"))
+        flist = sorted(glob.glob(f"{res['path']}/{dpr_type}*.fits"))
         if len(flist) not in (1, 24):
             raise ValueError(f'found {len(flist)} {dpr_type} files '
                              f'instead of (1, 24)')
@@ -232,7 +281,7 @@ class CalibFinder:
                     # can be found in the database
                     if frame == 'OFFSET_LIST' and \
                             not os.path.isfile(framedict[frame]):
-                        off = self.table.find_one(
+                        off = self.mr.reduced.find_one(
                             DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
                             name=framedict[frame])
                         if off is None:
@@ -246,9 +295,10 @@ class CalibFinder:
                 # If path or glob pattern is specified in settings
                 val = frames_conf[frame]
                 if '*' in val:
-                    framedict[frame] = sorted(glob(val))
+                    framedict[frame] = sorted(glob.glob(val))
                 else:
-                    framedict[frame] = sorted(glob(f"{val}/{frame}*.fits"))
+                    framedict[frame] = sorted(
+                        glob.glob(f"{val}/{frame}*.fits"))
                 debug('- from conf: %s', framedict[frame])
 
             else:

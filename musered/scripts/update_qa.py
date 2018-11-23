@@ -46,7 +46,7 @@ def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, force, dry_run):
 
 def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if recipe_name is None:
-        recipe_name = 'muse_exp_align'
+        recipe_name = 'imphot_align'
 
     recipe_name = normalize_recipe_name(recipe_name)
     rows = mr.reduced.find(recipe_name=recipe_name, DPR_TYPE='IMPHOT',

@@ -41,6 +41,9 @@ runs:
   GTO17: &GTO17
     start_date: 2017-04-01
     end_date: 2017-06-30
+  GTO19: &GTO19
+    start_date: 2017-09-15
+    end_date: 2017-09-30
 
 # GTO-only: import databases with comments and flags added by observers
 GTO_logs:
@@ -59,20 +62,29 @@ static_calib:
       end_date: 2015-05-10
   ASTROMETRY_WCS:
     astrometry_wcs_wfm_gto17.fits: *GTO17
+    astrometry_wcs_wfm_gto19.fits: *GTO19
   GEOMETRY_TABLE:
     geometry_table_wfm_gto17.fits: *GTO17
+    geometry_table_wfm_gto19.fits: *GTO19
 
 # Parameters for the retrieve_data command (passed to astroquery.Eso.login)
 retrieve_data:
   username: MUSE-GTO
   store_password: True
 
+frames:
+  exclude:
+    BIAS:
+      - "2017-06-14T09:01:03"
+    MASTER_BIAS:
+      - "2017-06-14T09:01:03"
+
 # Parameters for recipes. Can be used to specify additional parameters.
 recipes:
 
   muse_wavecal:
     # This can be used to change the frames excluded by default
-    # frames:
+    # frames, or to specify a file for a given frame
     #   exclude: MASTER_DARK
     #   include: [MASTER_FLAT]
     params:
@@ -97,14 +109,13 @@ recipes:
       save: 'cube,autocal'
 
   muse_exp_align:
-    # by default a recipe finds frames using only DPR.TYPE. But if several
-    # recipes were run a produced the same type of file, this allows to specify
-    # the recipe from which files are used.
+    # Compute offsets with the DRS.
+    # from_recipe allows to specify the recipe from which files are used.
     from_recipe: muse_scipost_rec
     filt: white
 
   imphot:
-    # and this is using imphot:
+    # Compute offsets with the Imphot.
     params:
       fix_beta: 2.5
       hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"
@@ -149,7 +160,7 @@ recipes:
 
       # The OUTPUT_WCS used here was computed by running first muse_exp_combine
       # with method: drs (it is the datacube combined with the DRS).
-      OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/drs/DATACUBE_FINAL.fits'
+      OUTPUT_WCS: '{workdir}/reduced/0.1/exp_combine/IC4406/DATACUBE_FINAL.fits'
     init:
       output_dir: 'scipost_cubes'
 

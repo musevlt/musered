@@ -95,7 +95,8 @@ def update_qc(mr, type, recipe):
 @click.option('--runs', is_flag=True, help='list all runs')
 @click.option('--calibs', is_flag=True, help='list calibration sequences')
 @click.option('--exps', is_flag=True, help='list all exposures')
-@click.option('--raw', multiple=True, help='list raw exposures for a night')
+@click.option('--raw', help='list raw exposures, must be a comma-separated '
+              'list of key:value items, e.g. night:2018-08-14,DPR_CATG:CALIB')
 @click.option('--qc', help='show QC keywords')
 @click.option('--date', multiple=True, help='show info for a given date')
 @click.option('--run', help='show info for a given run')
@@ -105,9 +106,12 @@ def update_qc(mr, type, recipe):
               help='show reduction log for an exposure')
 @click.option('-r', '--recipe', multiple=True,
               help='recipe name to show (for --night and --exp)')
+@click.option('--excluded', is_flag=True,
+              help='show excluded exps (for the main info report)')
+@click.option('--tables', default='raw,calib,science', help='tables to show')
 @click.pass_obj
 def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
-         night, exp, recipe):
+         night, exp, recipe, excluded, tables):
     """Print info about raw and reduced data, or night or exposure."""
 
     if any([datasets, nights, exps, runs, calibs]):
@@ -122,28 +126,37 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
         if exps:
             mr.list_exposures()
     elif raw:
-        mr.info_raw(raw)
+        kw = dict([item.split(':') for item in raw.split(',')])
+        mr.info_raw(**kw)
     elif qc:
         mr.info_qc(qc, date_list=date)
     elif exp or night:
-        dateobs = mr.prepare_dates(exp or night,
-                                   datecol='name' if exp else 'night')
+        if exp:
+            dateobs = mr.prepare_dates(exp, datecol='name')
+            show_weather = True
+        else:
+            dateobs = mr.prepare_dates(night, datecol='name', table='reduced')
+            show_weather = False
+
         for date in dateobs:
-            mr.info_exp(date, full=not short, recipes=recipe)
+            mr.info_exp(date, full=not short, recipes=recipe,
+                        show_weather=show_weather)
     else:
-        mr.info(date_list=date, run=run)
+        mr.info(date_list=date, run=run, filter_excludes=not excluded,
+                show_tables=tables.split(','))
 
 
 @click.option('-r', '--recipe', multiple=True)
 @click.option('-d', '--date', multiple=True)
 @click.option('-n', '--night', multiple=True)
-@click.option('--dry-run', is_flag=True, help='do not run the recipe')
+@click.option('--force', is_flag=True,
+              help='nothing is done if this is not set')
 @click.option('--keep-files', is_flag=True, help='do not delete files')
 @click.pass_obj
-def clean(mr, recipe, date, night, dry_run, keep_files):
+def clean(mr, recipe, date, night, force, keep_files):
     """Remove data and database entries for a given recipe and dates."""
     mr.clean(recipe_list=recipe, date_list=date, night_list=night,
-             remove_files=not keep_files, dry_run=dry_run)
+             remove_files=not keep_files, force=force)
 
 
 @click.argument('date', nargs=-1)
@@ -173,7 +186,8 @@ def process_calib(mr, date, force, dry_run, bias, dark, flat, wavecal, lsf,
     for step in ('bias', 'dark', 'flat', 'wavecal', 'lsf', 'twilight'):
         if locals()[step] or (step != 'dark' and run_all):
             if force:
-                mr.clean(f'muse_{step}', date_list=date, remove_files=False)
+                mr.clean(f'muse_{step}', date_list=date, remove_files=False,
+                         force=True)
             mr.process_calib(step, dates=date, skip=not force, dry_run=dry_run)
 
 

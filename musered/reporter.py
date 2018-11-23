@@ -81,8 +81,9 @@ class Reporter:
     def list_calibs(self):
         """Print the list of calibration sequences."""
         self.fmt.show_title('Calibrations:')
-        for x in sorted(self.calib_exposures):
-            self.fmt.show_text(f'- {x}')
+        for dpr_type, explist in sorted(self.calib_exposures.items()):
+            self.fmt.show_text(f'- {dpr_type}')
+            self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
     def list_exposures(self):
         """Print the list of exposures."""
@@ -91,7 +92,8 @@ class Reporter:
             self.fmt.show_text(f'- {name}')
             self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
-    def info(self, date_list=None, run=None):
+    def info(self, date_list=None, run=None, filter_excludes=True,
+             show_tables=('raw', 'calib', 'science')):
         """Print a summary of the raw and reduced data."""
         self.fmt.show_text(f'Reduction version {self.version}')
         self.fmt.show_text(f'{self.raw.count()} files\n')
@@ -99,49 +101,51 @@ class Reporter:
         print()
         self.list_runs()
 
+        redc = self.reduced.table.c
+        exclude_names = self.frames.get_excludes() if filter_excludes else None
+
         # count files per night and per type, raw data, then reduced
-        self.fmt.show_title(f'\nRaw data:\n')
-        if len(self.raw) == 0:
-            self.fmt.show_text('Nothing yet.')
-        else:
-            # uninteresting objects to exclude from the report
-            excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
-                        'WAVE,MASK')
-            t = query_count_to_table(self.db, 'raw', exclude_obj=excludes,
-                                     date_list=date_list, run=run)
-            self.fmt.show_table(t)
+        if 'raw' in show_tables:
+            self.fmt.show_title(f'\nRaw data:\n')
+            if len(self.raw) == 0:
+                self.fmt.show_text('Nothing yet.')
+            else:
+                # uninteresting objects to exclude from the report
+                excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
+                            'WAVE,MASK')
+                t = query_count_to_table(self.raw, exclude_obj=excludes,
+                                         date_list=date_list, run=run,
+                                         exclude_names=exclude_names,
+                                         datecol='night', countcol='OBJECT')
+                self.fmt.show_table(t)
 
         if len(self.reduced) == 0:
-            self.fmt.show_title(f'\nProcessed data:\n')
-            self.fmt.show_text('Nothing yet.')
-        else:
-            redc = self.reduced.table.c
+            if 'calib' in show_tables or 'science' in show_tables:
+                self.fmt.show_title(f'\nProcessed data:\n')
+                self.fmt.show_text('Nothing yet.')
+            return
+
+        if 'calib' in show_tables:
             self.fmt.show_title(f'\nProcessed calib data:\n')
             t = query_count_to_table(
-                self.db, self.tables['reduced'], where=sql.and_(
-                    redc.DPR_CATG == 'CALIB',
-                    redc.DPR_TYPE.notlike('%STD%')
-                ), date_list=date_list, run=run, calib=True)
+                self.reduced, date_list=date_list, run=run, calib=True,
+                exclude_names=exclude_names, datecol='night',
+                countcol='recipe_name',
+                where=redc.DPR_CATG == 'CALIB',
+            )
             if t:
                 self.fmt.show_table(t)
 
-            self.fmt.show_title(f'\nProcessed standard:\n')
-            t = query_count_to_table(
-                self.db, self.tables['reduced'],
-                where=redc.DPR_TYPE.like('%STD%'),
-                date_list=date_list, run=run)
-            if t:
-                self.fmt.show_table(t)
-
+        if 'science' in show_tables:
             self.fmt.show_title(f'\nProcessed science data:\n')
             t = query_count_to_table(
-                self.db, self.tables['reduced'],
-                where=redc.DPR_CATG == 'SCIENCE',
-                date_list=date_list, run=run)
+                self.reduced, where=redc.DPR_CATG == 'SCIENCE',
+                date_list=date_list, run=run, exclude_names=exclude_names,
+                datecol='name', countcol='recipe_name')
             if t:
                 self.fmt.show_table(t)
 
-    def info_exp(self, expname, full=True, recipes=None):
+    def info_exp(self, expname, full=True, recipes=None, show_weather=True):
         """Print information about a given exposure or night."""
         if recipes:
             recipes = [normalize_recipe_name(name) for name in recipes]
@@ -162,19 +166,23 @@ class Reporter:
         click.secho(f'\n {expname} \n', fg='green', bold=True, reverse=True)
 
         if not recipes and 'gto_logs' in self.db:
-            click.secho(f"★ GTO logs:", fg='green', bold=True)
-            colors = dict(A='green', B='yellow', C='orange')
-            for log in self.db['gto_logs'].find(name=expname):
-                if log['flag']:
-                    rk = log['flag']
-                    log['rk'] = click.style(f'Rank {rk}', reverse=True,
-                                            fg=colors.get(rk, 'red'))
-                    print("- {date}\t{author}\t{rk}\t{comment}".format(**log))
-                if log['fdate']:
-                    print("- {fdate}\t{fauthor}\t\t{fcomment}".format(**log))
-            print()
+            logs = list(self.db['gto_logs'].find(name=expname))
+            if logs:
+                click.secho(f"★ GTO logs:", fg='green', bold=True)
+                colors = dict(A='green', B='yellow', C='orange')
+                for log in logs:
+                    if log['flag']:
+                        rk = log['flag']
+                        log['rk'] = click.style(f'Rank {rk}', reverse=True,
+                                                fg=colors.get(rk, 'red'))
+                        print("- {date}\t{author}\t{rk}\t{comment}"
+                              .format(**log))
+                    if log['fdate']:
+                        print("- {fdate}\t{fauthor}\t\t{fcomment}"
+                              .format(**log))
+                print()
 
-        if not recipes and 'weather_conditions' in self.db:
+        if show_weather and not recipes and 'weather_conditions' in self.db:
             click.secho(f"★ Weather Conditions:", fg='green', bold=True)
             table = self.db['weather_conditions']
             for log in table.find(night=res[0][0]['night'], order_by='Time'):
@@ -222,29 +230,28 @@ class Reporter:
                                 print(f'  - {k:{maxlen}s} : {line}')
             print()
 
-    def info_raw(self, night, **kwargs):
-        """Print information about raw exposures for a given night."""
-        rows = list(self.raw.find(night=night))
+    def info_raw(self, **kwargs):
+        """Print information about raw exposures for a given night or type."""
+
+        rows = list(self.raw.find(**kwargs))
         if len(rows) == 0:
-            rows = list(self.raw.find(run=night))
-        if len(rows) == 0:
-            self.logger.error('Could not find exposures for %s', night)
+            self.logger.error('Could not find exposures')
             return
 
         t = Table(rows=rows, names=rows[0].keys())
         t.keep_columns([
-            'name', 'EXPTIME', 'OBJECT',
+            'name', 'EXPTIME', 'OBJECT', 'TPL_START',
             # 'DPR_CATG', 'DPR_TYPE',
             'INS_DROT_POSANG', 'INS_MODE', 'INS_TEMP7_VAL',
-            'OCS_SGS_AG_FWHMX_MED', 'OCS_SGS_AG_FWHMY_MED',
-            'OCS_SGS_FWHM_MED', 'OCS_SGS_FWHM_RMS',
-            'TEL_AIRM_END', 'TEL_AIRM_START',
+            'OCS_SGS_AG_FWHMX_MED',  # 'OCS_SGS_AG_FWHMY_MED',
+            'OCS_SGS_FWHM_MED',  # 'OCS_SGS_FWHM_RMS',
+            'TEL_AIRM_END', 'TEL_AIRM_START', 'OBS_NAME'
         ])
         for col in t.columns.values():
             col.name = (col.name.replace('TEL_', '').replace('OCS_SGS_', '')
                         .replace('INS_', ''))
         t.sort('name')
-        self.fmt.show_table(t, max_width=-1, **kwargs)
+        self.fmt.show_table(t, max_width=-1)
 
     def info_qc(self, dpr_type, date_list=None, **kwargs):
         if dpr_type not in self.db:
@@ -255,6 +262,9 @@ class Reporter:
             date_list = [o['DATE_OBS'] for o in table.distinct('DATE_OBS')]
         elif isinstance(date_list, str):
             date_list = [date_list]
+        else:
+            date_list = self.prepare_dates(date_list, datecol='name',
+                                           DPR_TYPE=dpr_type, table='reduced')
 
         recipe_cls = recipe_classes[table.find_one()['recipe_name']]
         cols = ['filename', 'hdu', 'DATE_OBS', 'INS_MODE']
