@@ -240,9 +240,9 @@ class Reporter:
             'name', 'EXPTIME', 'OBJECT', 'TPL_START',
             # 'DPR_CATG', 'DPR_TYPE',
             'INS_DROT_POSANG', 'INS_MODE', 'INS_TEMP7_VAL',
-            'OCS_SGS_AG_FWHMX_MED', 'OCS_SGS_AG_FWHMY_MED',
-            'OCS_SGS_FWHM_MED', 'OCS_SGS_FWHM_RMS',
-            'TEL_AIRM_END', 'TEL_AIRM_START',
+            'OCS_SGS_AG_FWHMX_MED',  # 'OCS_SGS_AG_FWHMY_MED',
+            'OCS_SGS_FWHM_MED',  # 'OCS_SGS_FWHM_RMS',
+            'TEL_AIRM_END', 'TEL_AIRM_START', 'OBS_NAME'
         ])
         for col in t.columns.values():
             col.name = (col.name.replace('TEL_', '').replace('OCS_SGS_', '')

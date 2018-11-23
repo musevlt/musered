@@ -179,10 +179,16 @@ def test_info_night(mr, caplog):
 
 def test_info_raw(mr, capsys, caplog):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--raw', '2017-06-17'])
+    result = runner.invoke(cli, ['info', '--raw', 'night:2017-06-17'])
     assert result.exit_code == 0
     out = result.output.splitlines()
     assert len(out) == 39
+
+    result = runner.invoke(cli, ['info', '--raw',
+                                 'night:2017-06-17,OBJECT:BIAS'])
+    assert result.exit_code == 0
+    out = result.output.splitlines()
+    assert len(out) == 13
 
     # test missing exp/night
     mr.info_raw(night='2017-06-20')
