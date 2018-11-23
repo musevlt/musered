@@ -269,13 +269,10 @@ def query_count_to_table(table, exclude_obj=None, where=None,
     for col in t.columns.values()[1:]:
         col[col == 0] = np.ma.masked
 
-    # if only_one:
-    #     for col in t.columns.values()[1:]:
-    #         # shorten recipe names
-    #         col.name = col.name.replace('muse_', '')
-    #         # here it would print the number of frames for a recipe,
-    #         # which is not the goal. replace with 1...
-    #         # col[col > 0] = 1
+    for col in t.columns.values()[1:]:
+        # shorten recipe names
+        col.name = col.name.replace('muse_', '')
+
     return t
 
 

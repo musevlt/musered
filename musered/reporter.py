@@ -92,7 +92,8 @@ class Reporter:
             self.fmt.show_text(f'- {name}')
             self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
-    def info(self, date_list=None, run=None, filter_excludes=True):
+    def info(self, date_list=None, run=None, filter_excludes=True,
+             show_tables=('raw', 'calib', 'science')):
         """Print a summary of the raw and reduced data."""
         self.fmt.show_text(f'Reduction version {self.version}')
         self.fmt.show_text(f'{self.raw.count()} files\n')
@@ -100,27 +101,31 @@ class Reporter:
         print()
         self.list_runs()
 
+        redc = self.reduced.table.c
         exclude_names = self.frames.get_excludes() if filter_excludes else None
 
         # count files per night and per type, raw data, then reduced
-        self.fmt.show_title(f'\nRaw data:\n')
-        if len(self.raw) == 0:
-            self.fmt.show_text('Nothing yet.')
-        else:
-            # uninteresting objects to exclude from the report
-            excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
-                        'WAVE,MASK')
-            t = query_count_to_table(self.raw, exclude_obj=excludes,
-                                     date_list=date_list, run=run,
-                                     exclude_names=exclude_names,
-                                     datecol='night', countcol='OBJECT')
-            self.fmt.show_table(t)
+        if 'raw' in show_tables:
+            self.fmt.show_title(f'\nRaw data:\n')
+            if len(self.raw) == 0:
+                self.fmt.show_text('Nothing yet.')
+            else:
+                # uninteresting objects to exclude from the report
+                excludes = ('Astrometric calibration (ASTROMETRY)', 'WAVE,LSF',
+                            'WAVE,MASK')
+                t = query_count_to_table(self.raw, exclude_obj=excludes,
+                                         date_list=date_list, run=run,
+                                         exclude_names=exclude_names,
+                                         datecol='night', countcol='OBJECT')
+                self.fmt.show_table(t)
 
         if len(self.reduced) == 0:
-            self.fmt.show_title(f'\nProcessed data:\n')
-            self.fmt.show_text('Nothing yet.')
-        else:
-            redc = self.reduced.table.c
+            if 'calib' in show_tables or 'science' in show_tables:
+                self.fmt.show_title(f'\nProcessed data:\n')
+                self.fmt.show_text('Nothing yet.')
+            return
+
+        if 'calib' in show_tables:
             self.fmt.show_title(f'\nProcessed calib data:\n')
             t = query_count_to_table(
                 self.reduced, date_list=date_list, run=run, calib=True,
@@ -131,6 +136,7 @@ class Reporter:
             if t:
                 self.fmt.show_table(t)
 
+        if 'science' in show_tables:
             self.fmt.show_title(f'\nProcessed science data:\n')
             t = query_count_to_table(
                 self.reduced, where=redc.DPR_CATG == 'SCIENCE',
