@@ -1,0 +1,13 @@
+
+v0.2
+----
+
+- Group calibration sequences by TPL.START.
+- Add std_combine recipe to combine standards by run.
+- Many changes for info.
+- Exclusion of raw and reduced data in the settings file.
+
+v0.1
+----
+
+First version.
