@@ -103,7 +103,7 @@ class MuseRed(Reporter):
                 sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
                 .where(self.rawc.DPR_TYPE.isnot(None))
                 .group_by(self.rawc.DPR_TYPE, self.rawc.TPL_START)):
-            if self.frames.is_valid(name, dpr_type):
+            if self.frames.is_valid(name, dpr_type, column='TPL_START'):
                 out[dpr_type].append(name)
         return out
 
@@ -157,7 +157,8 @@ class MuseRed(Reporter):
         tbl = self.get_table(table)
         wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
         dates = self.select_column(column, where=wc, table=table, **kwargs)
-        dates = self.frames.filter_valid(dates, DPR_TYPE=dpr_type)
+        dates = self.frames.filter_valid(dates, DPR_TYPE=dpr_type,
+                                         column=column)
         return list(sorted(dates))
 
     def update_db(self, force=False):
@@ -535,7 +536,8 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
-                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE)
+                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE,
+                                                     column=datecol)
                         date_list += d
                 elif date in self.nights:
                     where = (tbl.c.night == date)
@@ -544,7 +546,8 @@ class MuseRed(Reporter):
                     d = self.select_column(datecol, distinct=True, where=where,
                                            table=table)
                     if d:
-                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE)
+                        d = self.frames.filter_valid(d, DPR_TYPE=DPR_TYPE,
+                                                     column=datecol)
                         date_list += d
                 elif date in alldates:
                     date_list.append(date)
@@ -555,7 +558,9 @@ class MuseRed(Reporter):
 
         if date_list:
             date_list.sort()
-            self.logger.debug('Selected dates:\n%s', '\n'.join(date_list))
+            self.logger.debug('Selected dates:')
+            for date in date_list:
+                self.logger.debug('- %s', date)
         else:
             self.logger.warning('No valid date found')
 

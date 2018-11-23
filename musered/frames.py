@@ -86,22 +86,22 @@ class FramesFinder:
             cat[key].append(f)
         return cat
 
-    def get_excludes(self, DPR_TYPE=None):
+    def get_excludes(self, DPR_TYPE=None, column='name'):
         """List of excluded files for each DPR_TYPE."""
 
         # the global list of excluded files is stored with the __all__ key
         key = '__all__' if DPR_TYPE is None else DPR_TYPE
         # check if the list is already computed
         if key in self._excludes:
-            return self._excludes[key]
+            return self._excludes[key][column]
 
         conf = self.frames.get('exclude', {})
+        self._excludes[key] = exc = defaultdict(list)
+
         if DPR_TYPE and DPR_TYPE not in conf:
-            self._excludes[key] = []
             return []
 
         # use the exclude setting to build the list of excluded files
-        exc = []
         raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
         for dpr, items in conf.items():
             if DPR_TYPE and dpr != DPR_TYPE:
@@ -109,22 +109,25 @@ class FramesFinder:
             table = self.mr.get_table('raw' if dpr in raw_types else 'reduced')
             for item in items:
                 if isinstance(item, str):
-                    exc.append(item)
+                    exc['name'].append(item)
+                    exc['TPL_START'].append(item)
                 elif isinstance(item, dict):
                     # if the item is a dict use the keys/values to query the db
-                    exc += [o['name'] for o in table.find(**item)]
+                    for o in table.find(**item):
+                        exc['name'].append(o['name'])
+                        exc['night'].append(o['night'])
+                        exc['TPL_START'].append(o['TPL_START'])
                 else:
                     raise ValueError(f'wrong format for {DPR_TYPE} excludes')
 
-        self._excludes[key] = sorted(set(exc))
-        return self._excludes[key]
+        return self._excludes[key][column]
 
-    def is_valid(self, name, DPR_TYPE=None):
+    def is_valid(self, name, DPR_TYPE=None, column='name'):
         """Check if an exposure is valid (i.e. not excluded)."""
-        return name not in self.get_excludes(DPR_TYPE)
+        return name not in self.get_excludes(DPR_TYPE, column=column)
 
-    def filter_valid(self, names, DPR_TYPE=None):
-        exc = self.get_excludes(DPR_TYPE)
+    def filter_valid(self, names, DPR_TYPE=None, column='name'):
+        exc = self.get_excludes(DPR_TYPE, column=column)
         return [name for name in names if name not in exc]
 
     def get_static(self, catg, date=None):
