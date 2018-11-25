@@ -204,8 +204,10 @@ class FramesFinder:
             # only one result, use it
             res = res.popitem()[1]
         elif len(res) > 1:
-            # several results, need to choose
-            raise NotImplementedError
+            # several results, take the first one
+            self.logger.warning('%d choices for %s, taking the first one',
+                                len(res), dpr_type)
+            res = res.popitem()[1]
 
         flist = sorted(glob.glob(f"{res['path']}/{dpr_type}*.fits"))
         if len(flist) not in (1, 24):
