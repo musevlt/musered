@@ -643,15 +643,13 @@ class MuseRed(Reporter):
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
-        from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
-        filt = recipe_conf.get('filt', filt)
         recipe_cls = get_recipe_cls(recipe_name)
 
         if recipe_name == 'imphot' and not force:
             # Find already processed files
             processed = [r['name'] for r in self.reduced.find(
                 OBJECT=dataset, DPR_TYPE='IMPHOT',
-                recipe_name=kwargs['params_name']
+                recipe_name=params_name or recipe_name
             )]
             kwargs['processed'] = processed
             self.logger.debug('Found %d processed exps', len(processed))
@@ -661,6 +659,7 @@ class MuseRed(Reporter):
             'drs' if recipe_name == 'muse_exp_align' else recipe_name))
 
         # get the list of dates to process
+        from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         if exps:
             query = list(self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
                                            recipe_name=from_recipe, name=exps))
@@ -671,6 +670,7 @@ class MuseRed(Reporter):
         flist = [f for r in query
                  for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")]
 
+        filt = recipe_conf.get('filt', filt)
         if recipe_name == 'muse_exp_align' and filt:
             flist = [f for f in flist
                      if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
