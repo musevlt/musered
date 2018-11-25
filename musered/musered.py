@@ -723,7 +723,7 @@ class MuseRed(Reporter):
                  for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
                                             recipe_name=from_recipe)]
 
-        self._run_recipe_simple(recipe_cls, name, flist,
+        self._run_recipe_simple(recipe_cls, name, run, flist,
                                 params_name=params_name,
                                 save_kwargs={'run': run}, **kwargs)
 
