@@ -95,13 +95,18 @@ class BaseRecipe:
 
     def dump(self, include_files=False, json_col=False):
         """Dump recipe results, stats, parameters in a dict."""
-        return {
+        info = {
             'tottime': self.timeit,
             'nbwarn': self.nbwarn,
             'log_file': self.log_file,
             'params': self.dump_params(json_col=json_col),
             'recipe_version': self.version,
         }
+        if include_files:
+            calib = dict(iter(self.calib))
+            info['raw'] = json.dumps(self.raw) if json_col else self.raw
+            info['calib'] = json.dumps(calib) if json_col else calib
+        return info
 
     def _run(self, *args, **kwargs):
         raise NotImplementedError
@@ -154,6 +159,7 @@ class BaseRecipe:
             if value != default:
                 info('%15s = %s (%s)', key, value, default)
 
+        self.raw = {self.DPR_TYPE: flist}
         results = self._run(flist, *args, **kwargs)
 
         self.results = results
@@ -288,10 +294,6 @@ class Recipe(BaseRecipe):
         info = super().dump(include_files=include_files, json_col=json_col)
         info.update({'user_time': self.results.stat.user_time,
                      'sys_time': self.results.stat.sys_time})
-        if include_files:
-            calib = dict(iter(self.calib))
-            info['raw'] = json.dumps(self.raw) if json_col else self.raw
-            info['calib'] = json.dumps(calib) if json_col else calib
         return info
 
     # def _write_fits(self, name_or_hdulist, filename):
