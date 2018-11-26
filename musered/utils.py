@@ -545,13 +545,19 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
     vclip = sigma_clip(vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper, copy=True)
     flagged = np.count_nonzero(vclip.mask)
     logger.debug('Found %d outliers values of %s over %d lines', flagged, colname, len(vals))
-    if flagged == 0:
-        return None    
     mean = np.ma.mean(vclip)
     std = np.ma.std(vclip)
-    vals = np.array(vals)[vclip.mask]
-    nsig = (vals - mean)/std
-    names = np.array(names)[vclip.mask]
-    return(dict(names=names.tolist(), vals=vals.tolist(), nsig=nsig.tolist(), mean=mean, std=std))
+    if flagged == 0:
+        vals = []
+        nsig = []
+        names = []
+    else:
+        vals = np.array(vals)[vclip.mask]
+        vals = vals.tolist()
+        nsig = (vals - mean)/std
+        nsig = nsig.tolist()
+        names = np.array(names)[vclip.mask]
+        names = names.tolist()
+    return(dict(names=names, vals=vals, nsig=nsig, mean=mean, std=std))
     
     
