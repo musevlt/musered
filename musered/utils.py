@@ -9,6 +9,7 @@ import yaml
 
 from astropy.io import ascii, fits
 from astropy.table import Table, MaskedColumn, vstack
+from astropy.stats import sigma_clip
 from collections import OrderedDict, defaultdict
 from sqlalchemy.engine import Engine
 from sqlalchemy import event, pool, sql, func
@@ -506,3 +507,51 @@ def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
 def all_subclasses(cls):
     return set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in all_subclasses(c)])
+
+def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_upper=5):
+    """find outliers in a subset of a table,column
+    
+    Parameters
+    ----------
+    table: mr.table
+    colname: str
+      name of column 
+    name: str
+      exposure column name
+    exps: list
+      list of exposures to search
+    sigma_lower: float
+      value of lower sigma rejection (must be positive)
+    sigma_upper: float
+      value of upper sigma rejection
+      
+    Return
+    ------
+    dict
+      names: list of exposure with deviant values
+      vals: list of deviant values
+      nsig: list of rejection factors
+      mean: mean value
+      std: standard deviation   
+    """
+    logger = logging.getLogger(__name__)
+    if exps is not None:
+        res = table.find(name=exps)
+    else:
+        res = table.find()
+    tab = [[e[colname],e[name]] for e in res if e[colname] is not None]
+    vals = list(zip(*tab))[0]
+    names = list(zip(*tab))[1]
+    vclip = sigma_clip(vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper, copy=True)
+    flagged = np.count_nonzero(vclip.mask)
+    logger.debug('Found %d outliers values of %s over %d lines', flagged, colname, len(vals))
+    if flagged == 0:
+        return None    
+    mean = np.ma.mean(vclip)
+    std = np.ma.std(vclip)
+    vals = np.array(vals)[vclip.mask]
+    nsig = (vals - mean)/std
+    names = np.array(names)[vclip.mask]
+    return(dict(names=names.tolist(), vals=vals.tolist(), nsig=nsig.tolist(), mean=mean, std=std))
+    
+    
