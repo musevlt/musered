@@ -8,17 +8,23 @@ from .recipe import PythonRecipe
 __version__ = '0.1'
 
 
-def combine_std_median(flist, outf=None, lmin=4500, lmax=9500, nl=3700,
-                       **kwargs):
+def combine_std_median(flist, DPR_TYPE, outf=None, lmin=4500, lmax=9500,
+                       nl=3700, **kwargs):
     lb = np.linspace(lmin, lmax, nl)
+    if DPR_TYPE == 'STD_RESPONSE':
+        colname = 'response'
+    elif DPR_TYPE == 'STD_TELLURIC':
+        colname = 'ftelluric'
+    else:
+        raise ValueError('unsupported file type')
 
     resp = []
     for stdf in flist:
         std = Table.read(stdf)
-        resp.append(np.interp(lb, std['lambda'], std['response']))
+        resp.append(np.interp(lb, std['lambda'], std[colname]))
 
     med = np.median(resp, axis=0)
-    stdcomb = Table([lb, med], names=('lambda', 'response'))
+    stdcomb = Table([lb, med], names=('lambda', colname))
 
     with fits.open(flist[0]) as inhdul:
         hdul = fits.HDUList([inhdul[0].copy(), fits.table_to_hdu(stdcomb)])
@@ -31,6 +37,8 @@ class STDCOMBINE(PythonRecipe):
 
     recipe_name = 'muse_std_combine'
     DPR_TYPE = 'STD_RESPONSE'
+    # FIXME: Manage this in PythonRecipe
+    DPR_TYPES = ('STD_RESPONSE', 'STD_TELLURIC')
     output_dir = 'std_combine'
     output_frames = ['STD_RESPONSE']
     version = __version__
@@ -40,10 +48,16 @@ class STDCOMBINE(PythonRecipe):
     )
 
     def _run(self, flist, *args, **kwargs):
+        if not isinstance(flist, dict):
+            raise ValueError('flist muse be a dict with the list of files '
+                             'for STD_RESPONSE and STD_TELLURIC')
         method = self.param['method']
         self.logger.info('Combining standard stars with %s', method)
-        outf = join(self.output_dir, f'STD_RESPONSE_{method}.fits')
-        if method == 'median':
-            combine_std_median(flist, outf=outf, **self.param)
-        else:
-            raise ValueError(f'unknown method {method}')
+
+        for dpr_type in self.DPR_TYPES:
+            outf = join(self.output_dir, f'{dpr_type}_{method}.fits')
+            if method == 'median':
+                combine_std_median(flist[dpr_type], dpr_type, outf=outf,
+                                   **self.param)
+            else:
+                raise ValueError(f'unknown method {method}')

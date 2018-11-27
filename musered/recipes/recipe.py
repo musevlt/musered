@@ -1,5 +1,6 @@
 import cpl
 import datetime
+import itertools
 import json
 import logging
 import os
@@ -114,7 +115,17 @@ class BaseRecipe:
     def run(self, flist, *args, params=None, **kwargs):
         """Run the recipe.
 
-        Subclasses should implement ._run in they need to customize this.
+        Subclasses must implement `BaseRecipe._run` to customize this.
+
+        Parameters
+        ----------
+        flist : str, list of str, or dict
+            List of input raw files. Can be a file, list of files, or a dict
+            with DPR_TYPE as key and list of files as value.
+        params : dict
+            Parameters for the recipe.
+        *args, **kwargs
+            Additional arguments are passed to `BaseRecipe._run`.
 
         """
         t0 = time.time()
@@ -124,10 +135,17 @@ class BaseRecipe:
         if isinstance(flist, str):
             flist = [flist]
 
-        if len(flist) == 0:
+        if isinstance(flist, (list, tuple)):
+            nfiles = len(flist)
+        elif isinstance(flist, dict):
+            nfiles = len(list(itertools.chain(*flist.values())))
+        else:
+            raise ValueError('flist should be a list or dict')
+
+        if nfiles == 0:
             raise ValueError('no exposure found')
 
-        if self.n_inputs_min is not None and len(flist) < self.n_inputs_min:
+        if self.n_inputs_min is not None and nfiles < self.n_inputs_min:
             raise ValueError(f'need at least {self.n_inputs_min} exposures')
 
         date = datetime.datetime.now().isoformat()
@@ -159,7 +177,11 @@ class BaseRecipe:
             if value != default:
                 info('%15s = %s (%s)', key, value, default)
 
-        self.raw = {self.DPR_TYPE: flist}
+        if isinstance(flist, dict):
+            assert self.DPR_TYPE in flist
+            self.raw = flist
+        else:
+            self.raw = {self.DPR_TYPE: flist}
         results = self._run(flist, *args, **kwargs)
 
         self.results = results

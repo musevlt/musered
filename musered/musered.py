@@ -715,13 +715,16 @@ class MuseRed(Reporter):
         recipe_conf = self._get_recipe_conf(params_name or
                                             recipe_cls.recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
-        DPR_TYPE = recipe_cls.DPR_TYPE
+        DPR_TYPES = recipe_cls.DPR_TYPES
         name = name or run
 
         # get the list of files to process
-        flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-                 for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
-                                            recipe_name=from_recipe)]
+        # FIXME: add helper to get the list of files for a query
+        flist = {DPR_TYPE: [
+            next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
+            for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
+                                       recipe_name=from_recipe)]
+                 for DPR_TYPE in DPR_TYPES}
 
         self._run_recipe_simple(recipe_cls, name, run, flist,
                                 params_name=params_name,
