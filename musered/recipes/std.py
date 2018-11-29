@@ -12,19 +12,21 @@ def combine_std_median(flist, DPR_TYPE, outf=None, lmin=4500, lmax=9500,
                        nl=3700, **kwargs):
     lb = np.linspace(lmin, lmax, nl)
     if DPR_TYPE == 'STD_RESPONSE':
-        colname = 'response'
+        colname, errname = 'response', 'resperr'
     elif DPR_TYPE == 'STD_TELLURIC':
-        colname = 'ftelluric'
+        colname, errname = 'ftelluric', 'ftellerr'
     else:
         raise ValueError('unsupported file type')
 
-    resp = []
+    resp, err = [], []
     for stdf in flist:
         std = Table.read(stdf)
         resp.append(np.interp(lb, std['lambda'], std[colname]))
+        err.append(np.interp(lb, std['lambda'], std[errname]))
 
     med = np.median(resp, axis=0)
-    stdcomb = Table([lb, med], names=('lambda', colname))
+    errmean = np.mean(err, axis=0)
+    stdcomb = Table([lb, med, errmean], names=('lambda', colname, errname))
 
     with fits.open(flist[0]) as inhdul:
         hdul = fits.HDUList([inhdul[0].copy(), fits.table_to_hdu(stdcomb)])
