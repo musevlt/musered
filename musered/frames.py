@@ -299,11 +299,16 @@ class FramesFinder:
             elif frame in frames_conf:
                 # If path or glob pattern is specified in settings
                 val = frames_conf[frame]
-                if '*' in val:
-                    framedict[frame] = sorted(glob.glob(val))
+                if isinstance(val, dict):
+                    framedict[frame] = get_file_from_date(val, night)
+                elif isinstance(val, str):
+                    if '*' in val:
+                        framedict[frame] = sorted(glob.glob(val))
+                    else:
+                        framedict[frame] = sorted(
+                            glob.glob(f"{val}/{frame}*.fits"))
                 else:
-                    framedict[frame] = sorted(
-                        glob.glob(f"{val}/{frame}*.fits"))
+                    raise ValueError(f'wrong format for {frame}')
                 debug('- from conf: %s', framedict[frame])
 
             else:
