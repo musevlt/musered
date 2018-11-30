@@ -168,11 +168,19 @@ def _sparta(tab):
     s = [tab[f'LGS{k}_SEEING'].mean() for k in klist]
     res['SP_See'] = float(np.mean(s))
     res['SP_SeeStd'] = float(np.std(s))
+    res['SP_SeeMin'] = float(np.min([tab[f'LGS{k}_SEEING'].min() for k in klist]))
+    res['SP_SeeMax'] = float(np.max([tab[f'LGS{k}_SEEING'].max() for k in klist]))         
     g = [tab[f'LGS{k}_TUR_GND'].mean() for k in klist]
     res['SP_Gl'] = float(np.mean(g))
     res['SP_GlStd'] = float(np.std(g))
+    res['SP_GLMin'] = float(np.min([tab[f'LGS{k}_TUR_GND'].min() for k in klist]))
+    res['SP_GLMax'] = float(np.max([tab[f'LGS{k}_TUR_GND'].max() for k in klist]))         
+    l = [tab[f'LGS{k}_L0'].mean() for k in klist]
+    res['SP_L0'] = float(np.mean(l))
+    res['SP_L0Std'] = float(np.std(l)) 
+    res['SP_L0Min'] = float(np.min([tab[f'LGS{k}_L0'].min() for k in klist]))
+    res['SP_L0Max'] = float(np.max([tab[f'LGS{k}_L0'].max() for k in klist]))     
     return res
-
 
 def _imphot(tabname):
     tab = Table.read(tabname)

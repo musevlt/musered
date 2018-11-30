@@ -560,4 +560,106 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
         names = names.tolist()
     return(dict(names=names, vals=vals, nsig=nsig, mean=mean, std=std))
     
-    
+def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
+    #FIXME run not implemented
+    """compute statitics of QC calibration table with 24 channels
+
+    Parameters
+    ----------
+    mr: musered object
+    table: str
+      name of table
+    qclist: list of str
+      list of the QC column names 
+    nsigma: float
+      value of sigma rejection
+    run: str
+      run id
+
+    Return
+    ------
+    astropy table
+      chan: channel column
+      qc: ac name column 
+      mean: mean value
+      std: standard deviation
+      nclip: number of clipped values
+      nkeep: number of kept values
+    """        
+    nclipped = []
+    nkeep = []
+    mean = []
+    std = []
+    channels = []
+    qc = []
+    for k in range(1,25):
+        for q in qclist:
+            qc.append(q)
+            channels.append(k)
+            vals = [c[q] for c in mr.db[table].find(hdu=f'CHAN{k:02d}')]
+            clipvals = sigma_clip(vals, sigma=nsigma)
+            nclipped.append(np.count_nonzero(clipvals.mask))
+            nkeep.append(np.count_nonzero(~clipvals.mask))
+            mean.append(np.ma.mean(clipvals))
+            std.append(np.ma.std(clipvals))
+    tab = Table(data=[channels,qc,mean,std,nclipped,nkeep], names=['CHAN','QC','MEAN','STD','NCLIP','NKEEP'])
+    return tab
+
+def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
+    #FIXME run not implemented
+    """find outliers in a QC calibration table with 24 channels
+
+    Parameters
+    ----------
+    mr: musered object
+    table: str
+      name of table
+    qclist: list of str
+      list of the QC column names 
+    nsigma: float
+      value of sigma rejection
+    run: str
+      run id
+
+    Return
+    ------
+    astropy table
+      name: column of exposure with deviant values
+      qc: ac name column 
+      chan: channel column
+      val: value
+      mean: mean value
+      std: standard deviation
+      nsig: rejection factors
+    """    
+    out_name = []
+    out_val = []
+    out_mean = []
+    out_std = []
+    out_err = []
+    out_qc = []
+    out_chan = []
+    for k in range(1,25):
+        for q in qclist:
+            vals = []
+            names = []
+            for c in mr.db[table].find(hdu=f'CHAN{k:02d}'):
+                names.append(c['name'])
+                vals.append(c[q])              
+            clipvals = sigma_clip(vals, sigma=nsigma)
+            if np.count_nonzero(clipvals.mask) == 0:
+                continue
+            mean = np.ma.mean(clipvals)
+            std = np.ma.std(clipvals)
+            for n,v in zip(np.array(names)[clipvals.mask],np.array(vals)[clipvals.mask]):
+                err = np.abs((v - mean)/std)
+                out_mean.append(mean)
+                out_std.append(std)
+                out_name.append(n)
+                out_chan.append(k)
+                out_qc.append(q)
+                out_val.append(v)
+                out_err.append(err)
+    tab = Table(names=['NAME','QC','CHAN','VAL','MEAN','STD','NSIGMA'], data=[out_name,out_qc,out_chan,out_val,out_mean,out_std,out_err])
+    for c in ['VAL','MEAN','STD','NSIGMA']: tab[c].format='.3f'
+    return tab
