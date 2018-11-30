@@ -271,8 +271,9 @@ def exp_align(mr, dataset, method, name, params, filter, date, force):
 @click.option('--params', help='name of the parameters block')
 @click.option('--method', default='drs', help='method to use: drs (default) '
               'or mpdaf. This can be overridden in the settings file.')
+@click.option('--name', help='output name, default to "{dataset}_{recipe}"')
 @click.pass_obj
-def exp_combine(mr, dataset, method, params):
+def exp_combine(mr, dataset, method, params, name):
     """Compute offsets between exposures."""
     if method == 'drs':
         recipe_name = 'muse_exp_combine'
@@ -282,7 +283,7 @@ def exp_combine(mr, dataset, method, params):
         raise ValueError(f'unknown method {method}')
 
     mr.exp_combine(dataset, params_name=params, recipe_name=recipe_name,
-                   name=None)
+                   name=name)
 
 
 @click.argument('run')
