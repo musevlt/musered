@@ -72,8 +72,8 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
         recipe_name = 'muse_scipost'
 
     recipe_name = normalize_recipe_name(recipe_name)
-    rows = mr.reduced.find(recipe_name=recipe_name, DPR_TYPE='SKY_SPECTRUM',
-                           name=dates)
+    rows = list(mr.reduced.find(recipe_name=recipe_name, DPR_TYPE='SKY_SPECTRUM',
+                           name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_reduced, 'skyB')
         rows = [row for row in rows if row['name'] not in exists]
@@ -92,7 +92,7 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
 
 
 def qa_sparta(mr, dates=None, skip=True, dry_run=False):
-    rows = mr.raw.find(name=dates)
+    rows = list(mr.raw.find(name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_raw, 'SP_See')
         rows = [row for row in rows if row['name'] not in exists]
@@ -111,7 +111,7 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
 
 
 def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
-    rows = mr.raw.find(name=dates)
+    rows = list(mr.raw.find(name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_raw, 'PR_vers')
         rows = [row for row in rows if row['name'] not in exists]
