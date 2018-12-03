@@ -347,11 +347,21 @@ def test_frames(mr, monkeypatch):
 
 
 def test_illum(mr, caplog):
+    caplog.set_level(logging.DEBUG)
+
     # normal case, returns the closest illum
     assert mr.find_illum('2017-06-15', 12.53, 57920.06) == \
         './raw/MUSE.2017-06-16T01:25:02.867.fits.fz'
     assert mr.find_illum('2017-06-15', 12.5, 57920.06) == \
         './raw/MUSE.2017-06-16T01:57:38.868.fits.fz'
+
+    # only one illum < 2h
+    caplog.clear()
+    mr.set_loglevel('DEBUG')
+    assert mr.find_illum('2017-06-15', 12.53, 57920.05906096 - 1.5/24) == \
+        './raw/MUSE.2017-06-16T01:25:02.867.fits.fz'
+    assert caplog.records[0].message == 'Only one ILLUM in less than 2h'
+    mr.set_loglevel('INFO')
 
     # another night, no illum
     caplog.clear()
