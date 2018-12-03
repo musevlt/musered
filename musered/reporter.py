@@ -406,5 +406,5 @@ class Reporter:
                 hdu.name = get_exp_name(im.filename)
                 hdul.append(hdu)
             if outname:
-                hdul.writeto(outname, savemask='nan')
+                hdul.writeto(outname, overwrite=True)
             return hdul
