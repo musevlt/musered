@@ -318,12 +318,15 @@ class MuseRed(Reporter):
         temperature is used.
 
         """
-        illums = sorted(
+        illums = [
             (o['DATE_OBS'],                       # Date
              abs(o['INS_TEMP7_VAL'] - ref_temp),  # Temperature difference
              abs(o['MJD_OBS'] - ref_mjd_date),    # Date difference
              o['path'])                           # File path
-            for o in self.raw.find(DPR_TYPE='FLAT,LAMP,ILLUM', night=night))
+            for o in self.raw.find(DPR_TYPE='FLAT,LAMP,ILLUM', night=night)]
+
+        # sort by time difference
+        illums.sort(key=operator.itemgetter(2))
 
         if len(illums) == 0:
             self.logger.warning('No ILLUM found')

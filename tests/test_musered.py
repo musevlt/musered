@@ -150,7 +150,7 @@ def test_info_exp(mr, caplog):
         assert line in out
 
 
-def test_info_night(mr, caplog):
+def test_info_night(mr):
     runner = CliRunner()
     result = runner.invoke(cli, ['info', '--night', '2017-06-15',
                                  '--recipe', 'bias'])
@@ -344,3 +344,34 @@ def test_frames(mr, monkeypatch):
         'ASTROMETRY_WCS', 'EXTINCT_TABLE', 'FILTER_LIST', 'LSF_PROFILE',
         'OFFSET_LIST', 'RAMAN_LINES', 'SKY_LINES', 'STD_RESPONSE',
         'STD_TELLURIC']
+
+
+def test_illum(mr, caplog):
+    # normal case, returns the closest illum
+    assert mr.find_illum('2017-06-15', 12.53, 57920.06) == \
+        './raw/MUSE.2017-06-16T01:25:02.867.fits.fz'
+    assert mr.find_illum('2017-06-15', 12.5, 57920.06) == \
+        './raw/MUSE.2017-06-16T01:57:38.868.fits.fz'
+
+    # another night, no illum
+    caplog.clear()
+    assert mr.find_illum('2017-06-14', 11, 57920.06) is None
+    assert caplog.records[0].message == 'No ILLUM found'
+
+    # time diff > 2h, close temp
+    caplog.clear()
+    assert mr.find_illum('2017-06-15', 12.5, 57919) == \
+        './raw/MUSE.2017-06-16T01:25:02.867.fits.fz'
+    assert caplog.records[0].message == 'No ILLUM in less than 2h'
+
+    # time diff > 2h, temp diff > 1
+    caplog.clear()
+    assert mr.find_illum('2017-06-15', 11, 57919) is None
+    assert caplog.records[0].message == 'No ILLUM in less than 2h'
+    assert caplog.records[2].message == \
+        'ILLUM with Temp difference > 1°, not using it'
+
+    # temp diff > 1, found one but returns nothing
+    caplog.clear()
+    assert mr.find_illum('2017-06-15', 11, 57920.06) is None
+    assert caplog.records[0].message.startswith('Found ILLUM')
