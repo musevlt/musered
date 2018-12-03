@@ -304,6 +304,8 @@ class FramesFinder:
                 elif isinstance(val, str):
                     if '*' in val:
                         framedict[frame] = sorted(glob.glob(val))
+                    elif val.endswith(('.fits', '.fits.fz', '.fits.gz')):
+                        framedict[frame] = [val]
                     else:
                         framedict[frame] = sorted(
                             glob.glob(f"{val}/{frame}*.fits"))
