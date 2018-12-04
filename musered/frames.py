@@ -98,27 +98,40 @@ class FramesFinder:
         conf = self.frames.get('exclude', {})
         self._excludes[key] = exc = defaultdict(list)
 
-        if DPR_TYPE and DPR_TYPE not in conf:
-            return []
-
-        # use the exclude setting to build the list of excluded files
-        raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
-        for dpr, items in conf.items():
-            if DPR_TYPE and dpr != DPR_TYPE:
-                pass
-            table = self.mr.get_table('raw' if dpr in raw_types else 'reduced')
+        # this func iterates on the lines of an exclude block, and exclude
+        # exposures matching the query defined by this line
+        def process_exc(items, table='raw'):
+            tbl = self.mr.get_table(table)
             for item in items:
                 if isinstance(item, str):
                     exc['name'].append(item)
                     exc['TPL_START'].append(item)
                 elif isinstance(item, dict):
                     # if the item is a dict use the keys/values to query the db
-                    for o in table.find(**item):
+                    for o in tbl.find(**item):
                         exc['name'].append(o['name'])
                         exc['night'].append(o['night'])
                         exc['TPL_START'].append(o['TPL_START'])
                 else:
                     raise ValueError(f'wrong format for {DPR_TYPE} excludes')
+
+        # the raw block is special, it allows to match any raw file
+        if 'raw' in conf:
+            process_exc(conf['raw'])
+
+        # if the DPR_TYPE is not in the defined blocks, we are done. Return the
+        # list of excluded files that may be empty and could also be filled by
+        # the raw block
+        if DPR_TYPE and DPR_TYPE not in conf:
+            return self._excludes[key][column]
+
+        # now process either all blocks, if DPR_TYPE is None, or just the one
+        # of the DPR_TYPE
+        raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
+        for dpr, items in conf.items():
+            if DPR_TYPE and dpr != DPR_TYPE:
+                pass
+            process_exc(items, table='raw' if dpr in raw_types else 'reduced')
 
         return self._excludes[key][column]
 
