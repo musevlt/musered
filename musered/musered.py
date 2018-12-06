@@ -494,7 +494,8 @@ class MuseRed(Reporter):
                 log.info('===================================================')
 
     def _run_recipe_simple(self, recipe_cls, name, OBJECT, flist,
-                           params_name=None, save_kwargs=None, **kwargs):
+                           params_name=None, save_kwargs=None,
+                           dry_run=False, **kwargs):
         """Run a recipe once, simpler than _run_recipe_loop.
 
         This is to run recipes like exp_align, exp_combine. Takes a list of
@@ -511,6 +512,9 @@ class MuseRed(Reporter):
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
         kwargs.update(self.frames.get_frames(recipe, recipe_conf=recipe_conf,
                                              OBJECT=OBJECT))
+
+        if dry_run:
+            return
 
         recipe.run(flist, params=recipe_conf.get('params'), **kwargs)
         self._save_reduced(recipe, keys=('name', 'recipe_name', 'DPR_TYPE'),
@@ -695,18 +699,19 @@ class MuseRed(Reporter):
         """Combine exposures for a dataset."""
 
         recipe_name = normalize_recipe_name(recipe_name)
-        recipe_cls = get_recipe_cls(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
+        recipe_cls = get_recipe_cls(recipe_name)
         DPR_TYPE = recipe_cls.DPR_TYPE
         name_dict = {'muse_exp_combine': 'drs', 'mpdaf_combine': 'mpdaf'}
         name = (name or recipe_conf.get('name') or '{}_{}'.format(
             dataset, name_dict.get(recipe_name, recipe_name)))
+        select = recipe_conf.get('select', {})
 
         # get the list of files to process
         flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
                  for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                            recipe_name=from_recipe)]
+                                            recipe_name=from_recipe, **select)]
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 

@@ -253,8 +253,9 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
               help='exposure to process, by default all exposures are used')
 @click.option('-f', '--force', is_flag=True,
               help='force re-processing (imphot only)')
+@click.option('--dry-run', is_flag=True, help='do not run the recipe')
 @click.pass_obj
-def exp_align(mr, dataset, method, name, params, filter, date, force):
+def exp_align(mr, dataset, method, name, params, filter, date, force, dry_run):
     """Compute offsets between exposures."""
     if method == 'drs':
         recipe_name = 'muse_exp_align'
@@ -264,7 +265,7 @@ def exp_align(mr, dataset, method, name, params, filter, date, force):
         raise ValueError(f'unknown method {method}')
 
     mr.exp_align(dataset, recipe_name=recipe_name, filt=filter, name=name,
-                 params_name=params, exps=date, force=force)
+                 params_name=params, exps=date, force=force, dry_run=dry_run)
 
 
 @click.argument('dataset')
@@ -272,8 +273,9 @@ def exp_align(mr, dataset, method, name, params, filter, date, force):
 @click.option('--method', default='drs', help='method to use: drs (default) '
               'or mpdaf. This can be overridden in the settings file.')
 @click.option('--name', help='output name, default to "{dataset}_{recipe}"')
+@click.option('--dry-run', is_flag=True, help='do not run the recipe')
 @click.pass_obj
-def exp_combine(mr, dataset, method, params, name):
+def exp_combine(mr, dataset, method, params, name, dry_run):
     """Compute offsets between exposures."""
     if method == 'drs':
         recipe_name = 'muse_exp_combine'
@@ -283,7 +285,7 @@ def exp_combine(mr, dataset, method, params, name):
         raise ValueError(f'unknown method {method}')
 
     mr.exp_combine(dataset, params_name=params, recipe_name=recipe_name,
-                   name=name)
+                   name=name, dry_run=dry_run)
 
 
 @click.argument('run')
