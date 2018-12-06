@@ -508,14 +508,15 @@ def all_subclasses(cls):
     return set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
+
 def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_upper=5):
     """find outliers in a subset of a table,column
-    
+
     Parameters
     ----------
     table: mr.table
     colname: str
-      name of column 
+      name of column
     name: str
       exposure column name
     exps: list
@@ -524,7 +525,7 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
       value of lower sigma rejection (must be positive)
     sigma_upper: float
       value of upper sigma rejection
-      
+
     Return
     ------
     dict
@@ -532,7 +533,7 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
       vals: list of deviant values
       nsig: list of rejection factors
       mean: mean value
-      std: standard deviation   
+      std: standard deviation
     """
     logger = logging.getLogger(__name__)
     if exps is not None:
@@ -559,7 +560,8 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
         names = np.array(names)[vclip.mask]
         names = names.tolist()
     return(dict(names=names, vals=vals, nsig=nsig, mean=mean, std=std))
-    
+
+
 def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
     #FIXME run not implemented
     """compute statitics of QC calibration table with 24 channels
@@ -570,7 +572,7 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
     table: str
       name of table
     qclist: list of str
-      list of the QC column names 
+      list of the QC column names
     nsigma: float
       value of sigma rejection
     run: str
@@ -580,12 +582,12 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
     ------
     astropy table
       chan: channel column
-      qc: ac name column 
+      qc: ac name column
       mean: mean value
       std: standard deviation
       nclip: number of clipped values
       nkeep: number of kept values
-    """        
+    """
     nclipped = []
     nkeep = []
     mean = []
@@ -605,6 +607,7 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
     tab = Table(data=[channels,qc,mean,std,nclipped,nkeep], names=['CHAN','QC','MEAN','STD','NCLIP','NKEEP'])
     return tab
 
+
 def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
     #FIXME run not implemented
     """find outliers in a QC calibration table with 24 channels
@@ -615,7 +618,7 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
     table: str
       name of table
     qclist: list of str
-      list of the QC column names 
+      list of the QC column names
     nsigma: float
       value of sigma rejection
     run: str
@@ -625,13 +628,13 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
     ------
     astropy table
       name: column of exposure with deviant values
-      qc: ac name column 
+      qc: ac name column
       chan: channel column
       val: value
       mean: mean value
       std: standard deviation
       nsig: rejection factors
-    """    
+    """
     out_name = []
     out_val = []
     out_mean = []
@@ -645,7 +648,7 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
             names = []
             for c in mr.db[table].find(hdu=f'CHAN{k:02d}'):
                 names.append(c['name'])
-                vals.append(c[q])              
+                vals.append(c[q])
             clipvals = sigma_clip(vals, sigma=nsigma)
             if np.count_nonzero(clipvals.mask) == 0:
                 continue
@@ -663,3 +666,8 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
     tab = Table(names=['NAME','QC','CHAN','VAL','MEAN','STD','NSIGMA'], data=[out_name,out_qc,out_chan,out_val,out_mean,out_std,out_err])
     for c in ['VAL','MEAN','STD','NSIGMA']: tab[c].format='.3f'
     return tab
+
+
+def dict_values(d):
+    """Return a list of all values in a dict."""
+    return list(itertools.chain(*d.values()))

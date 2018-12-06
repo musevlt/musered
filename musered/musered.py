@@ -21,7 +21,7 @@ from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
 from .reporter import Reporter
 from .utils import (load_yaml_config, load_db, load_table, parse_raw_keywords,
                     parse_qc_keywords, ProgressBar, parse_gto_db, upsert_many,
-                    parse_weather_conditions)
+                    parse_weather_conditions, dict_values)
 from .version import __version__
 
 __all__ = ('MuseRed', )
@@ -502,8 +502,12 @@ class MuseRed(Reporter):
         files and process them.
         """
         self.logger.info('Running %s', recipe_cls.recipe_name)
-        self.logger.info('%d files', len(flist))
-        self.logger.debug('- ' + '\n- '.join(flist))
+        if isinstance(flist, (list, tuple)):
+            self.logger.info('%d files', len(flist))
+            self.logger.debug('- ' + '\n- '.join(flist))
+        elif isinstance(flist, dict):
+            self.logger.info('%d files', len(dict_values(flist)))
+            self.logger.debug('- ' + '\n- '.join(flist))  # FIXME: improve this
 
         # Instantiate the recipe object
         recipe_name = params_name or recipe_cls.recipe_name
@@ -715,28 +719,30 @@ class MuseRed(Reporter):
 
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
-    def std_combine(self, run, recipe_name='muse_std_combine', name=None,
+    def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
                     params_name=None, **kwargs):
-        """Combine std stars for a run."""
+        """Combine std stars for a list of runs."""
 
         recipe_cls = get_recipe_cls(recipe_name)
         recipe_conf = self._get_recipe_conf(params_name or
                                             recipe_cls.recipe_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
         DPR_TYPES = recipe_cls.DPR_TYPES
-        name = name or run
 
-        # get the list of files to process
-        # FIXME: add helper to get the list of files for a query
-        flist = {DPR_TYPE: [
-            next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-            for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
-                                       recipe_name=from_recipe)]
-                 for DPR_TYPE in DPR_TYPES}
+        for run in runs:
+            name = name or run
 
-        self._run_recipe_simple(recipe_cls, name, run, flist,
-                                params_name=params_name,
-                                save_kwargs={'run': run}, **kwargs)
+            # get the list of files to process
+            # FIXME: add helper to get the list of files for a query
+            flist = {DPR_TYPE: [
+                next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
+                for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
+                                           recipe_name=from_recipe)]
+                     for DPR_TYPE in DPR_TYPES}
+
+            self._run_recipe_simple(recipe_cls, name, run, flist,
+                                    params_name=params_name,
+                                    save_kwargs={'run': run}, **kwargs)
 
     def _get_recipe_conf(self, recipe_name, item=None):
         """Get config dict for a recipe."""
