@@ -254,10 +254,11 @@ class Reporter:
         self.fmt.show_table(t, max_width=-1)
 
     def info_qc(self, dpr_type, date_list=None, **kwargs):
-        if dpr_type not in self.db:
+        tablename = f'qc_{dpr_type}'
+        if tablename not in self.db:
             self.update_qc(dpr_types=[dpr_type])
 
-        table = self.db[dpr_type]
+        table = self.db[tablename]
         if not date_list:
             date_list = [o['DATE_OBS'] for o in table.distinct('DATE_OBS')]
         elif isinstance(date_list, str):
