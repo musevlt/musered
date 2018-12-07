@@ -54,10 +54,15 @@ class MuseRed(Reporter):
         self.db = load_db(self.conf['db'])
 
         version = self.version.replace('.', '_')
-        self.tables = {'raw': 'raw',
-                       'reduced': f'reduced_{version}',
-                       'qa_raw': 'qa_raw',
-                       'qa_reduced': f'qa_reduced_{version}', }
+        self.tables = {
+            'raw': 'raw',
+            'reduced': f'reduced_{version}',
+            'qa_raw': 'qa_raw',
+            'qa_reduced': f'qa_reduced_{version}',
+            'gto_logs': 'gto_logs',
+            'weather_conditions': 'weather_conditions',
+            'qc_info': 'qc_info',
+        }
         for attrname, tablename in self.tables.items():
             setattr(self, attrname, self.db.create_table(tablename))
 
@@ -245,33 +250,46 @@ class MuseRed(Reporter):
             if exc in dpr_types:
                 dpr_types.remove(exc)
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.now().isoformat()
         for dpr_type in dpr_types:
             self.logger.info('Parsing %s files', dpr_type)
 
-            if dpr_type in self.db:
-                self.logger.info('Dropping existing table')
-                self.db[dpr_type].drop()
-            table = self.db.create_table(dpr_type)
-            # TODO: skip already parsed files
+            tbl = self.db[f'qc_{dpr_type}']
+            if 'version' in tbl.columns:
+                # for now we need to check that version is present, but this
+                # can be removed in the future
+                processed = self.select_column(
+                    'name', table=tbl.name,
+                    where=(tbl.table.c.version == self.version))
+            else:
+                processed = []
 
             rows = []
             items = list(self.reduced.find(DPR_TYPE=dpr_type))
             for item in ProgressBar(items):
+                if item['name'] in processed:
+                    continue
+
                 keys = {k: item[k] for k in ('name', 'DATE_OBS', 'INS_MODE')}
                 keys['reduced_id'] = item['id']
                 keys['recipe_name'] = item['recipe_name']
                 keys['date_parsed'] = now
+                keys['version'] = self.version
                 flist = sorted(iglob(f"{item['path']}/{dpr_type}*.fits"))
                 for row in parse_qc_keywords(flist):
                     rows.append({**keys, **row})
 
             if len(rows) == 0:
-                self.logger.info('found no QC params')
+                self.logger.info('nothing to do')
                 continue
 
-            table.insert_many(rows)
+            tbl.insert_many(rows)
             self.logger.info('inserted %d rows', len(rows))
+            self.qc_info.upsert(
+                {'DPR_TYPE': dpr_type, 'table': f'qc_{dpr_type}',
+                 'version': self.version, 'date_updated': now,
+                 'nrows': tbl.count(version=self.version)},
+                ['DPR_TYPE', 'version'])
 
     def clean(self, recipe_list=None, date_list=None, night_list=None,
               remove_files=True, force=False):
