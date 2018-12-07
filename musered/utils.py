@@ -489,7 +489,7 @@ def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
         columns = tables
 
     if keys is None:
-        keys = [('name', 'name')]*(len(tables)-1)
+        keys = [('name', 'name')] * (len(tables) - 1)
 
     query = sql.select(columns, use_labels=use_labels,
                        whereclause=whereclause, **params)
@@ -509,8 +509,9 @@ def all_subclasses(cls):
         [s for c in cls.__subclasses__() for s in all_subclasses(c)])
 
 
-def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_upper=5):
-    """find outliers in a subset of a table,column
+def find_outliers(table, colname, name='name', exps=None, sigma_lower=5,
+                  sigma_upper=5):
+    """Find outliers in a subset of a table,column.
 
     Parameters
     ----------
@@ -540,12 +541,14 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
         res = table.find(name=exps)
     else:
         res = table.find()
-    tab = [[e[colname],e[name]] for e in res if e[colname] is not None]
+    tab = [[e[colname], e[name]] for e in res if e[colname] is not None]
     vals = list(zip(*tab))[0]
     names = list(zip(*tab))[1]
-    vclip = sigma_clip(vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper, copy=True)
+    vclip = sigma_clip(vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper,
+                       copy=True)
     flagged = np.count_nonzero(vclip.mask)
-    logger.debug('Found %d outliers values of %s over %d lines', flagged, colname, len(vals))
+    logger.debug('Found %d outliers values of %s over %d lines',
+                 flagged, colname, len(vals))
     mean = np.ma.mean(vclip)
     std = np.ma.std(vclip)
     if flagged == 0:
@@ -555,7 +558,7 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
     else:
         vals = np.array(vals)[vclip.mask]
         vals = vals.tolist()
-        nsig = (vals - mean)/std
+        nsig = (vals - mean) / std
         nsig = nsig.tolist()
         names = np.array(names)[vclip.mask]
         names = names.tolist()
@@ -563,7 +566,7 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5, sigma_u
 
 
 def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
-    #FIXME run not implemented
+    # FIXME run not implemented
     """compute statitics of QC calibration table with 24 channels
 
     Parameters
@@ -594,7 +597,7 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
     std = []
     channels = []
     qc = []
-    for k in range(1,25):
+    for k in range(1, 25):
         for q in qclist:
             qc.append(q)
             channels.append(k)
@@ -604,12 +607,13 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
             nkeep.append(np.count_nonzero(~clipvals.mask))
             mean.append(np.ma.mean(clipvals))
             std.append(np.ma.std(clipvals))
-    tab = Table(data=[channels,qc,mean,std,nclipped,nkeep], names=['CHAN','QC','MEAN','STD','NCLIP','NKEEP'])
+    tab = Table(data=[channels, qc, mean, std, nclipped, nkeep],
+                names=['CHAN', 'QC', 'MEAN', 'STD', 'NCLIP', 'NKEEP'])
     return tab
 
 
 def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
-    #FIXME run not implemented
+    # FIXME run not implemented
     """find outliers in a QC calibration table with 24 channels
 
     Parameters
@@ -642,7 +646,7 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
     out_err = []
     out_qc = []
     out_chan = []
-    for k in range(1,25):
+    for k in range(1, 25):
         for q in qclist:
             vals = []
             names = []
@@ -654,8 +658,9 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
                 continue
             mean = np.ma.mean(clipvals)
             std = np.ma.std(clipvals)
-            for n,v in zip(np.array(names)[clipvals.mask],np.array(vals)[clipvals.mask]):
-                err = np.abs((v - mean)/std)
+            for n, v in zip(np.array(names)[clipvals.mask],
+                            np.array(vals)[clipvals.mask]):
+                err = np.abs((v - mean) / std)
                 out_mean.append(mean)
                 out_std.append(std)
                 out_name.append(n)
@@ -663,8 +668,11 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
                 out_qc.append(q)
                 out_val.append(v)
                 out_err.append(err)
-    tab = Table(names=['NAME','QC','CHAN','VAL','MEAN','STD','NSIGMA'], data=[out_name,out_qc,out_chan,out_val,out_mean,out_std,out_err])
-    for c in ['VAL','MEAN','STD','NSIGMA']: tab[c].format='.3f'
+    tab = Table(names=['NAME', 'QC', 'CHAN', 'VAL', 'MEAN', 'STD', 'NSIGMA'],
+                data=[out_name, out_qc, out_chan, out_val, out_mean, out_std,
+                      out_err])
+    for c in ['VAL', 'MEAN', 'STD', 'NSIGMA']:
+        tab[c].format = '.3f'
     return tab
 
 
