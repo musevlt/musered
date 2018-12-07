@@ -230,7 +230,7 @@ class MuseRed(Reporter):
         # Cleanup cached attributes
         del self.nights, self.runs, self.exposures
 
-    def update_qc(self, dpr_types=None, recipe_name=None):
+    def update_qc(self, dpr_types=None, recipe_name=None, force=False):
         """Create or update the tables containing QC keywords."""
         if recipe_name is not None:
             recipe_name = normalize_recipe_name(recipe_name)
@@ -255,9 +255,7 @@ class MuseRed(Reporter):
             self.logger.info('Parsing %s files', dpr_type)
 
             tbl = self.db[f'qc_{dpr_type}']
-            if 'version' in tbl.columns:
-                # for now we need to check that version is present, but this
-                # can be removed in the future
+            if not force and tbl.count():
                 processed = self.select_column(
                     'name', table=tbl.name,
                     where=(tbl.table.c.version == self.version))
@@ -270,11 +268,14 @@ class MuseRed(Reporter):
                 if item['name'] in processed:
                     continue
 
-                keys = {k: item[k] for k in ('name', 'DATE_OBS', 'INS_MODE')}
-                keys['reduced_id'] = item['id']
-                keys['recipe_name'] = item['recipe_name']
-                keys['date_parsed'] = now
-                keys['version'] = self.version
+                keys = {
+                    'name': item['name'],
+                    'reduced_id': item['id'],
+                    'version': self.version,
+                    'recipe_name': item['recipe_name'],
+                    'date_parsed': now,
+                    **{k: item[k] for k in ('DATE_OBS', 'INS_MODE', 'run')}
+                }
                 flist = sorted(iglob(f"{item['path']}/{dpr_type}*.fits"))
                 for row in parse_qc_keywords(flist):
                     rows.append({**keys, **row})

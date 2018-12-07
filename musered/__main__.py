@@ -82,11 +82,13 @@ def update_db(mr, force):
 
 @click.option('--type', multiple=True, help='type of file to parse (DPR.TYPE)')
 @click.option('--recipe', help='recipe for which files are parsed')
+@click.option('-f', '--force', is_flag=True,
+              help='force update for existing rows')
 @click.pass_obj
-def update_qc(mr, type, recipe):
+def update_qc(mr, type, recipe, force):
     """Create or update the database containing QC keywords."""
     logger.info('Updating the QC tables')
-    mr.update_qc(dpr_types=type, recipe_name=recipe)
+    mr.update_qc(dpr_types=type, recipe_name=recipe, force=force)
 
 
 @click.option('--short', is_flag=True, help='shortened output for --exp')
