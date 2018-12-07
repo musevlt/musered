@@ -250,11 +250,16 @@ class IMPHOT(PythonRecipe):
             t.meta['MJD-OBS'] = hdr['MJD-OBS']
             t.write(join(outdir, 'IMPHOT.fits'), overwrite=True)
 
+        outname = join(self.output_dir, 'OFFSET_LIST.fits')
+
+        if len(offset_rows) == 0:
+            self.logger.info('Already up-to-date')
+            return outname
+
         t = Table(rows=offset_rows,
                   names=('DATE_OBS', 'MJD_OBS', 'RA_OFFSET', 'DEC_OFFSET'),
                   dtype=('S23', float, float, float))
 
-        outname = join(self.output_dir, 'OFFSET_LIST.fits')
         if os.path.exists(outname):
             self.logger.info('Updating OFFSET_LIST')
             off = Table.read(outname)
