@@ -4,7 +4,8 @@ import warnings
 
 from .musered import MuseRed  # noqa
 from .recipes import *  # noqa
-from .settings import RAW_FITS_KEYWORDS
+from .settings import RAW_FITS_KEYWORDS  # noqa
+from .version import __version__, __description__  # noqa
 
 warnings.simplefilter('ignore', category=UnitsWarning)
 
