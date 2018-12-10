@@ -1,7 +1,7 @@
 [run]
 source = musered
 omit =
-   musered/_githash.py
+   */musered/_githash.py
 
 [report]
 show_missing = false
