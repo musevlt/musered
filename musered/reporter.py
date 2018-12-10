@@ -71,6 +71,9 @@ class Reporter:
 
     def list_runs(self):
         """Print the list of runs."""
+        if not self.runs:
+            return
+
         self.fmt.show_title('Runs:')
         for name in sorted(self.runs):
             run = self.conf['runs'][name]
@@ -100,6 +103,10 @@ class Reporter:
         self.list_datasets()
         print()
         self.list_runs()
+
+        if len(self.raw) == 0:
+            self.fmt.show_text('Nothing yet.')
+            return
 
         redc = self.reduced.table.c
         exclude_names = self.frames.get_excludes() if filter_excludes else None

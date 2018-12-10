@@ -101,9 +101,9 @@ class MuseRed(Reporter):
     @lazyproperty
     def calib_exposures(self):
         """Return the calibration sequences (TPL.START) for each DPR_TYPE."""
-        if 'night' not in self.raw.columns:
-            return []
         out = defaultdict(list)
+        if 'night' not in self.raw.columns:
+            return out
         for dpr_type, name in self.execute(
                 sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
                 .where(self.rawc.DPR_TYPE.isnot(None))
@@ -115,9 +115,9 @@ class MuseRed(Reporter):
     @lazyproperty
     def exposures(self):
         """Return a dict of science exposure per target."""
-        if 'night' not in self.raw.columns:
-            return {}
         out = defaultdict(list)
+        if 'night' not in self.raw.columns:
+            return out
         for obj, name in self.execute(
                 sql.select([self.rawc.OBJECT, self.rawc.name])
                 .order_by(self.rawc.name)
@@ -135,7 +135,7 @@ class MuseRed(Reporter):
     def get_table(self, name):
         name = self.tables.get(name, name)
         if name not in self.db:
-            raise ValueError('unknown table')
+            raise ValueError(f'unknown table {name}')
         return self.db[name]
 
     def get_astropy_table(self, name):
