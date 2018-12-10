@@ -20,4 +20,4 @@ recipes from the MUSE pipeline on the calibrations and science exposures.
    settings
    cli
    api
-
+   changelog
