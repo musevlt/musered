@@ -83,7 +83,7 @@ class FramesFinder:
             if f.endswith(('.fits', '.fits.fz', '.fits.gz')):
                 key = fits.getval(os.path.join(self.static_path, f),
                                   'ESO PRO CATG', ext=0)
-            cat[key].append(f)
+                cat[key].append(f)
         return cat
 
     def get_excludes(self, DPR_TYPE=None, column='name'):
