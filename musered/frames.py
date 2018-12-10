@@ -64,7 +64,7 @@ class FramesFinder:
         self.conf = mr.conf
         self.logger = logging.getLogger(__name__)
         self.static_path = self.conf['muse_calib_path']
-        self.static_conf = self.conf['static_calib']
+        self.static_conf = self.conf.get('static_calib', {})
 
         # frames settings
         self.frames = self.conf.get('frames', {})
