@@ -20,7 +20,8 @@ the current directory. This file contains all the settings about directories,
 global options, parameters for the *musered* commands, and for the reduction
 recipes.
 
-See also the :doc:`settings` example.
+The complete settings file is available :doc:`here <settings>`, we will go
+through it in this page.
 
 The first part of the file contains general variables, like the working
 directory; the raw, reduced and calibration paths; version numbers; and logging
@@ -50,22 +51,30 @@ For instance to define a `IC4406` dataset:
    :start-at: datasets
    :end-at: obs_targ_name
 
-See the next paragraph for the meaning of ``archive_filter``.
+Here the first occurrence of IC4406 defines the dataset name, which will be
+used in various Musered commands like for offsets computation or exposures
+combination. Then the ``archive_filter`` block defines how the data is
+retrieved from the ESO archive, see the next section.
 
 
 Data retrieval
 --------------
 
-Retrieving a dataset is done with `Astroquery
+Retrieving data is done with `Astroquery
 <https://astroquery.readthedocs.io/en/latest/eso/eso.html>`__. To find all the
 possible query options for Muse, that can be uses with the ``archive_filter``
 setting, use this::
 
     $ musered retrieve-data --help-query
 
-``archive_filter`` must then contain a list of key/value items, defining a query
-on the ESO archive.  For the IC4406 example we just use the target name, but it
-is also possible to specify dates, instrument mode, or a programme ID.
+``archive_filter`` must then contain a list of key/value items, defining
+a query on the ESO archive. Each key given by ``--help-query`` corresponds to
+an input of the ESO `Raw Data Query Form
+<http://archive.eso.org/eso/eso_archive_main.html>`_
+
+For the IC4406 example we just use the target name (``obs_targ_name``), but it
+is also possible to specify dates, instrument mode (``ins_mode``), or
+a programme ID (``prog_id``).
 
 Once a dataset is defined in the settings file, its data files can be retrieved
 with this command::
@@ -80,26 +89,31 @@ downloaded, and makes the query only with the missing ones. Then another check
 is done for the calibration files, so only the missing files are retrieved.
 
 .. warning::
-    One drawback of this deduplication is that, if an OBJECT file was retrieved
-    but the process was interrupted before all its calibrations were retrieved,
-    at the next execution the missing calibrations will not be downloaded.
+    One drawback of this de-duplication is that, if an OBJECT file was
+    retrieved but the process was interrupted before all its calibrations were
+    retrieved, at the next execution the missing calibrations will not be
+    downloaded.
 
-    This is fixed with Astroquery 0.3.9.dev582 (``pip install
-    astroquery==0.3.9.dev582``) and using the ``--force`` option which will
-    force the query to be done with all OBJECT files.
+    Using the ``--force`` option which will force the query to be done with all
+    OBJECT files.
+
+``retrieve-data`` offers a few more option, like specifying the start or end
+date for the query (``--start``, ``--end``), which can be useful to speed-up
+the query, or ``--calib`` to retrieve all the calibration files for a given
+night.
 
 
 Ingesting metadata in a database
 --------------------------------
 
-Then the next step is to ingest FITS keywords in a SQLite database. This step
-is triggered automatically by the ``retrieve-data`` command, but it can also be
-run manually if needed, with::
+Then the next step is to ingest FITS keywords in a database (SQLite by
+default). This step is triggered automatically by the ``retrieve-data``
+command, but it can also be run manually if needed, with::
 
     $ musered update-db
 
-This command can be run each time new data are retrieved, and by default it will
-add only the new files that are not yet in the database.
+This command can be run each time new data are retrieved, and by default it
+will add only the new files that are not yet in the database.
 
 During this step, the ``raw`` table is created or updated with FITS keywords
 from all FITS files found in the ``raw_path`` directory. It will also ingest the
@@ -115,11 +129,24 @@ Inspecting the database
 The `musered info` command provides several ways to inspect the content of the
 database and the state of the reduction. See :doc:`inspect` for more details.
 
-Running recipes
----------------
+.. _date-selection:
 
-Configuration
-^^^^^^^^^^^^^
+Date selection
+--------------
+
+In various places it is needed to specify dates (settings, command-line). For
+convenience it is possible to specify ranges of dates (runs), that can be
+substituted in the settings file, or used in commands.
+
+For instance this defines a ``GTO27`` run, with a tag that can be used later in
+the settings (``&GTO17``):
+
+.. literalinclude:: _static/settings.yml
+   :start-at: runs
+   :end-at: end_date
+
+Recipe Configuration
+--------------------
 
 The parameters for each recipe can be specified in the ``recipes`` block in the
 settings file. By default this is not needed as the default parameters from the
@@ -136,6 +163,22 @@ By default the parameters for a recipe must be set in a block with the recipe
 name, but this can also be specified with ``--params`` which can be used to run
 the same recipe with different sets of paramaters.  The paramater names and
 values are the same as the DRS ones.
+
+Frames
+------
+
+Static calibrations
+^^^^^^^^^^^^^^^^^^^
+
+The static calibrations (badpix table, astrometry, geometry table, etc.) are
+found in the ``muse_calib_path`` directory. It is possible to specify a range
+of dates for which each file is valid. Here we use the runs defined above
+(:ref:`date-selection`), with the ``*GTO17`` notation that makes
+a substitution which the dictionary defined above:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: Static calibrations
+   :end-at: geometry_table_wfm_gto19
 
 Frames associations
 ^^^^^^^^^^^^^^^^^^^
@@ -164,7 +207,16 @@ It is also possible to specify the path or the files that must be used:
          MASTER_BIAS: /path/to/MASTER_BIAS/
          MASTER_FLAT: /path/to/MASTER_FLAT/MASTER_FLAT*.fits
 
-TODO: Allow to specify frames for a given night
+It is also possible to specify frames with a given range of validity, as
+explained above:
+
+.. code-block:: yaml
+
+   muse_wavecal:
+      frames:
+         STD_RESPONSE: 
+            "{workdir}/path/to/STD_RESPONSE_GTO17.fits": *GTO17
+            "{workdir}/path/to/STD_RESPONSE_GTO19.fits": *GTO19
 
 The number of nights before and after the current one, for which frames are
 searched for, can be specified with ``offsets``:
@@ -178,6 +230,44 @@ searched for, can be specified with ``offsets``:
             STD_RESPONSE: 5
             TWILIGHT_CUBE: 3
 
+Frames exclusion
+^^^^^^^^^^^^^^^^
+
+It is possible to exclude globally some files or sequences of calibration,
+which is useful when a sequence is of bad quality or incomplete, or sometimes
+just because the ESO associations which lead to the retrieval of calibrations
+that are not useful.
+
+.. code-block:: yaml
+
+   frames:
+      exclude:
+         raw:
+            # This block matches any raw files, for instance for nights 
+            # with useless calibrations:
+            - night: ["2018-08-11", "2018-08-18"]
+         WAVE:
+            # Block for a given DPR.TYPE == WAVE, then matching files for a 
+            # bad sequence identified by its TPL.START date:
+            - TPL_START: "2018-08-15T19:20:20"
+
+Setting custom frames
+^^^^^^^^^^^^^^^^^^^^^
+
+It may happen that one need to set a custom ``OFFSET_LIST`` or ``OUTPUT_WCS``.
+This can be done by setting directly the file name. For example here the offsets
+computed by the DRS are not good, so we could compute manually better offsets
+and use something like this:
+
+.. code-block:: yaml
+
+    muse_exp_combine:
+      frames:
+        OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
+
+
+Running recipes
+---------------
 
 Calibrations
 ^^^^^^^^^^^^
@@ -303,18 +393,3 @@ from ``PIXTABLE_REDUCED``::
 .. literalinclude:: _static/settings.yml
    :start-at: mpdaf_combine:
    :end-at: version
-
-Setting custom frames
-^^^^^^^^^^^^^^^^^^^^^
-
-It may happen that one need to set a custom ``OFFSET_LIST`` or ``OUTPUT_WCS``.
-This can be done by setting directly the file name. For example here the offsets
-computed by the DRS are not good, so we could compute manually better offsets
-and use something like this:
-
-.. code-block:: yaml
-
-    muse_exp_combine:
-      frames:
-        OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
-

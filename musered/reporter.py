@@ -10,7 +10,6 @@ from astropy.table import Table
 from collections import defaultdict
 from glob import iglob
 from mpdaf.obj import Image, Cube
-from sqlalchemy import sql
 
 from .recipes import recipe_classes, normalize_recipe_name
 from .utils import query_count_to_table, get_exp_name

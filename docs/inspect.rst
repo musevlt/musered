@@ -23,9 +23,12 @@ to get easily the list of nights or exposures:
 Raw data
 --------
 
+``--raw`` takes a comma-separated list of ``key:value`` items that define
+a selection on the ``raw`` table, e.g. ``night:2018-08-14,DPR_CATG:CALIB``.
+
 To list all raw data files for a given night:
 
-.. program-output:: musered info --raw 2017-06-17
+.. program-output:: musered info --raw night:2017-06-17
    :prompt:
    :cwd: _static
 
@@ -37,6 +40,12 @@ reduction, with the number and type for the raw data, processed calibration, and
 reduced data:
 
 .. program-output:: musered info
+   :prompt:
+   :cwd: _static
+
+To view only a specific table, use ``--table`` (raw, calib, science):
+
+.. program-output:: musered info --tables raw
    :prompt:
    :cwd: _static
 
