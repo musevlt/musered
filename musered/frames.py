@@ -176,20 +176,26 @@ class FramesFinder:
             raise ValueError(f'could not find {file}')
         return os.path.join(self.static_path, file)
 
-    def find_calib(self, night, dpr_type, ins_mode, day_off=None):
+    def find_calib(self, night, DPR_TYPE, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
         info = self.logger.info
-        excludes = self.get_excludes(dpr_type)
+        excludes = self.get_excludes(DPR_TYPE)
 
-        # Find calib for the given night, mode and type
-        res = {o['name']: o for o in self.mr.reduced.find(
-            night=night, INS_MODE=ins_mode, DPR_TYPE=dpr_type)}
+        # Find calibrations for the given night, mode and type
+        clauses = dict(DPR_TYPE=DPR_TYPE)
+        if DPR_TYPE in ('MASTER_FLAT', 'STD_RESPONSE', 'STD_TELLURIC',
+                        'LSF_PROFILE'):
+            # For these DPR.TYPEs we need to match the INS.MODE
+            clauses['INS_MODE'] = ins_mode
+
+        res = {o['name']: o for o in self.mr.reduced.find(night=night,
+                                                          **clauses)}
 
         # Check if some calib must be excluded
         if res and excludes:
             for name in excludes:
                 if name in res:
-                    info('%s for night %s is excluded', dpr_type, night)
+                    info('%s for night %s is excluded', DPR_TYPE, night)
                     del res[name]
 
         # If no calib was found, iterate on the days before/after
@@ -199,32 +205,31 @@ class FramesFinder:
             for off, direction in product(range(1, day_off + 1), (1, -1)):
                 off = datetime.timedelta(days=off * direction)
                 res = {o['name']: o for o in self.mr.reduced.find(
-                    night=(night + off).isoformat(), INS_MODE=ins_mode,
-                    DPR_TYPE=dpr_type)}
+                    night=(night + off).isoformat(), **clauses)}
                 if res and excludes:
                     for name in excludes:
                         if name in res:
-                            info('%s for night %s is excluded', dpr_type,
+                            info('%s for night %s is excluded', DPR_TYPE,
                                  night)
                             del res[name]
                 if res:
-                    info('Using %s from night %s', dpr_type, night + off)
+                    info('Using %s from night %s', DPR_TYPE, night + off)
                     break
 
         if not res:
-            raise ValueError(f'could not find {dpr_type} for night {night}')
+            raise ValueError(f'could not find {DPR_TYPE} for night {night}')
         if len(res) == 1:
             # only one result, use it
             res = res.popitem()[1]
         elif len(res) > 1:
             # several results, take the first one
             self.logger.warning('%d choices for %s, taking the first one',
-                                len(res), dpr_type)
+                                len(res), DPR_TYPE)
             res = res.popitem()[1]
 
-        flist = sorted(glob.glob(f"{res['path']}/{dpr_type}*.fits"))
+        flist = sorted(glob.glob(f"{res['path']}/{DPR_TYPE}*.fits"))
         if len(flist) not in (1, 24):
-            raise ValueError(f'found {len(flist)} {dpr_type} files '
+            raise ValueError(f'found {len(flist)} {DPR_TYPE} files '
                              f'instead of (1, 24)')
         return flist
 
