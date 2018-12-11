@@ -179,6 +179,17 @@ class MuseRed(Reporter):
                 self.logger.debug('- %s', exp)
         return processed
 
+    def get_files(self, DPR_TYPE, first_only=False, **clauses):
+        """Return the list of files for a given DPR_TYPE and a query."""
+        flist = []
+        for r in self.reduced.find(DPR_TYPE=DPR_TYPE, **clauses):
+            files = iglob(f"{r['path']}/{DPR_TYPE}*.fits")
+            if first_only:
+                flist.append(next(files))
+            else:
+                flist.extend(files)
+        return flist
+
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
 
@@ -740,10 +751,8 @@ class MuseRed(Reporter):
         select = recipe_conf.get('select', {})
 
         # get the list of files to process
-        flist = [next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-                 for r in self.reduced.find(OBJECT=dataset, DPR_TYPE=DPR_TYPE,
-                                            recipe_name=from_recipe, **select)]
-
+        flist = self.get_files(DPR_TYPE, first_only=True, OBJECT=dataset,
+                               recipe_name=from_recipe, **select)
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
@@ -765,11 +774,8 @@ class MuseRed(Reporter):
                 self.logger.info('Processing run %s', run)
 
             # get the list of files to process
-            # FIXME: add helper to get the list of files for a query
-            flist = {DPR_TYPE: [
-                next(iglob(f"{r['path']}/{DPR_TYPE}*.fits"))
-                for r in self.reduced.find(DPR_TYPE=DPR_TYPE, run=run,
-                                           recipe_name=from_recipe)]
+            flist = {DPR_TYPE: self.get_files(DPR_TYPE, first_only=True,
+                                              run=run, recipe_name=from_recipe)
                      for DPR_TYPE in DPR_TYPES}
 
             if any(len(v) == 0 for v in flist.values()):
