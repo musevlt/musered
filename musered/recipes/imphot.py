@@ -207,7 +207,7 @@ class IMPHOT(PythonRecipe):
         nproc = int(os.getenv('OMP_NUM_THREADS', 8))
         offset_rows = []
         nfiles = len(flist)
-        processed = processed or []
+        processed = processed or set()
 
         for i, filename in enumerate(flist, start=1):
             expname = get_exp_name(filename)

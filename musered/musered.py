@@ -166,6 +166,20 @@ class MuseRed(Reporter):
                                          column=column)
         return list(sorted(dates))
 
+    def get_processed(self, table='reduced', filter_names=None, **clauses):
+        """Return the list of processed names for a given query."""
+        tbl = self.get_table(table)
+        processed = set(o['name'] for o in tbl.find(**clauses))
+        if filter_names:
+            processed = processed & set(filter_names)
+
+        if len(processed) > 0:
+            self.logger.info('Found %d processed exps', len(processed))
+            self.logger.debug('Processed:')
+            for exp in sorted(processed):
+                self.logger.debug('- %s', exp)
+        return processed
+
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
 
@@ -255,12 +269,11 @@ class MuseRed(Reporter):
             self.logger.info('Parsing %s files', dpr_type)
 
             tbl = self.db[f'qc_{dpr_type}']
-            if not force and tbl.count():
-                processed = self.select_column(
-                    'name', table=tbl.name,
-                    where=(tbl.table.c.version == self.version))
+            if not force:
+                processed = self.get_processed(table=tbl.name,
+                                               version=self.version)
             else:
-                processed = []
+                processed = set()
 
             rows = []
             items = list(self.reduced.find(DPR_TYPE=dpr_type))
@@ -422,17 +435,11 @@ class MuseRed(Reporter):
         log.info('Running %s for %d %ss', recipe_name, ndates, label)
 
         if skip and len(self.reduced) > 0:
-            date_set = set(date_list)
-            processed = [o['name'] for o in
-                         self.reduced.find(recipe_name=recipe_name)]
-            processed = set(processed) & date_set
-            log.debug('processed:\n%s', '\n'.join(processed))
-
-            if processed == date_set:
+            processed = self.get_processed(recipe_name=recipe_name,
+                                           filter_names=date_list)
+            if processed == set(date_list):
                 log.info('Already processed, nothing to do')
                 return
-            elif len(processed) > 0:
-                log.info('%d %ss already processed', len(processed), label)
         else:
             processed = set()
 
@@ -672,17 +679,16 @@ class MuseRed(Reporter):
         """Compute offsets between exposures of a dataset."""
 
         recipe_name = normalize_recipe_name(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
+        params_name = params_name or recipe_name
+        recipe_conf = self._get_recipe_conf(params_name)
         recipe_cls = get_recipe_cls(recipe_name)
 
         if recipe_name == 'imphot' and not force:
             # Find already processed files
-            processed = [r['name'] for r in self.reduced.find(
-                OBJECT=dataset, DPR_TYPE='IMPHOT',
-                recipe_name=params_name or recipe_name
-            )]
-            kwargs['processed'] = processed
-            self.logger.debug('Found %d processed exps', len(processed))
+            kwargs['processed'] = processed = self.get_processed(
+                OBJECT=dataset, DPR_TYPE='IMPHOT', recipe_name=params_name)
+        else:
+            processed = set()
 
         DPR_TYPE = recipe_cls.DPR_TYPE
         name = (name or recipe_conf.get('name') or 'OFFSET_LIST_{}'.format(
