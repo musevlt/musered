@@ -174,7 +174,6 @@ class MuseRed(Reporter):
             processed = processed & set(filter_names)
 
         if len(processed) > 0:
-            self.logger.info('Found %d processed exps', len(processed))
             self.logger.debug('Processed:')
             for exp in sorted(processed):
                 self.logger.debug('- %s', exp)
@@ -272,6 +271,7 @@ class MuseRed(Reporter):
             if not force:
                 processed = self.get_processed(table=tbl.name,
                                                version=self.version)
+                self.logger.info('Found %d processed exps', len(processed))
             else:
                 processed = set()
 
@@ -440,6 +440,7 @@ class MuseRed(Reporter):
             if processed == set(date_list):
                 log.info('Already processed, nothing to do')
                 return
+            log.info('Found %d processed exps', len(processed))
         else:
             processed = set()
 
@@ -687,6 +688,7 @@ class MuseRed(Reporter):
             # Find already processed files
             kwargs['processed'] = processed = self.get_processed(
                 OBJECT=dataset, DPR_TYPE='IMPHOT', recipe_name=params_name)
+            self.logger.info('Found %d processed exps', len(processed))
         else:
             processed = set()
 
@@ -745,17 +747,22 @@ class MuseRed(Reporter):
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
-                    params_name=None, **kwargs):
+                    params_name=None, force=False, **kwargs):
         """Combine std stars for a list of runs."""
 
         recipe_cls = get_recipe_cls(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or
-                                            recipe_cls.recipe_name)
+        params = params_name or recipe_cls.recipe_name
+        recipe_conf = self._get_recipe_conf(params)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
         DPR_TYPES = recipe_cls.DPR_TYPES
+        processed = self.get_processed(recipe_name=params)
 
         for run in runs:
-            self.logger.info('Processing run %s', run)
+            if not force and run in processed:
+                self.logger.info('Skipping run %s, already processed', run)
+                continue
+            else:
+                self.logger.info('Processing run %s', run)
 
             # get the list of files to process
             # FIXME: add helper to get the list of files for a query

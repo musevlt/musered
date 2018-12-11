@@ -292,12 +292,13 @@ def exp_combine(mr, dataset, method, params, name, dry_run):
 
 @click.argument('run', nargs=-1)
 @click.option('--params', help='name of the parameters block')
+@click.option('-f', '--force', is_flag=True, help='force re-processing')
 @click.pass_obj
-def std_combine(mr, run, params):
+def std_combine(mr, run, params, force):
     """Combine std exposures for a given run."""
     if len(run) == 0:
         run = mr.runs
-    mr.std_combine(run, params_name=params)
+    mr.std_combine(run, params_name=params, force=force)
 
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
