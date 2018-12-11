@@ -749,7 +749,7 @@ class MuseRed(Reporter):
         DPR_TYPES = recipe_cls.DPR_TYPES
 
         for run in runs:
-            name = name or run
+            self.logger.info('Processing run %s', run)
 
             # get the list of files to process
             # FIXME: add helper to get the list of files for a query
@@ -759,7 +759,13 @@ class MuseRed(Reporter):
                                            recipe_name=from_recipe)]
                      for DPR_TYPE in DPR_TYPES}
 
-            self._run_recipe_simple(recipe_cls, name, run, flist,
+            if any(len(v) == 0 for v in flist.values()):
+                self.logger.error('No files for run %s', run)
+                continue
+
+            # this is the name used for the output_dir
+            rec_name = name or run
+            self._run_recipe_simple(recipe_cls, rec_name, run, flist,
                                     params_name=params_name,
                                     save_kwargs={'run': run}, **kwargs)
 
