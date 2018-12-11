@@ -116,6 +116,7 @@ recipes:
 
   imphot:
     # Compute offsets with the Imphot.
+    from_recipe: muse_scipost_rec
     params:
       fix_beta: 2.5
       hst_filters: ["F775W", "F814W"] # "F606W", , "F850LP"

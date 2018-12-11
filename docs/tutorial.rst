@@ -214,7 +214,7 @@ explained above:
 
    muse_wavecal:
       frames:
-         STD_RESPONSE: 
+         STD_RESPONSE:
             "{workdir}/path/to/STD_RESPONSE_GTO17.fits": *GTO17
             "{workdir}/path/to/STD_RESPONSE_GTO19.fits": *GTO19
 
@@ -243,11 +243,11 @@ that are not useful.
    frames:
       exclude:
          raw:
-            # This block matches any raw files, for instance for nights 
+            # This block matches any raw files, for instance for nights
             # with useless calibrations:
             - night: ["2018-08-11", "2018-08-18"]
          WAVE:
-            # Block for a given DPR.TYPE == WAVE, then matching files for a 
+            # Block for a given DPR.TYPE == WAVE, then matching files for a
             # bad sequence identified by its TPL.START date:
             - TPL_START: "2018-08-15T19:20:20"
 
@@ -266,8 +266,8 @@ and use something like this:
         OFFSET_LIST: '{workdir}/reduced/{version}/exp_align/OFFSET_LIST_new.fits'
 
 
-Running recipes
----------------
+Running DRS recipes
+-------------------
 
 Calibrations
 ^^^^^^^^^^^^
@@ -338,20 +338,40 @@ Raman correction and the sky subtraction are deactivated:
    :end-at: save
 
 Computing offsets
-^^^^^^^^^^^^^^^^^
+-----------------
 
-To compute the offsets between exposures, with the ``muse_exp_align`` recipe::
+The ``exp-align`` command provides ways to compute the offsets between
+exposures, either with the DRS or with Imphot. The default is to use the DRS
+with the ``muse_exp_align`` recipe::
 
     $ musered exp-align IC4406
 
-A method can be specified with ``--method``. The default is ``drs`` which
-corresponds to the ``muse_exp_align`` recipe, and it is also possible to use
-``imphot`` with ``--method=imphot``. The ``--name`` option can be used to give
-a name (default to the dataset name) to identify later the ``OFFSET_LIST``
-frame.
+The configuration for this recipe needs a ``from_recipe`` item, which specifies
+the recipe from which images are used:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: muse_exp_align:
+   :end-at: filt
+
+This produces an ``OFFSET_LIST`` file, which is stored by default with the name
+``OFFSET_LIST_drs`` (in the ``name`` column).  The ``--name`` option can be used
+to give another name  to identify the ``OFFSET_LIST`` frame.
+
+It is also possible to use Imphot with ``--method=imphot`` and the following
+settings. By default the file will be stored with the ``OFFSET_LIST_imphot``
+name.
+
+.. literalinclude:: _static/settings.yml
+   :start-at: imphot:
+   :end-at: hst_resample_each
+
+The ``OFFSET_LIST`` file can also be computed by other means, when the DRS and
+Imphot method does not work. This is case for our example field IC4406, for
+which the correct offsets were computed manually and put in the file
+``{workdir}/OFFSET_LIST_new.fits`` mentioned below.
 
 Creating recentered cubes
-^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------------------
 
 It can be useful to create individual cubes for each exposures, to verify the
 quality of each cube, measure the FWHM, or for doing some post-processing on the
@@ -367,7 +387,7 @@ And run with::
     $ musered process-exp --scipost
 
 Combining exposures
-^^^^^^^^^^^^^^^^^^^
+-------------------
 
 To combine the exposures, with the ``muse_exp_combine`` recipe::
 
@@ -393,3 +413,8 @@ from ``PIXTABLE_REDUCED``::
 .. literalinclude:: _static/settings.yml
    :start-at: mpdaf_combine:
    :end-at: version
+
+Combining standards
+-------------------
+
+**TODO**
