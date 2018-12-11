@@ -566,7 +566,6 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5,
 
 
 def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
-    # FIXME run not implemented
     """compute statitics of QC calibration table with 24 channels
 
     Parameters
@@ -601,7 +600,10 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
         for q in qclist:
             qc.append(q)
             channels.append(k)
-            vals = [c[q] for c in mr.db[table].find(hdu=f'CHAN{k:02d}')]
+            if run is None:
+                vals = [c[q] for c in mr.db[table].find(hdu=f'CHAN{k:02d}')]
+            else:
+                vals = [c[q] for c in mr.db[table].find(hdu=f'CHAN{k:02d}', run=run)]
             clipvals = sigma_clip(vals, sigma=nsigma)
             nclipped.append(np.count_nonzero(clipvals.mask))
             nkeep.append(np.count_nonzero(~clipvals.mask))
@@ -613,7 +615,6 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
 
 
 def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
-    # FIXME run not implemented
     """find outliers in a QC calibration table with 24 channels
 
     Parameters
@@ -650,9 +651,14 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
         for q in qclist:
             vals = []
             names = []
-            for c in mr.db[table].find(hdu=f'CHAN{k:02d}'):
-                names.append(c['name'])
-                vals.append(c[q])
+            if run is None:
+                for c in mr.db[table].find(hdu=f'CHAN{k:02d}'):
+                    names.append(c['name'])
+                    vals.append(c[q])
+            else:
+                for c in mr.db[table].find(hdu=f'CHAN{k:02d}', run=run):
+                    names.append(c['name'])
+                    vals.append(c[q])                
             clipvals = sigma_clip(vals, sigma=nsigma)
             if np.count_nonzero(clipvals.mask) == 0:
                 continue
