@@ -367,6 +367,10 @@ def parse_weather_conditions(mr, force=False):
         cond_file = path.replace('.fits.fz', '.NL.txt')
         logger.debug('Night %s, %s', night, cond_file)
 
+        if not os.path.exists(cond_file):
+            logger.debug('File %s not found', cond_file)
+            continue
+
         get_lines = False
         lines = []
         with open(cond_file) as f:
@@ -659,7 +663,7 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
             else:
                 for c in mr.db[table].find(hdu=f'CHAN{k:02d}', run=run):
                     names.append(c['name'])
-                    vals.append(c[q])                
+                    vals.append(c[q])
             clipvals = sigma_clip(vals, sigma=nsigma)
             if np.count_nonzero(clipvals.mask) == 0:
                 continue
