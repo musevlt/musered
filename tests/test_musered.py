@@ -7,6 +7,9 @@ from click.testing import CliRunner
 
 from musered import get_recipe_cls
 from musered.__main__ import cli
+from musered.utils import parse_raw_keywords, parse_qc_keywords
+
+CURDIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def test_help(mr):
@@ -19,11 +22,12 @@ def test_help(mr):
 
 
 def test_get_astropy_table(mr):
-    tbl = mr.get_astropy_table('raw')
+    tbl = mr.get_astropy_table('raw', indexes=['name'])
     assert len(tbl) == 155
     assert tbl.colnames[:10] == [
         'id', 'name', 'filename', 'path', 'night', 'run', 'ARCFILE',
         'DATE_OBS', 'EXPTIME', 'MJD_OBS']
+    assert tbl.loc['2017-06-18T22:08:29.111']
 
 
 def test_select_column(mr):
@@ -204,3 +208,59 @@ def test_illum(mr, caplog):
     caplog.clear()
     assert mr.find_illum('2017-06-15', 11, 57920.06) is None
     assert caplog.records[0].message.startswith('Found ILLUM')
+
+
+def test_parse_keywords(mr, caplog, tmpdir):
+    caplog.set_level(logging.WARNING)
+    testfile = os.path.join(CURDIR, 'data',
+                            'MUSE.2017-06-16T01:34:56.867.fits')
+
+    fakefile = str(tmpdir.join('fake.fits'))
+    with open(fakefile, 'w', encoding='ascii') as f:
+        f.write('this is an invalid file')
+
+    rows = parse_raw_keywords([testfile, fakefile],
+                              runs=mr.conf.get('runs'))
+    assert len(rows) == 1
+    assert caplog.records[0].message.startswith('skipping invalid FITS file')
+
+    row = rows[0]
+    for key, expected in [('name', '2017-06-16T01:34:56.867'),
+                          ('filename', 'MUSE.2017-06-16T01:34:56.867.fits'),
+                          ('night', '2017-06-15'),
+                          ('run', 'GTO17'),
+                          ('ARCFILE', 'MUSE.2017-06-16T01:34:56.867.fits'),
+                          ('DATE_OBS', '2017-06-16T01:34:56.000'),
+                          ('OBJECT', 'IC4406 (white)'),
+                          ('RA', 215.609208),
+                          ('INS_DROT_POSANG', 135.6),
+                          ('INS_MODE', 'WFM-AO-N'),
+                          ('INS_TEMP11_VAL', 12.73),
+                          ('OBS_NAME', 'IC4406'),
+                          ('OBS_START', '2017-06-16T01:23:29'),
+                          ('OBS_TARG_NAME', 'IC4406'),
+                          ('OCS_SGS_AG_FWHMX_MED', 0.607),
+                          ('OCS_SGS_FWHM_MED', 0.404),
+                          ('PRO_DATANCOM', 24),
+                          ('TEL_AIRM_END', 1.062),
+                          ('TEL_AMBI_WINDDIR', 281.5),
+                          ('TEL_MOON_RA', 340.834993),
+                          ('TPL_START', '2017-06-16T01:34:08')]:
+        assert row[key] == expected
+
+
+def test_parse_qc(mr):
+    testfile = os.path.join(CURDIR, 'data',
+                            'MUSE.2017-06-16T01:34:56.867.fits')
+    rows = parse_qc_keywords([testfile])
+    assert len(rows) == 1
+
+    row = rows[0]
+    for key, expected in {
+            'QC_SCIPOST_FWHM_NVALID': 6,
+            'QC_SCIPOST_NDET': 6,
+            'QC_SCIPOST_POS1_X': 83.0,
+            'QC_SCIPOST_POS1_Y': 149.0,
+            'filename': 'MUSE.2017-06-16T01:34:56.867.fits',
+            'hdu': 'PRIMARY'}.items():
+        assert row[key] == expected

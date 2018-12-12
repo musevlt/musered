@@ -133,16 +133,18 @@ class MuseRed(Reporter):
         logger.handlers[0].setLevel(level)
 
     def get_table(self, name):
+        """Return a table from the database as an astropy Table."""
         name = self.tables.get(name, name)
         if name not in self.db:
             raise ValueError(f'unknown table {name}')
         return self.db[name]
 
-    def get_astropy_table(self, name):
+    def get_astropy_table(self, name, indexes=None):
+        """Return a table from the database as an astropy Table."""
         name = self.tables.get(name, name)
         if name not in self.db:
             raise ValueError('unknown table')
-        return load_table(self.db, name)
+        return load_table(self.db, name, indexes=indexes)
 
     def select_column(self, name, notnull=True, distinct=False,
                       where=None, table='raw'):

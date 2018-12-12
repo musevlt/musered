@@ -75,6 +75,7 @@ def load_db(filename, **kwargs):
 
 
 def load_table(db, name, indexes=None):
+    """Load a table from the database as an astropy Table."""
     logger = logging.getLogger(__name__)
     table = db[name]
     first = table.find_one()
