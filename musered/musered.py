@@ -458,7 +458,7 @@ class MuseRed(Reporter):
             processed = set()
 
         # Instantiate the recipe object
-        recipe_conf = self._get_recipe_conf(recipe_name)
+        recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name,
                                           kwargs=recipe_kwargs)
         # save recipe's output dir as we will modify it later
@@ -551,7 +551,7 @@ class MuseRed(Reporter):
 
         # Instantiate the recipe object
         recipe_name = params_name or recipe_cls.recipe_name
-        recipe_conf = self._get_recipe_conf(recipe_name)
+        recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name)
         kwargs['output_dir'] = join(self.reduced_path, recipe.output_dir, name)
         kwargs.update(self.frames.get_frames(recipe, recipe_conf=recipe_conf,
@@ -638,7 +638,7 @@ class MuseRed(Reporter):
         else:
             dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
 
-        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
+        recipe_conf = self._get_recipe_conf(recipe_name, params_name)
 
         if recipe_name == 'superflat':
             # Build a Table (name, run, path)
@@ -694,7 +694,7 @@ class MuseRed(Reporter):
 
         recipe_name = normalize_recipe_name(recipe_name)
         params_name = params_name or recipe_name
-        recipe_conf = self._get_recipe_conf(params_name)
+        recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         recipe_cls = get_recipe_cls(recipe_name)
 
         if recipe_name == 'imphot' and not force:
@@ -743,7 +743,7 @@ class MuseRed(Reporter):
         """Combine exposures for a dataset."""
 
         recipe_name = normalize_recipe_name(recipe_name)
-        recipe_conf = self._get_recipe_conf(params_name or recipe_name)
+        recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
         recipe_cls = get_recipe_cls(recipe_name)
         DPR_TYPE = recipe_cls.DPR_TYPE
@@ -761,11 +761,13 @@ class MuseRed(Reporter):
                     params_name=None, force=False, **kwargs):
         """Combine std stars for a list of runs."""
 
-        recipe_cls = get_recipe_cls(recipe_name)
-        params = params_name or recipe_cls.recipe_name
-        recipe_conf = self._get_recipe_conf(params)
+        recipe_name = normalize_recipe_name(recipe_name)
+        recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
+        recipe_cls = get_recipe_cls(recipe_name)
         DPR_TYPES = recipe_cls.DPR_TYPES
+
+        params = params_name or recipe_name
         processed = self.get_processed(recipe_name=params)
 
         for run in runs:
@@ -790,8 +792,14 @@ class MuseRed(Reporter):
                                     params_name=params_name,
                                     save_kwargs={'run': run}, **kwargs)
 
-    def _get_recipe_conf(self, recipe_name, item=None):
+    def _get_recipe_conf(self, recipe_name, params_name=None, item=None):
         """Get config dict for a recipe."""
+        if params_name is not None:
+            if params_name not in self.conf['recipes']:
+                raise ValueError(f"could not find the '{params_name}' "
+                                 "parameters in the settings file")
+            recipe_name = params_name
+
         recipe_conf = self.conf['recipes'].get(recipe_name, {})
         if item is not None:
             return recipe_conf.get(item, {})
@@ -804,7 +812,7 @@ class MuseRed(Reporter):
         common first, and then from recipe_name.init, and from kwargs.
         """
         recipe_kw = {**self.conf['recipes']['common'],
-                     **self._get_recipe_conf(recipe_name, 'init')}
+                     **self._get_recipe_conf(recipe_name, item='init')}
         if kwargs is not None:
             recipe_kw.update(kwargs)
 
