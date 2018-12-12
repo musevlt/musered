@@ -223,7 +223,7 @@ searched for, can be specified with ``offsets``:
 
 .. code-block:: yaml
 
-   muse_wavecal:
+   muse_scipost:
       frames:
          offsets:
             STD_TELLURIC: 5
