@@ -164,11 +164,16 @@ def parse_raw_keywords(flist, runs=None):
     now = datetime.datetime.now().isoformat()
     keywords = [k.split('/')[0].strip()
                 for k in RAW_FITS_KEYWORDS.splitlines() if k]
+    invalid = []
 
     for f in ProgressBar(flist):
         with open(f, mode='rb') as fd:
             if fd.read(30) != b'SIMPLE  =                    T':
-                logger.error('skipping invalid FITS file %s', f)
+                size = os.stat(f).st_size
+                if 11_000 < size < 12_000:
+                    invalid.append(f)
+                else:
+                    logger.error('invalid FITS file %s', f)
                 continue
 
         logger.debug('parsing %s', f)
@@ -196,6 +201,14 @@ def parse_raw_keywords(flist, runs=None):
             row[normalize_keyword(key)] = hdr.get(key)
 
         rows.append(row)
+
+    if invalid:
+        logger.error('Found invalid files that looks like login pages. '
+                     'This happens when been logged out from ESO archive. ')
+        logger.error('Deleting these files, you should restart retrieve_data')
+        for f in invalid:
+            logger.error('- %s', f)
+            os.remove(f)
 
     return rows
 
