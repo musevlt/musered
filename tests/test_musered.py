@@ -222,7 +222,7 @@ def test_parse_keywords(mr, caplog, tmpdir):
     rows = parse_raw_keywords([testfile, fakefile],
                               runs=mr.conf.get('runs'))
     assert len(rows) == 1
-    assert caplog.records[0].message.startswith('skipping invalid FITS file')
+    assert caplog.records[0].message.startswith('invalid FITS file')
 
     row = rows[0]
     for key, expected in [('name', '2017-06-16T01:34:56.867'),
