@@ -224,7 +224,7 @@ class Reporter:
                     info = json.load(f)
 
                 for name in ('calib', 'raw'):
-                    if name not in info:
+                    if name not in info or not info[name]:
                         continue
                     print(f'- {name:7s} :')
                     maxlen = max(len(k) for k, v in info[name].items() if v)
