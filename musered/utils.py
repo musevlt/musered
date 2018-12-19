@@ -377,7 +377,11 @@ def parse_weather_conditions(mr, force=False):
     tables = []
 
     for night, path in mr.execute(query):
-        cond_file = path.replace('.fits.fz', '.NL.txt')
+        try:
+            cond_file = path.split('.fits')[0] + '.NL.txt'
+        except Exception:
+            continue
+
         logger.debug('Night %s, %s', night, cond_file)
 
         if not os.path.exists(cond_file):
