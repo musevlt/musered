@@ -14,7 +14,17 @@ def pytest_ignore_collect(path, config):
 
 @pytest.fixture
 def mr():
+    """Fixture to get the MuseRed object."""
     cwd = os.getcwd()
     os.chdir(TESTDIR)
     yield MuseRed()
+    os.chdir(cwd)
+
+
+@pytest.fixture
+def mr_memory():
+    """Fixture to get the MuseRed object with a fresh in-memory database."""
+    cwd = os.getcwd()
+    os.chdir(TESTDIR)
+    yield MuseRed(settings_kw={'db': ':memory:'})
     os.chdir(cwd)

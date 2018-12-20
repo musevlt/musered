@@ -8,6 +8,7 @@
 .DS_Store
 .ipynb_checkpoints/
 .mypy_cache/
+.tox/
 _githash.py
 api/
 build/

@@ -3,6 +3,7 @@ import datetime
 import itertools
 import logging
 import os
+import numbers
 import numpy as np
 import re
 import yaml
@@ -707,3 +708,10 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
 def dict_values(d):
     """Return a list of all values in a dict."""
     return list(itertools.chain(*d.values()))
+
+
+def ensure_list(value):
+    if isinstance(value, (numbers.Number, str)):
+        return [value]
+    else:
+        return value

@@ -264,3 +264,42 @@ def test_parse_qc(mr):
             'filename': 'MUSE.2017-06-16T01:34:56.867.fits',
             'hdu': 'PRIMARY'}.items():
         assert row[key] == expected
+
+
+def test_flags(mr_memory):
+    flags = mr_memory.flags
+
+    # check custom flag defined in settings
+    assert 'MY_FLAG' in flags.names
+
+    # add flags to an exposure or a list of exposures
+    flags.add('2017-06-16T01:34:56.867',
+              flags.BAD_SLICE, flags.SLICE_GRADIENT)
+    flags.add(['2017-06-16T01:34:56.867', '2017-06-16T01:40:40.868',
+               '2017-06-16T01:43:32.868'], flags.SHORT_EXPTIME)
+
+    # remove flag
+    flags.remove('2017-06-16T01:43:32.868', flags.SHORT_EXPTIME)
+
+    # raise error if flag is not set
+    # with pytest.raises(ValueError):
+    #     flags.remove('2017-06-16T01:43:32.868', flags.BAD_IMAQUALITY)
+
+    # do not raise error is ignore_missing is True
+    flags.remove('2017-06-16T01:43:32.868', flags.BAD_IMAQUALITY)
+
+    # list flags for exposures
+    assert flags.list('2017-06-16T01:34:56.867') == [
+        flags.BAD_SLICE, flags.SHORT_EXPTIME, flags.SLICE_GRADIENT]
+    assert (
+        flags.list(['2017-06-16T01:40:40.868', '2017-06-16T01:43:32.868']) ==
+        [[flags.SHORT_EXPTIME], []]
+    )
+
+    # query exposures with a set of flags
+    assert (flags.find(flags.SHORT_EXPTIME, flags.BAD_SLICE) ==
+            ['2017-06-16T01:34:56.867', '2017-06-16T01:40:40.868'])
+    assert (flags.find(flags.SHORT_EXPTIME, flags.BAD_SLICE, _and=True) ==
+            ['2017-06-16T01:34:56.867'])
+    # assert (flags.find(flags.SHORT_EXPTIME, flags.BAD_SLICE, _not=True) ==
+    #         ['2017-06-16T01:43:32.868'])

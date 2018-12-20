@@ -16,6 +16,7 @@ from glob import glob, iglob
 from os.path import join
 from sqlalchemy import sql
 
+from .flags import QAFlags
 from .frames import FramesFinder
 from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
 from .reporter import Reporter
@@ -36,7 +37,7 @@ class MuseRed(Reporter):
     """
 
     def __init__(self, settings_file='settings.yml', report_format='txt',
-                 version=None):
+                 version=None, settings_kw=None):
         super().__init__(report_format=report_format)
 
         self.logger = logging.getLogger(__name__)
@@ -44,8 +45,10 @@ class MuseRed(Reporter):
         self.settings_file = settings_file
 
         self.conf = load_yaml_config(settings_file)
-        self.set_loglevel(self.conf.get('loglevel', 'info'))
+        if settings_kw:
+            self.conf.update(settings_kw)
 
+        self.set_loglevel(self.conf.get('loglevel', 'info'))
         self.version = version or self.conf.get('version', '0.1')
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
@@ -55,13 +58,13 @@ class MuseRed(Reporter):
 
         version = self.version.replace('.', '_')
         self.tables = {
-            'raw': 'raw',
-            'reduced': f'reduced_{version}',
+            'gto_logs': 'gto_logs',
             'qa_raw': 'qa_raw',
             'qa_reduced': f'qa_reduced_{version}',
-            'gto_logs': 'gto_logs',
-            'weather_conditions': 'weather_conditions',
             'qc_info': 'qc_info',
+            'raw': 'raw',
+            'reduced': f'reduced_{version}',
+            'weather_conditions': 'weather_conditions',
         }
         for attrname, tablename in self.tables.items():
             setattr(self, attrname, self.db.create_table(tablename))
@@ -125,6 +128,13 @@ class MuseRed(Reporter):
             if self.frames.is_valid(name, 'OBJECT'):
                 out[obj].append(name)
         return out
+
+    @lazyproperty
+    def flags(self):
+        """Return the QAFlags object to manage flags."""
+        version = self.version.replace('.', '_')
+        flags_tbl = self.db.create_table(f'flags_{version}')
+        return QAFlags(flags_tbl, self.conf)
 
     def set_loglevel(self, level, cpl=False):
         logger = logging.getLogger('cpl' if cpl else 'musered')

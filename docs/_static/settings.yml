@@ -50,6 +50,10 @@ GTO_logs:
   db:
     - "{workdir}/db_logs/GTO-17-P99.db"
 
+# Define additional flags
+flags:
+  MY_FLAG: "this is a super useful flag"
+
 # Static calibrations.
 # By default files from the muse_calib_path directory are used, but it is also
 # possible here to specify date ranges of validity for specific calibrations.
