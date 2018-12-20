@@ -4,6 +4,7 @@ from sqlalchemy import sql
 
 from .utils import ensure_list
 
+# pre-defined list of flags, can be extended in the settings file
 FLAGS = {
     'BAD_CENTERING': 'Centering offset is wrong',
     'BAD_IMAQUALITY': 'Bad image quality',
@@ -20,12 +21,21 @@ FLAGS = {
 
 
 class QAFlags:
-    """Special version of dataset.Table to manage flags."""
+    """Manage QA flags.
 
-    def __init__(self, table, settings):
+    Parameters
+    ----------
+    table : dataset.Table
+        The table containing the flags.
+    additional_flags : dict
+        Additional flags, added to the default FLAGS dict.
+
+    """
+
+    def __init__(self, table, additional_flags=None):
         flags = FLAGS.copy()
-        if 'flags' in settings:
-            flags.update(settings['flags'])
+        if additional_flags:
+            flags.update(additional_flags)
         self.flags = Enum('flags', flags.items())
 
         # create integer columns for all flags

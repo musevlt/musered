@@ -1,3 +1,4 @@
+import dataset
 import glob
 import logging
 import os
@@ -7,6 +8,7 @@ from click.testing import CliRunner
 
 from musered import get_recipe_cls
 from musered.__main__ import cli
+from musered.flags import QAFlags
 from musered.utils import parse_raw_keywords, parse_qc_keywords
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))
@@ -266,8 +268,11 @@ def test_parse_qc(mr):
         assert row[key] == expected
 
 
-def test_flags(mr_memory):
-    flags = mr_memory.flags
+def test_flags():
+    db = dataset.connect('sqlite:///:memory:')
+    table = db['flags']
+    flags = QAFlags(table, additional_flags={
+        'MY_FLAG': "this is a super useful flag"})
 
     # check custom flag defined in settings
     assert 'MY_FLAG' in flags.names

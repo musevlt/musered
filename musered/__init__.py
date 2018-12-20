@@ -2,6 +2,7 @@ from astropy.units import UnitsWarning
 from mpdaf.log import setup_logging
 import warnings
 
+from .flags import QAFlags  # noqa
 from .musered import MuseRed  # noqa
 from .recipes import *  # noqa
 from .settings import RAW_FITS_KEYWORDS  # noqa

@@ -131,10 +131,10 @@ class MuseRed(Reporter):
 
     @lazyproperty
     def flags(self):
-        """Return the QAFlags object to manage flags."""
+        """Return the `QAFlags` object to manage flags."""
         version = self.version.replace('.', '_')
         flags_tbl = self.db.create_table(f'flags_{version}')
-        return QAFlags(flags_tbl, self.conf)
+        return QAFlags(flags_tbl, additional_flags=self.conf.get('flags'))
 
     def set_loglevel(self, level, cpl=False):
         logger = logging.getLogger('cpl' if cpl else 'musered')
