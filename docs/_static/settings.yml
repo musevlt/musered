@@ -70,7 +70,7 @@ static_calib:
 # Parameters for the retrieve_data command (passed to astroquery.Eso.login)
 retrieve_data:
   username: MUSE-GTO
-  store_password: True
+  store_password: False
 
 frames:
   exclude:
