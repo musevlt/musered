@@ -63,7 +63,7 @@ def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if dry_run:
         pprint.pprint(qarows)
     else:
-        upsert_many(mr.db, mr.qa_reduced, qarows, ['name'])
+        upsert_many(mr.db, mr.qa_reduced.name, qarows, ['name'])
 
 
 def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
@@ -85,7 +85,7 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if dry_run:
         pprint.pprint(qarows)
     else:
-        upsert_many(mr.db, mr.qa_reduced, qarows, ['name'])
+        upsert_many(mr.db, mr.qa_reduced.name, qarows, ['name'])
 
 
 def qa_sparta(mr, dates=None, skip=True, dry_run=False):
@@ -102,7 +102,7 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
     if dry_run:
         pprint.pprint(qarows)
     else:
-        upsert_many(mr.db, mr.qa_raw, qarows, ['name'])
+        upsert_many(mr.db, mr.qa_raw.name, qarows, ['name'])
 
 
 def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
