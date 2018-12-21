@@ -663,25 +663,16 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
       std: standard deviation
       nsig: rejection factors
     """
-    out_name = []
-    out_val = []
-    out_mean = []
-    out_std = []
-    out_err = []
-    out_qc = []
-    out_chan = []
+    table = mr.db[table]
+    find_kw = {'run': run} if run is not None else {}
+    rows = []
     for k in range(1, 25):
         for q in qclist:
             vals = []
             names = []
-            if run is None:
-                for c in mr.db[table].find(hdu=f'CHAN{k:02d}'):
-                    names.append(c['name'])
-                    vals.append(c[q])
-            else:
-                for c in mr.db[table].find(hdu=f'CHAN{k:02d}', run=run):
-                    names.append(c['name'])
-                    vals.append(c[q])
+            for c in table.find(hdu=f'CHAN{k:02d}', **find_kw):
+                names.append(c['name'])
+                vals.append(c[q])
             clipvals = sigma_clip(vals, sigma=nsigma)
             if np.count_nonzero(clipvals.mask) == 0:
                 continue
@@ -690,17 +681,12 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
             for n, v in zip(np.array(names)[clipvals.mask],
                             np.array(vals)[clipvals.mask]):
                 err = np.abs((v - mean) / std)
-                out_mean.append(mean)
-                out_std.append(std)
-                out_name.append(n)
-                out_chan.append(k)
-                out_qc.append(q)
-                out_val.append(v)
-                out_err.append(err)
+                rows.append({'NAME': n, 'QC': q, 'CHAN': k, 'VAL': v,
+                             'MEAN': mean, 'STD': std, 'NSIGMA': err})
+
     tab = Table(names=['NAME', 'QC', 'CHAN', 'VAL', 'MEAN', 'STD', 'NSIGMA'],
-                data=[out_name, out_qc, out_chan, out_val, out_mean, out_std,
-                      out_err])
-    for c in ['VAL', 'MEAN', 'STD', 'NSIGMA']:
+                data=rows if len(rows) else None)
+    for c in ('VAL', 'MEAN', 'STD', 'NSIGMA'):
         tab[c].format = '.3f'
     return tab
 

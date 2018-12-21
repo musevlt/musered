@@ -9,7 +9,8 @@ from click.testing import CliRunner
 from musered import get_recipe_cls
 from musered.__main__ import cli
 from musered.flags import QAFlags
-from musered.utils import parse_raw_keywords, parse_qc_keywords
+from musered.utils import (parse_raw_keywords, parse_qc_keywords,
+                           find_outliers_qc_chan)
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -308,3 +309,17 @@ def test_flags():
             ['2017-06-16T01:34:56.867'])
     # assert (flags.find(flags.SHORT_EXPTIME, flags.BAD_SLICE, _not=True) ==
     #         ['2017-06-16T01:43:32.868'])
+
+
+def test_qc_outliers(mr):
+    t = find_outliers_qc_chan(mr, 'qc_MASTER_BIAS',
+                              [f'QC_BIAS_MASTER{k}_RON' for k in range(1, 5)])
+    assert t.colnames == ['NAME', 'QC', 'CHAN', 'VAL', 'MEAN', 'STD', 'NSIGMA']
+    assert len(t) == 0
+
+    t = find_outliers_qc_chan(mr, 'qc_MASTER_FLAT',
+                              [f'QC_FLAT_MASTER_SLICE{k}_MEAN' for k in
+                               range(1, 3)], nsigma=2)
+    assert len(t) == 7
+    assert set(t['QC']) == {
+        'QC_FLAT_MASTER_SLICE1_MEAN', 'QC_FLAT_MASTER_SLICE2_MEAN'}
