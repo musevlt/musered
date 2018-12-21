@@ -10,7 +10,7 @@ from musered import get_recipe_cls
 from musered.__main__ import cli
 from musered.flags import QAFlags
 from musered.utils import (parse_raw_keywords, parse_qc_keywords,
-                           find_outliers_qc_chan)
+                           find_outliers_qc_chan, stat_qc_chan, find_outliers)
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -323,3 +323,11 @@ def test_qc_outliers(mr):
     assert len(t) == 7
     assert set(t['QC']) == {
         'QC_FLAT_MASTER_SLICE1_MEAN', 'QC_FLAT_MASTER_SLICE2_MEAN'}
+
+    t = stat_qc_chan(mr, 'qc_MASTER_BIAS',
+                     [f'QC_BIAS_MASTER{k}_RON' for k in range(1, 5)])
+    assert t.colnames == ['CHAN', 'QC', 'MEAN', 'STD', 'NCLIP', 'NKEEP']
+    assert len(t) == 96  # 24 channels * 4 quadrants
+
+    out = find_outliers(mr.qa_reduced, 'skyB', sigma_lower=2, sigma_upper=2)
+    assert out['names'] == ['2017-06-16T01:43:32.868']

@@ -585,11 +585,11 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5,
         nsig = nsig.tolist()
         names = np.array(names)[vclip.mask]
         names = names.tolist()
-    return(dict(names=names, vals=vals, nsig=nsig, mean=mean, std=std))
+    return dict(names=names, vals=vals, nsig=nsig, mean=mean, std=std)
 
 
 def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
-    """compute statitics of QC calibration table with 24 channels
+    """Compute statitics of QC calibration table with 24 channels.
 
     Parameters
     ----------
@@ -612,33 +612,26 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
       std: standard deviation
       nclip: number of clipped values
       nkeep: number of kept values
+
     """
-    nclipped = []
-    nkeep = []
-    mean = []
-    std = []
-    channels = []
-    qc = []
+    table = mr.db[table]
+    find_kw = {'run': run} if run is not None else {}
+    rows = []
     for k in range(1, 25):
         for q in qclist:
-            qc.append(q)
-            channels.append(k)
-            if run is None:
-                vals = [c[q] for c in mr.db[table].find(hdu=f'CHAN{k:02d}')]
-            else:
-                vals = [c[q] for c in mr.db[table].find(hdu=f'CHAN{k:02d}', run=run)]
+            vals = [c[q] for c in table.find(hdu=f'CHAN{k:02d}', **find_kw)]
             clipvals = sigma_clip(vals, sigma=nsigma)
-            nclipped.append(np.count_nonzero(clipvals.mask))
-            nkeep.append(np.count_nonzero(~clipvals.mask))
-            mean.append(np.ma.mean(clipvals))
-            std.append(np.ma.std(clipvals))
-    tab = Table(data=[channels, qc, mean, std, nclipped, nkeep],
-                names=['CHAN', 'QC', 'MEAN', 'STD', 'NCLIP', 'NKEEP'])
-    return tab
+            rows.append({'CHAN': k, 'QC': q,
+                         'MEAN': np.ma.mean(clipvals),
+                         'STD': np.ma.std(clipvals),
+                         'NCLIP': np.count_nonzero(clipvals.mask),
+                         'NKEEP': np.count_nonzero(~clipvals.mask)})
+    return Table(data=rows,
+                 names=['CHAN', 'QC', 'MEAN', 'STD', 'NCLIP', 'NKEEP'])
 
 
 def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
-    """find outliers in a QC calibration table with 24 channels
+    """Find outliers in a QC calibration table with 24 channels.
 
     Parameters
     ----------
@@ -662,6 +655,7 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
       mean: mean value
       std: standard deviation
       nsig: rejection factors
+
     """
     table = mr.db[table]
     find_kw = {'run': run} if run is not None else {}
