@@ -180,7 +180,12 @@ class MuseRed(Reporter):
 
     def get_processed(self, table='reduced', filter_names=None, **clauses):
         """Return the list of processed names for a given query."""
-        tbl = self.get_table(table)
+        try:
+            tbl = self.get_table(table)
+        except ValueError:
+            # table does not exist
+            return []
+
         processed = set(o['name'] for o in tbl.find(**clauses))
         if filter_names:
             processed = processed & set(filter_names)
