@@ -308,6 +308,8 @@ class Reporter:
             Size of each subimage.
         limit : int
             Maximum number of images to show.
+        date : str or list of str
+            List of dates for which images are shown.
         catalog : str
             Catalog to be plotted on images, needs 'ra' and 'dec' columns.
         zoom_center : (float, float)
@@ -362,15 +364,21 @@ class Reporter:
         Parameters
         ----------
         recipe_name : str
-            Recipe for which images are shown.
+            Recipe for which images are exported.
         dataset : str, optional
-            Dataset for which images are shown.
+            Dataset for which images are exported.
         DPR_TYPE : str, optional
             Type of images to show.
         filt : str, optional
             Filter, default to white.
         limit : int
             Maximum number of images to show.
+        outname : str
+            Filename to save the FITS file.
+        cube : bool
+            If True export images as a cube, otherwise as an HDUList (default).
+        date : str or list of str
+            List of dates for which images are exported.
 
         """
         dataset = dataset or list(self.datasets.keys())[0]
