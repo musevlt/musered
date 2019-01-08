@@ -565,6 +565,9 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5,
     else:
         res = table.find()
     tab = [[e[colname], e[name]] for e in res if e[colname] is not None]
+    if not tab:
+        return
+
     vals = list(zip(*tab))[0]
     names = list(zip(*tab))[1]
     vclip = sigma_clip(vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper,
@@ -693,5 +696,7 @@ def dict_values(d):
 def ensure_list(value):
     if isinstance(value, (numbers.Number, str)):
         return [value]
+    elif isinstance(value, np.ndarray):
+        return value.tolist()
     else:
         return value
