@@ -134,6 +134,7 @@ class MuseRed(Reporter):
         """Return the `QAFlags` object to manage flags."""
         version = self.version.replace('.', '_')
         flags_tbl = self.db.create_table(f'flags_{version}')
+        self.tables['flags'] = f'flags_{version}'
         return QAFlags(flags_tbl, additional_flags=self.conf.get('flags'))
 
     def set_loglevel(self, level, cpl=False):

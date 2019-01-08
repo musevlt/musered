@@ -1,8 +1,9 @@
+import numpy as np
 from astropy.utils.decorators import lazyproperty
 from enum import Enum
 from sqlalchemy import sql
 
-from .utils import ensure_list
+from .utils import ensure_list, load_table
 
 # pre-defined list of flags, can be extended in the settings file
 FLAGS = {
@@ -99,3 +100,19 @@ class QAFlags:
             wc = clauses[0]
         return [x[0] for x in self.execute(
             sql.select(['name'], whereclause=wc))]
+
+    def as_table(self, indexes=None, remove_empty_columns=True):
+        """Return the flags table as an astropy Table."""
+        # For some reason columns are created as float instead of int. So we
+        # need to convert them. We also remove the columns with no flagged
+        # exposure.
+        tbl = load_table(self.table.db, self.table.name, indexes=indexes)
+        to_remove = ['id']
+        for name, col in tbl.columns.items():
+            if col.info.dtype.kind == 'f':
+                col = col.astype(int)
+                tbl.replace_column(name, col)
+                if remove_empty_columns and col.sum() is np.ma.masked:
+                    to_remove.append(name)
+        tbl.remove_columns(to_remove)
+        return tbl
