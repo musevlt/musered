@@ -111,7 +111,8 @@ class FramesFinder:
                     for o in tbl.find(**item):
                         exc['name'].append(o['name'])
                         exc['night'].append(o['night'])
-                        exc['TPL_START'].append(o['TPL_START'])
+                        if 'TPL_START' in o:
+                            exc['TPL_START'].append(o['TPL_START'])
                 else:
                     raise ValueError(f'wrong format for {DPR_TYPE} excludes')
 
