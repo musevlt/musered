@@ -1,7 +1,7 @@
 # musered display utilities
 
-import datetime
 import numpy as np
+from datetime import datetime
 from .utils import join_tables, parse_datetime
 
 
@@ -62,12 +62,15 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True,
     ax.plot_date(dates, vals, marker=symbol, color=color)
 
     if std:  # display std stars observation
-        wdates = [
-            datetime.datetime.strptime(dt['name'], '%Y-%m-%dT%H:%M:%S.%f')
-            for dt in mr.raw.find(DPR_TYPE='STD', night=nights)
-        ]
-        for wt in wdates:
-            ax.axvline(wt, color=scol, ls='--', alpha=0.7)
+        wdates = {dt['name']: datetime.strptime(dt['name'],
+                                                '%Y-%m-%dT%H:%M:%S.%f')
+                  for dt in mr.raw.find(DPR_TYPE='STD', night=nights)}
+        exc = mr.frames.get_excludes(DPR_TYPE='STD')
+        for name, wt in wdates.items():
+            if name in exc:
+                ax.axvline(wt, color=scol, ls='-.', alpha=0.6)
+            else:
+                ax.axvline(wt, color=scol, ls='--', alpha=0.7)
 
     if return_pval:
         pdates = dates
@@ -88,7 +91,7 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True,
         mask = np.in1d(w['night'], nights)
         wn = w[mask]
         for e in wn:
-            wt = datetime.datetime.strptime(e['date'], '%Y-%m-%dT%H:%M:%S')
+            wt = datetime.strptime(e['date'], '%Y-%m-%dT%H:%M:%S')
             wcond = [WeatherTranslate[el] for el in e['Conditions'].split(',')]
             wcol = WeatherColors[wcond[0]]
             ax.axvline(wt, color=wcol, alpha=0.5)
