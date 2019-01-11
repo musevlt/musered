@@ -107,6 +107,7 @@ def test_clean(mr, caplog):
     """).splitlines()
 
 
+@pytest.mark.xfail
 def test_frames(mr, monkeypatch):
     if not os.path.exists(mr.conf['muse_calib_path']):
         pytest.skip('static calib directory is missing')
