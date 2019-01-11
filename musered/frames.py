@@ -102,13 +102,14 @@ class FramesFinder:
         # exposures matching the query defined by this line
         def process_exc(items, table='raw'):
             tbl = self.mr.get_table(table)
+            kw = dict(DPR_TYPE=DPR_TYPE) if DPR_TYPE is not None else {}
             for item in items:
                 if isinstance(item, str):
                     exc['name'].append(item)
                     exc['TPL_START'].append(item)
                 elif isinstance(item, dict):
                     # if the item is a dict use the keys/values to query the db
-                    for o in tbl.find(**item):
+                    for o in tbl.find(**item, **kw):
                         exc['name'].append(o['name'])
                         exc['night'].append(o['night'])
                         if 'TPL_START' in o:
@@ -131,7 +132,7 @@ class FramesFinder:
         raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
         for dpr, items in conf.items():
             if DPR_TYPE and dpr != DPR_TYPE:
-                pass
+                continue
             process_exc(items, table='raw' if dpr in raw_types else 'reduced')
 
         return self._excludes[key][column]

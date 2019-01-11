@@ -197,10 +197,30 @@ class MuseRed(Reporter):
                 self.logger.debug('- %s', exp)
         return processed
 
-    def get_files(self, DPR_TYPE, first_only=False, **clauses):
-        """Return the list of files for a given DPR_TYPE and a query."""
+    def get_files(self, DPR_TYPE, first_only=False, remove_excludes=False,
+                  **clauses):
+        """Return the list of files for a given DPR_TYPE and a query.
+
+        Parameters
+        ----------
+        DPR_TYPE : str
+            DPR.TYPE of files to find.
+        first_only : bool
+            When an item gives several files, return only the first one.
+        remove_excludes : bool
+            If True removes files that are listed in the exclude settings.
+        **clauses :
+            Additional parameters passed to self.reduced.find
+
+        """
         flist = []
+        if remove_excludes:
+            exc = self.frames.get_excludes(DPR_TYPE='STD')
+
         for r in self.reduced.find(DPR_TYPE=DPR_TYPE, **clauses):
+            if remove_excludes and r['name'] in exc:
+                continue
+
             files = iglob(f"{r['path']}/{DPR_TYPE}*.fits")
             if first_only:
                 flist.append(next(files))
@@ -795,7 +815,8 @@ class MuseRed(Reporter):
 
             # get the list of files to process
             flist = {DPR_TYPE: self.get_files(DPR_TYPE, first_only=True,
-                                              run=run, recipe_name=from_recipe)
+                                              run=run, recipe_name=from_recipe,
+                                              remove_excludes=True)
                      for DPR_TYPE in DPR_TYPES}
 
             if any(len(v) == 0 for v in flist.values()):
