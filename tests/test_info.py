@@ -182,7 +182,7 @@ def test_info_raw(mr, capsys, caplog):
     assert len(out) == 39
 
     result = runner.invoke(cli, ['info', '--raw',
-                                 'night:2017-06-17,OBJECT:BIAS'])
+                                 'night:2017-06-17;OBJECT:BIAS'])
     assert result.exit_code == 0
     out = result.output.splitlines()
     assert len(out) == 13

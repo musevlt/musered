@@ -23,8 +23,8 @@ to get easily the list of nights or exposures:
 Raw data
 --------
 
-``--raw`` takes a comma-separated list of ``key:value`` items that define
-a selection on the ``raw`` table, e.g. ``night:2018-08-14,DPR_CATG:CALIB``.
+``--raw`` takes a semicolon-separated list of ``key:value`` items that define
+a selection on the ``raw`` table, e.g. ``night:2018-08-14;DPR_CATG:CALIB``.
 
 To list all raw data files for a given night:
 
@@ -71,4 +71,3 @@ To view the QC parameters for a given type (``DPR_TYPE``) and night or exposure:
 .. program-output:: musered info --qc MASTER_FLAT --date 2017-06-17
    :prompt:
    :cwd: _static
-

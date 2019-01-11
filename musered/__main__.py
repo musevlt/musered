@@ -97,8 +97,8 @@ def update_qc(mr, type, recipe, force):
 @click.option('--runs', is_flag=True, help='list all runs')
 @click.option('--calibs', is_flag=True, help='list calibration sequences')
 @click.option('--exps', is_flag=True, help='list all exposures')
-@click.option('--raw', help='list raw exposures, must be a comma-separated '
-              'list of key:value items, e.g. night:2018-08-14,DPR_CATG:CALIB')
+@click.option('--raw', help='list raw exposures, must be a semicolon-separated'
+              ' list of key:value items, e.g. night:2018-08-14;DPR_CATG:CALIB')
 @click.option('--qc', help='show QC keywords')
 @click.option('--date', multiple=True, help='show info for a given date')
 @click.option('--run', help='show info for a given run')
@@ -128,7 +128,7 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
         if exps:
             mr.list_exposures()
     elif raw:
-        kw = dict([item.split(':') for item in raw.split(',')])
+        kw = dict([item.split(':') for item in raw.split(';')])
         mr.info_raw(**kw)
     elif qc:
         mr.info_qc(qc, date_list=date)
