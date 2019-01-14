@@ -111,9 +111,10 @@ def update_qc(mr, type, recipe, force):
 @click.option('--excluded', is_flag=True,
               help='show excluded exps (for the main info report)')
 @click.option('--tables', default='raw,calib,science', help='tables to show')
+@click.option('--no-header', is_flag=True, help='hide header')
 @click.pass_obj
 def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
-         night, exp, recipe, excluded, tables):
+         night, exp, recipe, excluded, tables, no_header):
     """Print info about raw and reduced data, or night or exposure."""
 
     if any([datasets, nights, exps, runs, calibs]):
@@ -145,7 +146,27 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
                         show_weather=show_weather)
     else:
         mr.info(date_list=date, run=run, filter_excludes=not excluded,
-                show_tables=tables.split(','))
+                show_tables=tables.split(','), header=not no_header)
+
+
+@click.option('-m', '--mode', default='summary', help='display mode',
+              type=click.Choice(['summary', 'list', 'detail']))
+@click.option('-d', '--date', multiple=True, help='show info for a given date')
+@click.option('-r', '--recipe', multiple=True, help='recipe name to show')
+@click.pass_obj
+def info_warnings(mr, mode, date, recipe):
+    """Print warnings.
+
+    - ``--mode summary`` prints a table with the number of warnings per recipe
+      and exposure name.
+
+    - ``--mode list`` prints the list of exposures with warnings, with the log
+      filename.
+
+    - ``--mode detail`` prints all warnings for each exposure.
+
+    """
+    mr.info_warnings(date_list=date, recipes=recipe, mode=mode)
 
 
 @click.option('-r', '--recipe', multiple=True)
@@ -303,7 +324,7 @@ def std_combine(mr, run, params, force):
 
 for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
             update_qa, process_exp, exp_align, exp_combine, shell,
-            check_integrity, std_combine):
+            check_integrity, std_combine, info_warnings):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
 # loading plugins

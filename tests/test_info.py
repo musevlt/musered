@@ -207,3 +207,36 @@ def test_info_qc(mr):
     result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT'])
     assert result.exit_code == 0
     assert len(result.output.splitlines()) == 29 * 3  # 3 nights
+
+
+def test_info_warnings(mr):
+    runner = CliRunner()
+    result = runner.invoke(cli, ['info-warnings'])
+    assert result.exit_code == 0
+    assert result.output == textwrap.dedent("""\
+              name          muse_scipost muse_wavecal
+    ----------------------- ------------ ------------
+    2017-06-16T01:34:56.867            1           --
+    2017-06-16T01:37:47.867            1           --
+    2017-06-16T01:40:40.868            1           --
+    2017-06-16T01:43:32.868            1           --
+    2017-06-16T01:46:25.866            1           --
+    2017-06-16T01:49:19.866            1           --
+    2017-06-19T12:20:06               --            5
+    """)
+
+    result = runner.invoke(cli, ['info-warnings', '-m', 'list',
+                                 '-r', 'muse_wavecal'])
+    assert result.exit_code == 0
+    assert result.output.splitlines() == [
+        'recipe_name  ...                            log_file                           ',
+        '------------ ... --------------------------------------------------------------',
+        'muse_wavecal ... ./reduced/0.1/logs/muse_wavecal-2018-11-14T20:03:11.243195.log'
+    ]
+
+    result = runner.invoke(cli, ['info-warnings', '-m', 'detail',
+                                 '-d', '2017-06-16T01:46:25.866'])
+    # cannot be fully tested since log file is not in the test directory
+    assert result.exit_code == 1
+    assert result.output.strip() == \
+        "muse_scipost, 2017-06-16T01:46:25.866, 1 warnings"

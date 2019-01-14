@@ -237,7 +237,7 @@ def parse_qc_keywords(flist):
 
 
 def query_count_to_table(table, exclude_obj=None, where=None,
-                         date_list=None, run=None, calib=False, datecol='name',
+                         date_list=None, run=None, datecol='name',
                          countcol='OBJECT', exclude_names=None):
     c = table.table.c
 

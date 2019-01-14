@@ -3,6 +3,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import re
 import textwrap
 
 from astropy.io import fits
@@ -10,6 +11,7 @@ from astropy.table import Table
 from collections import defaultdict
 from glob import iglob
 from mpdaf.obj import Image, Cube
+from sqlalchemy import sql
 
 from .recipes import recipe_classes, normalize_recipe_name
 from .utils import query_count_to_table, get_exp_name
@@ -94,14 +96,16 @@ class Reporter:
             self.fmt.show_text(f'- {name}')
             self.fmt.show_text('  - ' + '\n  - '.join(explist))
 
-    def info(self, date_list=None, run=None, filter_excludes=True,
+    def info(self, date_list=None, run=None, filter_excludes=True, header=True,
              show_tables=('raw', 'calib', 'science')):
         """Print a summary of the raw and reduced data."""
-        self.fmt.show_text(f'Reduction version {self.version}')
-        self.fmt.show_text(f'{self.raw.count()} files\n')
-        self.list_datasets()
-        print()
-        self.list_runs()
+
+        if header:
+            self.fmt.show_text(f'Reduction version {self.version}')
+            self.fmt.show_text(f'{self.raw.count()} files\n')
+            self.list_datasets()
+            print()
+            self.list_runs()
 
         if len(self.raw) == 0:
             self.fmt.show_text('Nothing yet.')
@@ -134,7 +138,7 @@ class Reporter:
         if 'calib' in show_tables:
             self.fmt.show_title(f'\nProcessed calib data:\n')
             t = query_count_to_table(
-                self.reduced, date_list=date_list, run=run, calib=True,
+                self.reduced, date_list=date_list, run=run,
                 exclude_names=exclude_names, datecol='night',
                 countcol='recipe_name',
                 where=redc.DPR_CATG == 'CALIB',
@@ -286,6 +290,61 @@ class Reporter:
             t = Table(rows=[[row[k] for k in cols] for row in rows],
                       names=cols)
             self.fmt.show_table(t, **kwargs)
+
+    def info_warnings(self, date_list=None, recipes=None, mode='list'):
+        assert mode in ('list', 'summary', 'detail')
+
+        redc = self.reduced.table.c
+        wc = redc.nbwarn > 0
+        if date_list:
+            dates = self.prepare_dates(date_list, datecol='name',
+                                       table='reduced')
+            wc &= redc.name.in_(dates)
+        if recipes:
+            wc &= redc.recipe_name.in_(recipes)
+
+        rows = []
+        cols = ('recipe_name', 'name', 'nbwarn', 'log_file')
+        query = (sql.select([redc[c] for c in cols], whereclause=wc)
+                 .distinct(redc.recipe_name, redc.name))
+
+        for o in self.execute(query, order_by='name'):
+            if o['nbwarn'] > 0:
+                rows.append([o[col] for col in cols])
+
+        if len(rows) == 0:
+            self.fmt.show_text('No warnings.')
+            return
+
+        t = Table(rows=rows, names=cols)
+
+        if mode == 'detail':
+            pat = re.compile(r'\[WARNING\]\[.*\] (.*)\n')
+            for row in t:
+                print(f"\n{row['recipe_name']}, {row['name']}, "
+                      f"{row['nbwarn']} warnings\n")
+                with open(row['log_file']) as fp:
+                    text = fp.read()
+                for match in re.finditer(pat, text):
+                    self.fmt.show_text(f"- {match.groups(0)[0]}")
+        elif mode == 'summary':
+            d = defaultdict(dict)
+            recipes = set(t['recipe_name'])
+            for row in t:
+                d[row['name']][row['recipe_name']] = row['nbwarn']
+            for key, val in d.items():
+                val['name'] = key
+                for rec in recipes:
+                    val.setdefault(rec, 0)
+            tbl = Table(rows=list(d.values()), masked=True)
+            tbl.sort('name')
+            tbl['name'].format = '<s'
+            tbl.columns.move_to_end('name', last=False)
+            for col in tbl.columns.values()[1:]:
+                col[col == 0] = np.ma.masked
+            self.fmt.show_table(tbl)
+        else:
+            self.fmt.show_table(t)
 
     def show_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
                     filt='white', ncols=4, figsize=4, limit=None, date=None,
