@@ -68,7 +68,12 @@ class QAFlags:
     def add(self, exps, *flags, value=1):
         """Add flags to exposures."""
         flags = {flag.name: value for flag in flags}
-        self._upsert_many([{'name': e, **flags} for e in ensure_list(exps)])
+        rows = []
+        for e in ensure_list(exps):
+            if not isinstance(e, str):
+                raise TypeError('exposure names should be given as str')
+            rows.append({'name': e, **flags})
+        self._upsert_many(rows)
 
     def remove(self, exps, *flags):
         """Remove flags from exposures."""
@@ -115,4 +120,5 @@ class QAFlags:
                 if remove_empty_columns and col.sum() is np.ma.masked:
                     to_remove.append(name)
         tbl.remove_columns(to_remove)
+        tbl.sort('name')
         return tbl

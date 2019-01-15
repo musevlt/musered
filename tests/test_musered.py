@@ -282,11 +282,19 @@ def test_flags():
     # add flags to an exposure or a list of exposures
     flags.add('2017-06-16T01:34:56.867',
               flags.BAD_SLICE, flags.SLICE_GRADIENT)
+    flags.add('2017-06-16T01:34:56.867', flags.BAD_SLICE, value=2)
     flags.add(['2017-06-16T01:34:56.867', '2017-06-16T01:40:40.868',
                '2017-06-16T01:43:32.868'], flags.SHORT_EXPTIME)
 
     # remove flag
     flags.remove('2017-06-16T01:43:32.868', flags.SHORT_EXPTIME)
+
+    flags.add('2017-06-16T01:40:40.868', flags.BAD_IMAQUALITY, value=2)
+    flags.add('2017-06-16T01:40:40.868', flags.BAD_IMAQUALITY, value=1)
+    flags.remove('2017-06-16T01:40:40.868', flags.BAD_IMAQUALITY)
+
+    with pytest.raises(TypeError):
+        flags.add(b'2017-06-16T01:43:32.868', flags.SHORT_EXPTIME)
 
     # raise error if flag is not set
     # with pytest.raises(ValueError):
