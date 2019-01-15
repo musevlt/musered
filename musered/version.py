@@ -3,7 +3,10 @@ import os
 __version__ = '0.2.dev'
 __description__ = 'Muse data reduction, quick and easy'
 
-CURDIR = os.path.dirname(os.path.abspath(__file__))
+try:
+    CURDIR = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    CURDIR = '.'
 
 
 def _update_git_version():
