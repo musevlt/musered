@@ -107,12 +107,12 @@ class MuseRed(Reporter):
         out = defaultdict(list)
         if 'night' not in self.raw.columns:
             return out
-        for dpr_type, name in self.execute(
+        for dpr_type, tpl_start in self.execute(
                 sql.select([self.rawc.DPR_TYPE, self.rawc.TPL_START])
                 .where(self.rawc.DPR_TYPE.isnot(None))
                 .group_by(self.rawc.DPR_TYPE, self.rawc.TPL_START)):
-            if self.frames.is_valid(name, dpr_type, column='TPL_START'):
-                out[dpr_type].append(name)
+            if self.frames.is_valid(tpl_start, dpr_type, column='TPL_START'):
+                out[dpr_type].append(tpl_start)
         return out
 
     @lazyproperty
