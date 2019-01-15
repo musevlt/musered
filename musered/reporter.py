@@ -319,14 +319,15 @@ class Reporter:
         t = Table(rows=rows, names=cols)
 
         if mode == 'detail':
-            pat = re.compile(r'\[WARNING\]\[.*\] (.*)\n')
+            pat = re.compile(r'\[(WARNING|  ERROR)\]\[.*\] (.*)\n')
             for row in t:
                 print(f"\n{row['recipe_name']}, {row['name']}, "
                       f"{row['nbwarn']} warnings\n")
                 with open(row['log_file']) as fp:
                     text = fp.read()
                 for match in re.finditer(pat, text):
-                    self.fmt.show_text(f"- {match.groups(0)[0]}")
+                    level, msg = match.groups(0)
+                    print(f"- {level:7s} : {msg}")
         elif mode == 'summary':
             d = defaultdict(dict)
             recipes = set(t['recipe_name'])
@@ -344,6 +345,8 @@ class Reporter:
                 col[col == 0] = np.ma.masked
             self.fmt.show_table(tbl)
         else:
+            t.sort('name')
+            t['name'].format = '<s'
             self.fmt.show_table(t)
 
     def show_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
