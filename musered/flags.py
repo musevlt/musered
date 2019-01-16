@@ -99,10 +99,10 @@ class QAFlags:
 
         Examples::
 
-        >>> mr.flags.find(mr.flags.SHORT_EXPTIME)
+        >>> mr.flags.find(mr.flags.SHORT_EXPTIME) # doctest: +SKIP
 
-        >>> mr.flags.find(flag_dict={mr.flags.SHORT_EXPTIME: 2,
-        ...                          mr.flags.IMPHOT_BAD_SCALE: 2})
+        >>> flags.find(flag_dict={flags.SHORT_EXPTIME: 2,
+        ...                       flags.IMPHOT_BAD_SCALE: 2}) # doctest: +SKIP
 
         """
         col = self.table.table.c
