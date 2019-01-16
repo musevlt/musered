@@ -179,7 +179,7 @@ class Reporter:
             logs = list(self.db['gto_logs'].find(name=expname))
             if logs:
                 click.secho(f"★ GTO logs:", fg='green', bold=True)
-                colors = dict(A='green', B='yellow', C='orange')
+                colors = dict(A='green', B='yellow', C='red')
                 for log in logs:
                     if log['flag']:
                         rk = log['flag']

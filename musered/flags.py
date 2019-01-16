@@ -94,17 +94,29 @@ class QAFlags:
                     expf[flag.name] is not None and expf[flag.name] > 0)])
         return out[0] if len(exps) == 1 else out
 
-    def find(self, *flags, _and=False):
-        """Find exposures that have some flags."""
+    def find(self, *flags, _and=False, flag_dict=None):
+        """Find exposures that have some flags.
+
+        Examples::
+
+        >>> mr.flags.find(mr.flags.SHORT_EXPTIME)
+
+        >>> mr.flags.find(flag_dict={mr.flags.SHORT_EXPTIME: 2,
+        ...                          mr.flags.IMPHOT_BAD_SCALE: 2})
+
+        """
         col = self.table.table.c
         clauses = [col[flag.name] > 0 for flag in flags]
+        if flag_dict:
+            clauses += [col[flag.name] == val
+                        for flag, val in flag_dict.items()]
         if len(clauses) > 1:
             func = sql.and_ if _and else sql.or_
             wc = func(*clauses)
         else:
             wc = clauses[0]
         return [x[0] for x in self.execute(
-            sql.select(['name'], whereclause=wc))]
+            sql.select([col.name], whereclause=wc))]
 
     def as_table(self, indexes=None, remove_empty_columns=True):
         """Return the flags table as an astropy Table."""

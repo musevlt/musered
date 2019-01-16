@@ -215,7 +215,7 @@ class MuseRed(Reporter):
         """
         flist = []
         if remove_excludes:
-            exc = self.frames.get_excludes(DPR_TYPE='STD')
+            exc = self.frames.get_excludes(DPR_TYPE=DPR_TYPE)
 
         for r in self.reduced.find(DPR_TYPE=DPR_TYPE, **clauses):
             if remove_excludes and r['name'] in exc:
