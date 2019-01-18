@@ -21,6 +21,10 @@ FLAGS = {
 }
 
 
+def flag_name(flag):
+    return flag.name if isinstance(flag, Enum) else flag
+
+
 class QAFlags:
     """Manage QA flags.
 
@@ -67,7 +71,7 @@ class QAFlags:
 
     def add(self, exps, *flags, value=1):
         """Add flags to exposures."""
-        flags = {flag.name: value for flag in flags}
+        flags = {flag_name(flag): value for flag in flags}
         rows = []
         for e in ensure_list(exps):
             if not isinstance(e, str):
@@ -91,7 +95,8 @@ class QAFlags:
             else:
                 expf = res[exp]
                 out.append([flag for flag in self.flags if (
-                    expf[flag.name] is not None and expf[flag.name] > 0)])
+                    expf[flag_name(flag)] is not None and
+                    expf[flag_name(flag)] > 0)])
         return out[0] if len(exps) == 1 else out
 
     def find(self, *flags, _and=False, flag_dict=None):
@@ -106,9 +111,9 @@ class QAFlags:
 
         """
         col = self.table.table.c
-        clauses = [col[flag.name] > 0 for flag in flags]
+        clauses = [col[flag_name(flag)] > 0 for flag in flags]
         if flag_dict:
-            clauses += [col[flag.name] == val
+            clauses += [col[flag_name(flag)] == val
                         for flag, val in flag_dict.items()]
         if len(clauses) > 1:
             func = sql.and_ if _and else sql.or_

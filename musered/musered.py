@@ -14,7 +14,7 @@ from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
 from os.path import join
-from sqlalchemy import sql
+from sqlalchemy import sql, column as sql_column, text as sql_text
 
 from .flags import QAFlags
 from .frames import FramesFinder
@@ -68,6 +68,10 @@ class MuseRed(Reporter):
         }
         for attrname, tablename in self.tables.items():
             setattr(self, attrname, self.db.create_table(tablename))
+
+        # we defined it here as we don't want to create the table and attribute
+        # yet, this will be done by the property
+        self.tables['flags'] = f'flags_{version}'
 
         self.execute = self.db.executable.execute
         self.frames = FramesFinder(self)
@@ -134,7 +138,6 @@ class MuseRed(Reporter):
         """Return the `QAFlags` object to manage flags."""
         version = self.version.replace('.', '_')
         flags_tbl = self.db.create_table(f'flags_{version}')
-        self.tables['flags'] = f'flags_{version}'
         return QAFlags(flags_tbl, additional_flags=self.conf.get('flags'))
 
     def set_loglevel(self, level, cpl=False):
@@ -198,7 +201,7 @@ class MuseRed(Reporter):
         return processed
 
     def get_files(self, DPR_TYPE, first_only=False, remove_excludes=False,
-                  **clauses):
+                  select=None, exclude_flags=None, **clauses):
         """Return the list of files for a given DPR_TYPE and a query.
 
         Parameters
@@ -209,16 +212,49 @@ class MuseRed(Reporter):
             When an item gives several files, return only the first one.
         remove_excludes : bool
             If True removes files that are listed in the exclude settings.
-        **clauses :
-            Additional parameters passed to self.reduced.find
+        select : dict
+            Allows to make selection on any table. This should be a dict of
+            (tablename, dict), where the dict value defines a query to make
+            with dataset's find method.
+        exclude_flags : list of flags
+            List of flags to exclude.
+        **clauses
+            Parameters passed to `self.reduced.find`.
 
         """
         flist = []
+        exc = set()
         if remove_excludes:
-            exc = self.frames.get_excludes(DPR_TYPE=DPR_TYPE)
+            exc.update(self.frames.get_excludes(DPR_TYPE=DPR_TYPE))
 
+        if exclude_flags is not None:
+            exc.update(self.flags.find(*exclude_flags))
+
+        if select is not None:
+            names = set()
+            for key, val in select.items():
+                if isinstance(val, str):
+                    # raw sql query
+                    res = [x[0] for x in self.execute(
+                        sql.select([sql_column('name')])
+                        .where(sql_text(val))
+                        .select_from(self.get_table(key).table))]
+                elif isinstance(val, dict):
+                    tbl = self.get_table(key)
+                    if key == 'raw' and 'OBJECT' in clauses:
+                        kw = dict(OBJECT=clauses['OBJECT'])
+                    else:
+                        kw = {}
+                    res = [x['name'] for x in tbl.find(**val, **kw)]
+                else:
+                    raise ValueError('query should be a string or dict')
+                names.update(res)
+
+            clauses['name'] = list(names)
+
+        ntot = self.reduced.count(DPR_TYPE=DPR_TYPE, **clauses)
         for r in self.reduced.find(DPR_TYPE=DPR_TYPE, **clauses):
-            if remove_excludes and r['name'] in exc:
+            if r['name'] in exc:
                 continue
 
             files = iglob(f"{r['path']}/{DPR_TYPE}*.fits")
@@ -226,6 +262,8 @@ class MuseRed(Reporter):
                 flist.append(next(files))
             else:
                 flist.extend(files)
+
+        self.logger.info('Selected %d files out of %d', len(flist), ntot)
         return flist
 
     def update_db(self, force=False):
@@ -776,7 +814,21 @@ class MuseRed(Reporter):
 
     def exp_combine(self, dataset, recipe_name='muse_exp_combine', name=None,
                     params_name=None, **kwargs):
-        """Combine exposures for a dataset."""
+        """Combine exposures for a dataset.
+
+        Parameters
+        ----------
+        dataset : str
+            Dataset name.
+        recipe_name : str
+            Recipe to run: 'muse_exp_combine' (DRS, default), or
+            'mpdaf_combine' (cube combination with MPDAF).
+        name : str
+            Name of the output record, default to '{dataset}_{recipe_name}'.
+        params_name : str
+            Name of the parameter block, default to recipe_name.
+
+        """
 
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
@@ -786,11 +838,12 @@ class MuseRed(Reporter):
         name_dict = {'muse_exp_combine': 'drs', 'mpdaf_combine': 'mpdaf'}
         name = (name or recipe_conf.get('name') or '{}_{}'.format(
             dataset, name_dict.get(recipe_name, recipe_name)))
-        select = recipe_conf.get('select', {})
 
         # get the list of files to process
         flist = self.get_files(DPR_TYPE, first_only=True, OBJECT=dataset,
-                               recipe_name=from_recipe, **select)
+                               recipe_name=from_recipe, remove_excludes=True,
+                               select=recipe_conf.get('select'),
+                               exclude_flags=recipe_conf.get('exclude_flags'))
         self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
