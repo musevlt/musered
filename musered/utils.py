@@ -51,6 +51,11 @@ def load_yaml_config(filename):
 def load_db(filename, **kwargs):
     """Open a sqlite database with dataset."""
 
+    path = os.path.dirname(filename)
+    if not os.path.isdir(path):
+        raise ValueError(f'database path "{path}/" does not exist, you '
+                         'should create it before running musered.')
+
     kwargs.setdefault('engine_kwargs', {})
 
     # Use a NullPool by default, which is sqlalchemy's default but dataset
