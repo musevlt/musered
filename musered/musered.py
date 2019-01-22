@@ -438,45 +438,46 @@ class MuseRed(Reporter):
 
         """
         illums = [
-            (o['DATE_OBS'],                       # Date
-             abs(o['INS_TEMP7_VAL'] - ref_temp),  # Temperature difference
-             abs(o['MJD_OBS'] - ref_mjd_date),    # Date difference
-             o['path'])                           # File path
+            {'date': o['DATE_OBS'],                         # Date
+             'temp': abs(o['INS_TEMP7_VAL'] - ref_temp),    # Temperature diff
+             'mjd': abs(o['MJD_OBS'] - ref_mjd_date) * 24,  # Date diff (hours)
+             'path': o['path']}                             # File path
             for o in self.raw.find(DPR_TYPE='FLAT,LAMP,ILLUM', night=night)]
 
-        # sort by time difference
-        illums.sort(key=operator.itemgetter(2))
-
+        logger = self.logger
         if len(illums) == 0:
-            self.logger.warning('No ILLUM found')
+            logger.warning('No ILLUM found')
             return
 
+        # sort by time difference
+        illums.sort(key=operator.itemgetter('mjd'))
+
         # Filter illums to keep the ones within 2 hours
-        close_illums = [illum for illum in illums if illum[2] < 2/24.]
+        close_illums = [illum for illum in illums if illum['mjd'] < 2]
 
         if len(close_illums) == 0:
-            self.logger.warning('No ILLUM in less than 2h')
+            logger.warning('No ILLUM in less than 2h, taking the closest one')
             res = illums[0]
         elif len(close_illums) == 1:
-            self.logger.debug('Only one ILLUM in less than 2h')
-            res = illums[0]
+            logger.debug('Only one ILLUM in less than 2h')
+            res = close_illums[0]
         else:
-            self.logger.debug('More than one ILLUM in less than 2h')
+            logger.debug('More than one ILLUM in less than 2h, take closest '
+                         'temperature')
             # Sort by temperature difference
-            illums.sort(key=operator.itemgetter(1))
-            res = illums[0]
-            for illum in illums:
-                self.logger.debug('%s Temp diff=%.2f Time diff=%.2f',
-                                  illum[0], illum[1], illum[2] * 24 * 60)
+            close_illums.sort(key=operator.itemgetter('temp'))
+            res = close_illums[0]
+            for illum in close_illums:
+                logger.debug('%s Temp diff=%.2f Time diff=%.2f',
+                             illum['date'], illum['temp'], illum['mjd'] * 60)
 
-        self.logger.info('Found ILLUM : %s (Temp diff: %.3f, Time diff: '
-                         '%.2f min.)', res[0], res[1], res[2] * 24 * 60)
-        if res[1] > 1:
-            self.logger.warning('ILLUM with Temp difference > 1°, '
-                                'not using it')
+        logger.info('Found ILLUM : %s (Temp diff: %.3f, Time diff: %.2f min.)',
+                    res['date'], res['temp'], res['mjd'] * 60)
+        if res['temp'] > 1:
+            logger.warning('ILLUM with Temp difference > 1°, not using it')
             return None
 
-        return res[3]
+        return res['path']
 
     def _run_recipe_loop(self, recipe_cls, date_list, skip=False, calib=False,
                          params_name=None, recipe_kwargs=None, dry_run=False,

@@ -199,12 +199,14 @@ def test_illum(mr, caplog):
     caplog.clear()
     assert mr.find_illum('2017-06-15', 12.5, 57919) == \
         './raw/MUSE.2017-06-16T01:25:02.867.fits.fz'
-    assert caplog.records[0].message == 'No ILLUM in less than 2h'
+    assert caplog.records[0].message == \
+        'No ILLUM in less than 2h, taking the closest one'
 
     # time diff > 2h, temp diff > 1
     caplog.clear()
     assert mr.find_illum('2017-06-15', 11, 57919) is None
-    assert caplog.records[0].message == 'No ILLUM in less than 2h'
+    assert caplog.records[0].message == \
+        'No ILLUM in less than 2h, taking the closest one'
     assert caplog.records[2].message == \
         'ILLUM with Temp difference > 1°, not using it'
 
