@@ -1,7 +1,7 @@
 import os
 import subprocess
 import sys
-from setuptools import setup, find_packages
+from setuptools import setup
 
 if sys.version_info < (3, 6):
     raise Exception('python 3.6 or newer is required')
@@ -36,20 +36,5 @@ if '.dev' in __version__:
         # __version__ += commit_number
 
 setup(
-    name='musered',
     version=__version__,
-    description=__description__,
-    author='Simon Conseil',
-    author_email='simon.conseil@univ-lyon1.fr',
-    packages=find_packages(),
-    include_package_data=True,
-    zip_safe=False,
-    install_requires=['mpdaf', 'python-cpl', 'tqdm', 'dataset', 'PyYAML',
-                      'click', 'astroquery>=0.3.9', 'joblib'],
-    extras_require={'all': ['click-repl']},
-    entry_points={
-        'console_scripts': [
-            'musered=musered.__main__:main',
-        ]
-    },
 )
