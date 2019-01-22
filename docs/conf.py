@@ -5,21 +5,7 @@
 # http://www.sphinx-doc.org/en/master/config
 
 import os
-import re
-
-# read version from version.py
-basedir = os.path.join(os.path.dirname(__file__), '..', 'musered')
-pkgmeta = {}
-
-with open(os.path.join(basedir, 'version.py')) as f:
-    code = compile(f.read(), 'version.py', 'exec')
-    exec(code, pkgmeta)
-
-if os.path.isfile(os.path.join(basedir, '_githash.py')):
-    with open(os.path.join(basedir, '_githash.py')) as f:
-        code = compile(f.read(), '_githash.py', 'exec')
-        exec(code, pkgmeta)
-    pkgmeta['__version__'] += pkgmeta['__dev_value__']
+from pkg_resources import get_distribution
 
 # -- Project information -----------------------------------------------------
 
@@ -27,11 +13,9 @@ project = 'MuseRed'
 copyright = '2018, Simon Conseil, CRAL'
 author = 'Simon Conseil'
 
-# The short X.Y version
-version = re.match(r'\d+\.\d+', pkgmeta['__version__']).group()
-# The full version, including alpha/beta/rc tags.
-release = pkgmeta['__version__']
-
+release = get_distribution('musered').version
+# for example take major/minor
+version = '.'.join(release.split('.')[:2])
 
 # -- General configuration ---------------------------------------------------
 
