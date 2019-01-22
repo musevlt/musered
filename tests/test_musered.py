@@ -3,16 +3,18 @@ import glob
 import logging
 import os
 import pytest
+import shutil
 import textwrap
 from click.testing import CliRunner
 
-from musered import get_recipe_cls
+from musered import get_recipe_cls, MuseRed
 from musered.__main__ import cli
 from musered.flags import QAFlags
 from musered.utils import (parse_raw_keywords, parse_qc_keywords,
                            find_outliers_qc_chan, stat_qc_chan, find_outliers)
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))
+TESTDIR = os.path.join(CURDIR, '..', 'docs', '_static')
 
 
 def test_help(mr):
@@ -342,3 +344,19 @@ def test_qc_outliers(mr):
 
     out = find_outliers(mr.qa_reduced, 'skyB', sigma_lower=2, sigma_upper=2)
     assert out['names'] == ['2017-06-16T01:43:32.868']
+
+
+def test_copy_reduced(tmpdir):
+    cwd = os.getcwd()
+    try:
+        tmpdir = str(tmpdir)
+        shutil.copy(os.path.join(TESTDIR, 'settings.yml'), tmpdir)
+        shutil.copy(os.path.join(TESTDIR, 'musered.db'), tmpdir)
+        os.chdir(tmpdir)
+        mr = MuseRed(version='0.2')
+    finally:
+        os.chdir(cwd)
+
+    assert mr.reduced.count() == 0
+    mr.copy_reduced('0.1', ['muse_bias', 'muse_flat'])
+    assert mr.reduced.count() == 13

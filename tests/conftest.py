@@ -1,5 +1,6 @@
 import os
 import pytest
+import shutil
 
 from musered import MuseRed
 
@@ -13,18 +14,12 @@ def pytest_ignore_collect(path, config):
 
 
 @pytest.fixture
-def mr():
+def mr(tmpdir):
     """Fixture to get the MuseRed object."""
     cwd = os.getcwd()
-    os.chdir(TESTDIR)
+    tmpdir = str(tmpdir)
+    shutil.copy(os.path.join(TESTDIR, 'settings.yml'), tmpdir)
+    shutil.copy(os.path.join(TESTDIR, 'musered.db'), tmpdir)
+    os.chdir(tmpdir)
     yield MuseRed()
-    os.chdir(cwd)
-
-
-@pytest.fixture
-def mr_memory():
-    """Fixture to get the MuseRed object with a fresh in-memory database."""
-    cwd = os.getcwd()
-    os.chdir(TESTDIR)
-    yield MuseRed(settings_kw={'db': ':memory:'})
     os.chdir(cwd)

@@ -160,6 +160,39 @@ class MuseRed(Reporter):
             raise ValueError('unknown table')
         return load_table(self.db, name, indexes=indexes)
 
+    def copy_reduced(self, version, recipes):
+        """Copy reduced rows from another version.
+
+        This is needed to start a new version without reprocessing from the
+        start. It allows to copy the database records from the previous version
+        to the reduced table of the current version.
+
+        Parameters
+        ----------
+        version : str
+            The version to copy from.
+        recipes : list of str
+            List of recipe names to copy.
+
+        """
+        version = version.replace('.', '_')
+        if f'reduced_{version}' not in self.db.tables:
+            raise ValueError
+
+        tbl = self.db[f'reduced_{version}']
+        keys = ('name', 'recipe_name', 'DPR_TYPE')
+
+        # To force the creation of the table
+        row = tbl.find_one(recipe_name=recipes)
+        del row['id']
+        self.reduced.upsert(row, keys)
+
+        with self.db as tx:
+            table = tx[self.reduced.name]
+            for row in tbl.find(recipe_name=recipes):
+                del row['id']
+                table.upsert(row, keys=keys)
+
     def select_column(self, name, notnull=True, distinct=False,
                       where=None, table='raw'):
         """Select values from a column of the database."""
