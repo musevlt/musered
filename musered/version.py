@@ -1,6 +1,6 @@
 import os
 
-__version__ = '0.2.dev'
+__version__ = '0.2'
 __description__ = 'Muse data reduction, quick and easy'
 
 try:

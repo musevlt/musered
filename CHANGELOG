@@ -4,8 +4,13 @@ v0.2
 
 - Group calibration sequences by TPL.START.
 - Add std_combine recipe to combine standards by run.
-- Many changes for info.
+- Many changes for info, add info_warnings.
 - Exclusion of raw and reduced data in the settings file.
+- Fix ILLUM selection (the 2h range was ignored).
+- Add class to manage flags.
+- Add selection of exposures and flags for exp_combine.
+- Improve frames exclusion.
+- And more...
 
 v0.1
 ----
