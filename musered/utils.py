@@ -51,7 +51,7 @@ def load_yaml_config(filename):
 def load_db(filename, **kwargs):
     """Open a sqlite database with dataset."""
 
-    path = os.path.dirname(filename)
+    path = os.path.dirname(os.path.abspath(filename))
     if not os.path.isdir(path):
         raise ValueError(f'database path "{path}/" does not exist, you '
                          'should create it before running musered.')
