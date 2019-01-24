@@ -6,6 +6,7 @@ from astropy.io import fits
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from itertools import product
+from os.path import join
 
 from .settings import STATIC_FRAMES
 from .utils import parse_date
@@ -81,8 +82,8 @@ class FramesFinder:
         cat = defaultdict(list)
         for f in self.static_files:
             if f.endswith(('.fits', '.fits.fz', '.fits.gz')):
-                key = fits.getval(os.path.join(self.static_path, f),
-                                  'ESO PRO CATG', ext=0)
+                key = fits.getval(join(self.static_path, f), 'ESO PRO CATG',
+                                  ext=0)
                 cat[key].append(f)
         return cat
 
@@ -176,7 +177,7 @@ class FramesFinder:
 
         if file not in self.static_files:
             raise ValueError(f'could not find {file}')
-        return os.path.join(self.static_path, file)
+        return join(self.static_path, file)
 
     def find_calib(self, night, DPR_TYPE, ins_mode, day_off=None):
         """Return calibration files for a given night, type, and mode."""
@@ -236,7 +237,7 @@ class FramesFinder:
         return flist
 
     def get_frames(self, recipe, night=None, ins_mode=None, recipe_conf=None,
-                   OBJECT=None):
+                   OBJECT=None, dry_run=False):
         """Return a dict with all calibration frames for a recipe.
 
         Parameters
@@ -252,6 +253,9 @@ class FramesFinder:
         OBJECT : str
             OBJECT name, use for frames specific to a given OBJECT
             (OFFSET_LIST, OUTPUT_WCS).
+        dry_run : bool
+            When in dry-run mode, do not raise exceptions and fill associations
+            with "NOT FOUND" instead.
 
         """
         debug = self.logger.debug
@@ -309,10 +313,14 @@ class FramesFinder:
                         off = self.mr.reduced.find_one(
                             DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
                             name=framedict[frame])
-                        if off is None:
+                        if off is None and dry_run:
+                            framedict[frame] = "NOT FOUND"
+                        elif off is None:
                             raise Exception(f'OFFSET_LIST "{framedict[frame]}"'
                                             ' not found')
-                        framedict[frame] = f"{off['path']}/OFFSET_LIST.fits"
+                        else:
+                            framedict[frame] = join(off['path'],
+                                                    "OFFSET_LIST.fits")
 
                     debug('- %s: %s', frame, framedict[frame])
 
@@ -339,8 +347,14 @@ class FramesFinder:
                 if ins_mode is None:
                     raise ValueError('ins_mode must be specified')
                 day_off = day_offsets.get(frame, 1)
-                framedict[frame] = self.find_calib(night, frame, ins_mode,
-                                                   day_off=day_off)
+                try:
+                    framedict[frame] = self.find_calib(night, frame, ins_mode,
+                                                       day_off=day_off)
+                except ValueError:
+                    if dry_run:
+                        framedict[frame] = 'NOT FOUND'
+                    else:
+                        raise
                 debug('- from db: %s', framedict[frame])
 
         self.pprint_framedict(framedict)

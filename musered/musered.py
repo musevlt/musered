@@ -613,7 +613,7 @@ class MuseRed(Reporter):
                 kwargs['output_dir'] = join(self.reduced_path, output_dir)
 
             kwargs.update(self.frames.get_frames(
-                recipe, night=night, ins_mode=ins_mode,
+                recipe, night=night, ins_mode=ins_mode, dry_run=dry_run,
                 recipe_conf=recipe_conf, OBJECT=res[0]['OBJECT']))
 
             if getattr(recipe, 'use_illum', False):
