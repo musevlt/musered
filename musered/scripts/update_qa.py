@@ -53,7 +53,7 @@ def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if skip:
         exists = _find_existing_exp(mr.qa_reduced, 'IM_vers')
         rows = [row for row in rows if row['name'] not in exists]
-    logger.info(f'found {len(rows)} exposures in database to process')
+    logger.info(f'imphot: found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
         imphot = _imphot(f"{row['path']}/IMPHOT.fits")
@@ -76,7 +76,7 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if skip:
         exists = _find_existing_exp(mr.qa_reduced, 'skyB')
         rows = [row for row in rows if row['name'] not in exists]
-    logger.info(f'found {len(rows)} exposures in database to process')
+    logger.info(f'sky: found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
         skyflux = _sky(f"{row['path']}/SKY_SPECTRUM_0001.fits")
@@ -93,7 +93,7 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
     if skip:
         exists = _find_existing_exp(mr.qa_raw, 'SP_See')
         rows = [row for row in rows if row['name'] not in exists]
-    logger.info(f'found {len(rows)} exposures in database to process')
+    logger.info(f'sparta: found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
         sparta_dict = _sparta(row['path'])
@@ -110,7 +110,7 @@ def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if skip:
         exists = _find_existing_exp(mr.qa_raw, 'PR_vers')
         rows = [row for row in rows if row['name'] not in exists]
-    logger.info(f'found {len(rows)} exposures in database to process')
+    logger.info(f'psfrec: found {len(rows)} exposures in database to process')
     for row in rows:
         psfrec_dict = _psfrec(row['path'])
         logger.debug('Name %s PSFRec %s', row['name'], psfrec_dict)
