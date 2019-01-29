@@ -382,26 +382,27 @@ class Reporter:
             Additional parameters are passed to `mpdaf.obj.Image.plot`.
 
         """
-        hdulist = self.export_images(recipe_name, dataset=dataset, date=date,
-                                     DPR_TYPE=DPR_TYPE, filt=filt, limit=limit)
+        imgs = self.export_images(recipe_name, dataset=dataset, date=date,
+                                  DPR_TYPE=DPR_TYPE, filt=filt, limit=limit)
 
         if catalog is not None:
             tbl = Table.read(catalog)
             skycoords = np.array([tbl['dec'], tbl['ra']])
 
-        nrows = int(np.ceil(len(hdulist[1:]) / ncols))
+        nrows = int(np.ceil(len(imgs) / ncols))
         fig, axes = plt.subplots(nrows, ncols, sharex=True, sharey=True,
                                  figsize=(figsize*ncols, figsize*nrows),
                                  gridspec_kw={'wspace': 0, 'hspace': 0})
 
-        for hdu, ax in zip(hdulist[1:], axes.flat):
-            im = Image(data=hdu.data)
+        for im, ax in zip(imgs, axes.flat):
             if zoom_size is not None and zoom_center is not None:
                 im = im.subimage(zoom_center, zoom_size, unit_center=None,
                                  unit_size=None)
             im.plot(ax=ax, **kwargs)
-            filtr = hdu.header[FILTER_KEY]
-            title = f'{hdu.name} ({filtr})' if filtr else hdu.name
+            filtr = im.primary_header[FILTER_KEY]
+            title = get_exp_name(im.filename)
+            if filtr:
+                title = f'{title} ({filtr})'
             ax.text(10, im.shape[1] - 25, title)
 
             if catalog is not None:
@@ -409,7 +410,7 @@ class Reporter:
                 sel = (x > 0) & (x < im.shape[0]) & (y > 0) & (y < im.shape[1])
                 ax.scatter(x[sel], y[sel], c='r', marker='+')
 
-        for ax in axes.flat[len(hdulist[1:]):]:
+        for ax in axes.flat[len(imgs):]:
             ax.axis('off')
         for ax in axes.flat:
             ax.set_xticks([])
@@ -419,9 +420,9 @@ class Reporter:
         return fig
 
     def export_images(self, recipe_name, dataset=None, DPR_TYPE='IMAGE_FOV',
-                      filt='white', limit=None, outname=None, cube=False,
+                      filt='white', limit=None, outname=None, out='list',
                       date=None):
-        """Export images as HDUs or cube.
+        """Export images as Image list, HDUs, or cube.
 
         Parameters
         ----------
@@ -437,8 +438,9 @@ class Reporter:
             Maximum number of images to show.
         outname : str
             Filename to save the FITS file.
-        cube : bool
-            If True export images as a cube, otherwise as an HDUList (default).
+        out : {'list', 'cube', 'hdulist'}
+            Specify the output format, 'list' of images, 'cube' of images, or
+            'hdulist' with one extension per image.
         date : str or list of str
             List of dates for which images are exported.
 
@@ -467,14 +469,14 @@ class Reporter:
                 imgs.append(im)
 
         self.logger.info('Found %d images', len(imgs))
-        if cube:
+        if out == 'cube':
             cube = Cube(data=np.ma.array([im.data for im in imgs]),
                         var=np.ma.array([im.data for im in imgs]),
                         wcs=imgs[0].wcs)
             if outname:
                 cube.write(outname, savemask='nan')
             return cube
-        else:
+        elif out == 'hdulist':
             hdul = fits.HDUList([fits.PrimaryHDU()])
             for im in imgs:
                 hdr = im.primary_header.copy()
@@ -485,3 +487,7 @@ class Reporter:
             if outname:
                 hdul.writeto(outname, overwrite=True)
             return hdul
+        elif out == 'list':
+            return imgs
+        else:
+            raise ValueError(f'unknown output format {out}')
