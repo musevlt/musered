@@ -834,7 +834,8 @@ class MuseRed(Reporter):
             flist = [f for f in flist
                      if fits.getval(f, 'ESO DRS MUSE FILTER NAME') == filt]
 
-        self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, dataset, flist,
+                                params_name=params_name, **kwargs)
 
         if recipe_name == 'imphot':
             # Special case to insert IMPHOT result files in the table
@@ -878,7 +879,8 @@ class MuseRed(Reporter):
                                recipe_name=from_recipe, remove_excludes=True,
                                select=recipe_conf.get('select'),
                                exclude_flags=recipe_conf.get('exclude_flags'))
-        self._run_recipe_simple(recipe_cls, name, dataset, flist, **kwargs)
+        self._run_recipe_simple(recipe_cls, name, dataset, flist,
+                                params_name=params_name, **kwargs)
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
                     params_name=None, force=False, **kwargs):
