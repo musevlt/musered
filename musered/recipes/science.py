@@ -54,7 +54,7 @@ class MAKECUBE(ScienceRecipe):
     def calib_frames(self):
         # Override calibration frames from scipost to avoid loading unwanted
         # calib. Here we just want to produce a cube.
-        return ['FILTER_LIST', 'OUTPUT_WCS', 'OFFSET_LIST']
+        return ['FILTER_LIST', 'OUTPUT_WCS', 'OFFSET_LIST', 'ASTROMETRY_WCS']
 
 
 class EXPALIGN(ScienceRecipe):
