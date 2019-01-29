@@ -41,26 +41,13 @@ HST_FILTERS_DIR = join(os.path.dirname(os.path.abspath(__file__)),
 
 HST_BASENAME = "hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits"
 
-# Create the equivalent of a ds9 region file as a list of lines.
-# EXCLUDE_UDF_STARS = dedent(
-#     """# DS9 region file for excluding bright stars and QSOs in the UDF
-# fk5
-# -circle(53.162822, -27.767150, 2.0")  # QSO in UDF01
-# -circle(53.157969, -27.769193, 2.0")  # Star in UDF01
-# -circle(53.148540, -27.770139, 2.0")  # Star in UDF04
-# -circle(53.158344, -27.794921, 2.5")  # Star in UDF05
-# -circle(53.176896, -27.799861, 3.0")  # Star in UDF06 PM:25mas/year
-# -circle(53.132266, -27.782855, 2.5")  # Star in UDF07
-# -circle(53.183461, -27.806763, 2.5")  # Star outside UDF01 to UDF10
-# """).split("\n")
-EXCLUDE_UDF_STARS = None
-
 
 def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
                      muse_outdir=".", hst_outdir=".", hst_img_dir=None,
                      hst_basename=None, hst_resample_each=False,
                      extramask=None, nprocess=8, fix_beta=2.8, expname=None,
-                     force_muse_image=False, force_hst_image=False):
+                     force_muse_image=False, force_hst_image=False,
+                     exclude_regions=None):
     """Fit pointing offsets to the MUSE observation in a specified cube.
 
     Parameters
@@ -81,6 +68,11 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     extramask : str or None
        FITS file, mask image to be combined with the mask of the MUSE image.
        0 used to denote unmasked pixels, and 1 used to denote masked pixels.
+    exclude_regions : str
+       DS9 regions that can be used to exclude problematic areas of an
+       image or sources that would degrade the global PSF fit, such as
+       saturated stars, stars with significant proper motion, and
+       variable sources. Passed to imphot.fit_image_photometry
 
     Returns
     -------
@@ -162,7 +154,7 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
         logger.info(" Fitting for photometric parameters")
         imfit = imphot.fit_image_photometry(hst, muse, fix_beta=fix_beta,
                                             save=True, extramask=extramask,
-                                            regions=EXCLUDE_UDF_STARS)
+                                            regions=exclude_regions)
         imfits[filter_name] = imfit
 
     for i, imfit in enumerate(imfits.values()):
@@ -192,6 +184,7 @@ class IMPHOT(PythonRecipe):
         hst_filters=None,
         hst_img_dir=None,
         hst_resample_each=False,
+        exclude_regions=None,
     )
 
     @property
