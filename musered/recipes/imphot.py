@@ -45,7 +45,7 @@ HST_BASENAME = "hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits"
 def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
                      muse_outdir=".", hst_outdir=".", hst_img_dir=None,
                      hst_basename=None, hst_resample_each=False,
-                     extramask=None, nprocess=8, fix_beta=2.8, expname=None,
+                     extramask=None, nprocess=8, fix_beta=None, expname=None,
                      force_muse_image=False, force_hst_image=False,
                      exclude_regions=None):
     """Fit pointing offsets to the MUSE observation in a specified cube.
@@ -53,26 +53,38 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     Parameters
     ----------
     cubename : str
-       The full path name of the MUSE cube.
+        The full path name of the MUSE cube.
     hst_filters_dir : str
         The name of the directory where the filter files are required.
-    muse_outdir : str
-       Default = ".". The directory in which to place cached MUSE images.
-    hst_outdir : str
-       Default = ".". The directory in which to place cached HST images.
     hst_filters: list of str
         Names of the filters to use.
+    muse_outdir : str
+        Default = ".". The directory in which to place cached MUSE images.
+    hst_outdir : str
+        Default = ".". The directory in which to place cached HST images.
     hst_img_dir : str
-       Default = "/muse/UDF/public/HST/XUDF". The directory in which the 30mas
-       HST images of the UDF field can be found.
+        Default = "/muse/UDF/public/HST/XUDF". The directory in which the 30mas
+        HST images of the UDF field can be found.
+    hst_basename : str
+        Filename of the HST images, defaults to
+        'hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits'.
+    hst_resample_each : bool
+        Force the resampling of the HST image for each MUSE image, needed when
+        MUSE images are not on the same grid.
     extramask : str or None
-       FITS file, mask image to be combined with the mask of the MUSE image.
-       0 used to denote unmasked pixels, and 1 used to denote masked pixels.
+        FITS file, mask image to be combined with the mask of the MUSE image.
+        0 used to denote unmasked pixels, and 1 used to denote masked pixels.
+    nprocess : 8
+        Number of processes to use to create bandpass images.
+    fix_beta : float or list of float
+        The beta exponent of the Moffat PSF is fixed to the specified value
+        while fitting, unless the value is None. Can be a list of values for
+        each filter.
     exclude_regions : str
-       DS9 regions that can be used to exclude problematic areas of an
-       image or sources that would degrade the global PSF fit, such as
-       saturated stars, stars with significant proper motion, and
-       variable sources. Passed to imphot.fit_image_photometry
+        DS9 regions that can be used to exclude problematic areas of an
+        image or sources that would degrade the global PSF fit, such as
+        saturated stars, stars with significant proper motion, and
+        variable sources. Passed to imphot.fit_image_photometry.
 
     Returns
     -------
@@ -103,7 +115,10 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     if hst_img_dir is None:
         raise ValueError('hst_img_dir is not specified')
 
-    for filter_name in hst_filters:
+    if fix_beta is not None and not isinstance(fix_beta, (list, tuple)):
+        fix_beta = [fix_beta] * len(hst_filters)
+
+    for i, filter_name in enumerate(hst_filters):
         # Extract an image from the cube with the spectral characteristics
         # of the filter.
         if expname:
@@ -152,7 +167,7 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
             hst.write(resamp_name, savemask="nan")
 
         logger.info(" Fitting for photometric parameters")
-        imfit = imphot.fit_image_photometry(hst, muse, fix_beta=fix_beta,
+        imfit = imphot.fit_image_photometry(hst, muse, fix_beta=fix_beta[i],
                                             save=True, extramask=extramask,
                                             regions=exclude_regions)
         imfits[filter_name] = imfit
