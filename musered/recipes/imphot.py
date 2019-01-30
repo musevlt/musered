@@ -24,6 +24,7 @@ import os
 
 from astropy.io import fits
 from astropy.table import Table, vstack
+from joblib import Parallel, delayed
 from mpdaf.obj import Image, Cube
 from os.path import join, exists
 # from textwrap import dedent
@@ -173,7 +174,11 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
         imfits[filter_name] = imfit
 
     for i, imfit in enumerate(imfits.values()):
-        logger.info('\n' + imfit.summary(header=(i == 0)))
+        if i == 0:
+            for line in imfit.summary(header=True).splitlines():
+                logger.info(line)
+        else:
+            logger.info(imfit.summary(header=False))
 
     # average of the offsets that were fitted to all of the filters.
     dra = np.array([i.dra.value for i in imfits.values()]).mean().item()
@@ -181,6 +186,47 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     ddec /= 3600.
     dra /= 3600.
     return ddec, dra, imfits
+
+
+def _process_exp(i, nfiles, filename, output_dir, param):
+    logger = logging.getLogger(__name__)
+    expname = get_exp_name(filename)
+    logger.info("%d/%d Processing %s", i, nfiles, filename)
+    outdir = join(output_dir, expname)
+    os.makedirs(outdir, exist_ok=True)
+
+    hst_outdir = outdir if param['hst_resample_each'] else output_dir
+    nproc = int(os.getenv('OMP_NUM_THREADS', 8))
+    ddec, dra, imfits = fit_cube_offsets(
+        filename, nprocess=nproc, muse_outdir=outdir,
+        hst_outdir=hst_outdir, **param)
+
+    hdr = fits.getheader(filename)
+
+    rows = []
+    for filter_name, fit in imfits.items():
+        rows.append(dict([
+            ('filename', filename),
+            ('filter', filter_name),
+            ('dx', fit.dx.value),
+            ('dy', fit.dy.value),
+            ('dra', fit.dra.value.item()),
+            ('ddec', fit.ddec.value.item()),
+            ('scale', fit.scale.value),
+            ('fwhm', fit.fwhm.value),
+            ('beta', fit.beta.value),
+            ('bg', fit.bg.value),
+            ('rms', fit.rms_error)
+        ]))
+    t = Table(rows=rows)
+    t.meta['EXPNAME'] = expname
+    t.meta['RA_OFF'] = dra
+    t.meta['DEC_OFF'] = ddec
+    t.meta['DATE-OBS'] = hdr['DATE-OBS']
+    t.meta['MJD-OBS'] = hdr['MJD-OBS']
+    t.write(join(outdir, 'IMPHOT.fits'), overwrite=True)
+
+    return hdr['DATE-OBS'], hdr['MJD-OBS'], dra, ddec
 
 
 class IMPHOT(PythonRecipe):
@@ -211,52 +257,20 @@ class IMPHOT(PythonRecipe):
         except AttributeError:
             return f'imphot-unknown'
 
-    def _run(self, flist, *args, processed=None, **kwargs):
-        nproc = int(os.getenv('OMP_NUM_THREADS', 8))
-        offset_rows = []
+    def _run(self, flist, *args, processed=None, n_jobs=1, **kwargs):
         nfiles = len(flist)
         processed = processed or set()
-
+        to_compute = []
         for i, filename in enumerate(flist, start=1):
             expname = get_exp_name(filename)
             if expname in processed:
                 self.logger.info("%d/%d Skipping %s", i, nfiles, filename)
-                continue
-            self.logger.info("%d/%d Processing %s", i, nfiles, filename)
-            outdir = join(self.output_dir, expname)
-            os.makedirs(outdir, exist_ok=True)
+            else:
+                to_compute.append((i, nfiles, filename, self.output_dir,
+                                   self.param))
 
-            hst_outdir = (outdir if self.param['hst_resample_each']
-                          else self.output_dir)
-            ddec, dra, imfits = fit_cube_offsets(
-                filename, nprocess=nproc, muse_outdir=outdir,
-                hst_outdir=hst_outdir, **self.param)
-
-            hdr = fits.getheader(filename)
-            offset_rows.append((hdr['DATE-OBS'], hdr['MJD-OBS'], dra, ddec))
-
-            rows = []
-            for filter_name, fit in imfits.items():
-                rows.append(dict([
-                    ('filename', filename),
-                    ('filter', filter_name),
-                    ('dx', fit.dx.value),
-                    ('dy', fit.dy.value),
-                    ('dra', fit.dra.value.item()),
-                    ('ddec', fit.ddec.value.item()),
-                    ('scale', fit.scale.value),
-                    ('fwhm', fit.fwhm.value),
-                    ('beta', fit.beta.value),
-                    ('bg', fit.bg.value),
-                    ('rms', fit.rms_error)
-                ]))
-            t = Table(rows=rows)
-            t.meta['EXPNAME'] = expname
-            t.meta['RA_OFF'] = dra
-            t.meta['DEC_OFF'] = ddec
-            t.meta['DATE-OBS'] = hdr['DATE-OBS']
-            t.meta['MJD-OBS'] = hdr['MJD-OBS']
-            t.write(join(outdir, 'IMPHOT.fits'), overwrite=True)
+        offset_rows = Parallel(n_jobs=n_jobs)(
+            delayed(_process_exp)(*args) for args in to_compute)
 
         outname = join(self.output_dir, 'OFFSET_LIST.fits')
 

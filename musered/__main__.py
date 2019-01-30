@@ -277,8 +277,10 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
 @click.option('-f', '--force', is_flag=True,
               help='force re-processing (imphot only)')
 @click.option('--dry-run', is_flag=True, help='do not run the recipe')
+@click.option('--njobs', default=1, help='number of parallel process (imphot)')
 @click.pass_obj
-def exp_align(mr, dataset, method, name, params, filter, date, force, dry_run):
+def exp_align(mr, dataset, method, name, params, filter, date, force, dry_run,
+              njobs):
     """Compute offsets between exposures."""
     if method == 'drs':
         recipe_name = 'muse_exp_align'
@@ -288,7 +290,8 @@ def exp_align(mr, dataset, method, name, params, filter, date, force, dry_run):
         raise ValueError(f'unknown method {method}')
 
     mr.exp_align(dataset, recipe_name=recipe_name, filt=filter, name=name,
-                 params_name=params, exps=date, force=force, dry_run=dry_run)
+                 params_name=params, exps=date, force=force, dry_run=dry_run,
+                 n_jobs=njobs)
 
 
 @click.argument('dataset')
