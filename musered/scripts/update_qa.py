@@ -126,7 +126,7 @@ def _find_existing_exp(table, key):
 
 
 def _psfrec(filename):
-    from psfrec import reconstruct_psf, __version__
+    from psfrec.run_psfrec import reconstruct_psf, __version__
     lbda, fwhm, beta = reconstruct_psf(filename, lmin=500, lmax=900, nl=3)
     return {
         'PR_vers': __version__,
