@@ -126,8 +126,14 @@ def _find_existing_exp(table, key):
 
 
 def _psfrec(filename):
-    from psfrec.run_psfrec import reconstruct_psf, __version__
-    lbda, fwhm, beta = reconstruct_psf(filename, lmin=500, lmax=900, nl=3)
+    try:
+        from muse_psfr import compute_psf_from_sparta, __version__
+    except ImportError:
+        from psfrec import compute_psf_from_sparta, __version__
+
+    res = compute_psf_from_sparta(filename, lmin=500, lmax=900, nl=3)
+    data = res['FIT_MEAN'].data
+    fwhm, beta = data['fwhm'][:, 0], data['n']
     return {
         'PR_vers': __version__,
         'PR_fwhmB': fwhm[0], 'PR_fwhmV': fwhm[1], 'PR_fwhmR': fwhm[2],
