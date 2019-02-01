@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 @click.option('--psfrec', is_flag=True,
               help='run PSF reconstruction and update qa_raw table')
 @click.option('--recipe', help='recipe name')
+@click.option('--band', default='F775W',
+              help='band to use for --imphot, default to F775W')
 @click.option('--force', is_flag=True, help="force update of database")
 @click.option('--dry-run', is_flag=True, help="don't update the database")
 @click.pass_obj
@@ -41,10 +43,11 @@ def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, force, dry_run):
     if psfrec:
         qa_psfrec(mr, **kwargs)
     if imphot:
-        qa_imphot(mr, **kwargs)
+        qa_imphot(mr, recipe_name=recipe, **kwargs)
 
 
-def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
+def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False,
+              band='F775W'):
     if recipe_name is None:
         recipe_name = 'imphot'
 
@@ -56,7 +59,7 @@ def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     logger.info(f'imphot: found {len(rows)} exposures in database to process')
     qarows = []
     for row in rows:
-        imphot = _imphot(f"{row['path']}/IMPHOT.fits")
+        imphot = _imphot(f"{row['path']}/IMPHOT.fits", band=band)
         imphot['IM_vers'] = row['recipe_version']
         logger.debug('Name %s Imphot %s', row['name'], imphot)
         qarows.append({'name': row['name'], **imphot})
@@ -107,7 +110,7 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
         upsert_many(mr.db, mr.qa_raw.name, qarows, ['name'])
 
 
-def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
+def qa_psfrec(mr, dates=None, skip=True, dry_run=False):
     try:
         import muse_psfr  # noqa
     except ImportError:
@@ -189,10 +192,10 @@ def _sparta(rawname):
     return res
 
 
-def _imphot(tabname):
+def _imphot(tabname, band='F775W'):
     tab = Table.read(tabname)
-    res = {}
-    row = tab[tab['filter'] == 'F775W'][0]
-    for key in ['fwhm', 'beta', 'bg', 'scale', 'dx', 'dy', 'rms']:
-        res['IM_' + key] = row[key]
-    return res
+    if band not in tab['filter']:
+        raise ValueError('band {band} not found')
+    row = tab[tab['filter'] == band][0]
+    return {f'IM_{key}': row[key]
+            for key in ['fwhm', 'beta', 'bg', 'scale', 'dx', 'dy', 'rms']}
