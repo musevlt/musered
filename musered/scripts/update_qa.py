@@ -97,6 +97,8 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
     qarows = []
     for row in rows:
         sparta_dict = _sparta(row['path'])
+        if sparta_dict is None:
+            continue
         logger.debug('Name %s SPARTA %s', row['name'], sparta_dict)
         qarows.append({'name': row['name'], **sparta_dict})
     if dry_run:
@@ -152,7 +154,12 @@ def _sky(filename):
 
 
 def _sparta(rawname):
-    tab = Table.read(rawname, hdu='SPARTA_ATM_DATA')
+    try:
+        tab = Table.read(rawname, hdu='SPARTA_ATM_DATA')
+    except KeyError:
+        logger.error(f'no SPARTA_ATM_DATA table in {rawname}')
+        return
+
     klist = [k for k in range(1, 5) if tab[f'LGS{k}_TUR_GND'][0] > 0]
     if len(klist) < 4:
         logger.warning('Mode %d lasers detected', len(klist))
