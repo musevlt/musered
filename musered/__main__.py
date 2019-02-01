@@ -44,7 +44,11 @@ def cli(ctx, redversion, loglevel, drslevel, settings, pdb, debug):
         logger.error("settings file '%s' not found", settings)
         sys.exit(1)
 
-    ctx.obj = mr = MuseRed(settings, version=redversion)
+    try:
+        ctx.obj = mr = MuseRed(settings, version=redversion)
+    except Exception as e:
+        logger.error('failed to create the Musered object: %s', e)
+        sys.exit(1)
 
     if debug:
         loglevel = 'debug'
