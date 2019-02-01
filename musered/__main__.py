@@ -101,8 +101,6 @@ def update_qc(mr, type, recipe, force):
 @click.option('--runs', is_flag=True, help='list all runs')
 @click.option('--calibs', is_flag=True, help='list calibration sequences')
 @click.option('--exps', is_flag=True, help='list all exposures')
-@click.option('--raw', help='list raw exposures, must be a semicolon-separated'
-              ' list of key:value items, e.g. night:2018-08-14;DPR_CATG:CALIB')
 @click.option('--qc', help='show QC keywords')
 @click.option('--date', multiple=True, help='show info for a given date')
 @click.option('--run', help='show info for a given run')
@@ -119,7 +117,7 @@ def update_qc(mr, type, recipe, force):
               'raw, calib, and science. By default all tables are displayed.')
 @click.option('--no-header', is_flag=True, help='hide header')
 @click.pass_obj
-def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
+def info(mr, short, datasets, nights, runs, calibs, exps, qc, date, run,
          night, exp, recipe, excluded, tables, no_header):
     """Print info about raw and reduced data, or night or exposure."""
 
@@ -134,9 +132,6 @@ def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
             mr.list_calibs()
         if exps:
             mr.list_exposures()
-    elif raw:
-        kw = dict([item.split(':') for item in raw.split(';')])
-        mr.info_raw(**kw)
     elif qc:
         mr.info_qc(qc, date_list=date)
     elif exp or night:
@@ -173,6 +168,21 @@ def info_warnings(mr, mode, date, recipe):
 
     """
     mr.info_warnings(date_list=date, recipes=recipe, mode=mode)
+
+
+@click.argument('select', nargs=-1)
+@click.pass_obj
+def info_raw(mr, select):
+    """Print a table with raw exposures.
+
+    The displayed files can be limited to the result of a query, with key:value
+    items passed as arguments. Example::
+
+        $ musered info-raw DPR_CATG:CALIB night:2017-06-18
+
+    """
+    kw = dict([item.split(':') for item in select])
+    mr.info_raw(**kw)
 
 
 @click.option('-r', '--recipe', multiple=True)
@@ -331,9 +341,10 @@ def std_combine(mr, run, params, force):
     mr.std_combine(run, params_name=params, force=force)
 
 
-for cmd in (info, clean, retrieve_data, update_db, update_qc, process_calib,
+for cmd in (info, info_warnings, info_raw,
+            clean, retrieve_data, update_db, update_qc, process_calib,
             update_qa, process_exp, exp_align, exp_combine, shell,
-            check_integrity, std_combine, info_warnings):
+            check_integrity, std_combine):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 
 # loading plugins
