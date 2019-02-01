@@ -148,7 +148,7 @@ def test_info_exp(mr, caplog):
     assert caplog.records[0].message == '2017-06-20 not found'
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--exp', '2017-06-16T01:34:56.867'])
+    result = runner.invoke(cli, ['info-exp', '2017-06-16T01:34:56.867'])
     assert result.exit_code == 0
     out = result.output.splitlines()
     for line in ['★ GTO logs:',
@@ -162,13 +162,14 @@ def test_info_exp(mr, caplog):
 
 def test_info_night(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--night', '2017-06-15',
+    result = runner.invoke(cli, ['info-exp', '--night', '2017-06-15',
                                  '--recipe', 'bias'])
     assert result.exit_code == 0
     out = result.output.splitlines()
     assert '★ Recipe: muse_bias' in out
 
-    result = runner.invoke(cli, ['info', '--night', '2017-06-15', '--short'])
+    result = runner.invoke(cli, ['info-exp', '--night', '2017-06-15',
+                                 '--short'])
     assert result.exit_code == 0
     out = result.output.splitlines()
     assert '★ Recipe: muse_bias' in out

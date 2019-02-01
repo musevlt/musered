@@ -95,7 +95,6 @@ def update_qc(mr, type, recipe, force):
     mr.update_qc(dpr_types=type, recipe_name=recipe, force=force)
 
 
-@click.option('--short', is_flag=True, help='shortened output for --exp')
 @click.option('--datasets', is_flag=True, help='list all datasets')
 @click.option('--nights', is_flag=True, help='list all nights')
 @click.option('--runs', is_flag=True, help='list all runs')
@@ -104,12 +103,6 @@ def update_qc(mr, type, recipe, force):
 @click.option('--qc', help='show QC keywords')
 @click.option('--date', multiple=True, help='show info for a given date')
 @click.option('--run', help='show info for a given run')
-@click.option('-n', '--night', multiple=True,
-              help='show reduction log for a night')
-@click.option('-e', '--exp', multiple=True,
-              help='show reduction log for an exposure')
-@click.option('-r', '--recipe', multiple=True,
-              help='recipe name to show (for --night and --exp)')
 @click.option('--excluded', is_flag=True,
               help='show excluded exps (for the main info report)')
 @click.option('--tables', default='raw,calib,science',
@@ -117,8 +110,8 @@ def update_qc(mr, type, recipe, force):
               'raw, calib, and science. By default all tables are displayed.')
 @click.option('--no-header', is_flag=True, help='hide header')
 @click.pass_obj
-def info(mr, short, datasets, nights, runs, calibs, exps, qc, date, run,
-         night, exp, recipe, excluded, tables, no_header):
+def info(mr, datasets, nights, runs, calibs, exps, qc, date, run,
+         excluded, tables, no_header):
     """Print info about raw and reduced data, or night or exposure."""
 
     if any([datasets, nights, exps, runs, calibs]):
@@ -134,17 +127,6 @@ def info(mr, short, datasets, nights, runs, calibs, exps, qc, date, run,
             mr.list_exposures()
     elif qc:
         mr.info_qc(qc, date_list=date)
-    elif exp or night:
-        if exp:
-            dateobs = mr.prepare_dates(exp, datecol='name')
-            show_weather = True
-        else:
-            dateobs = mr.prepare_dates(night, datecol='name', table='reduced')
-            show_weather = False
-
-        for date in dateobs:
-            mr.info_exp(date, full=not short, recipes=recipe,
-                        show_weather=show_weather)
     else:
         mr.info(date_list=date, run=run, filter_excludes=not excluded,
                 show_tables=tables.split(','), header=not no_header)
@@ -183,6 +165,33 @@ def info_raw(mr, select):
     """
     kw = dict([item.split(':') for item in select])
     mr.info_raw(**kw)
+
+
+@click.argument('exp', nargs=-1)
+@click.option('--night', is_flag=True, help='show reduction log for a night')
+@click.option('--short', is_flag=True, help='shortened output for --exp')
+@click.option('-r', '--recipe', multiple=True, help='recipe name to show')
+@click.pass_obj
+def info_exp(mr, exp, night, short, recipe):
+    """Show reduction log for a night or exposure.
+
+    Example::
+
+        $ musered info-exp 2017-06-16T01:34:56.867
+
+        $ musered info-exp --night --short 2017-06-17
+
+    """
+    if night:
+        dateobs = mr.prepare_dates(exp, datecol='name', table='reduced')
+        show_weather = False
+    else:
+        dateobs = mr.prepare_dates(exp, datecol='name')
+        show_weather = True
+
+    for date in dateobs:
+        mr.info_exp(date, full=not short, recipes=recipe,
+                    show_weather=show_weather)
 
 
 @click.option('-r', '--recipe', multiple=True)
@@ -341,7 +350,7 @@ def std_combine(mr, run, params, force):
     mr.std_combine(run, params_name=params, force=force)
 
 
-for cmd in (info, info_warnings, info_raw,
+for cmd in (info, info_warnings, info_raw, info_exp,
             clean, retrieve_data, update_db, update_qc, process_calib,
             update_qa, process_exp, exp_align, exp_combine, shell,
             check_integrity, std_combine):
