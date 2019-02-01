@@ -26,7 +26,8 @@ logger = logging.getLogger(__name__)
 @click.option('--force', is_flag=True, help="force update of database")
 @click.option('--dry-run', is_flag=True, help="don't update the database")
 @click.pass_obj
-def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, force, dry_run):
+def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, band, force,
+              dry_run):
     """Update QA databases (qa_raw and qa_reduced)."""
 
     if len(date) == 0:
@@ -43,7 +44,7 @@ def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, force, dry_run):
     if psfrec:
         qa_psfrec(mr, **kwargs)
     if imphot:
-        qa_imphot(mr, recipe_name=recipe, **kwargs)
+        qa_imphot(mr, recipe_name=recipe, band=band, **kwargs)
 
 
 def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False,
