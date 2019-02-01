@@ -114,7 +114,9 @@ def update_qc(mr, type, recipe, force):
               help='recipe name to show (for --night and --exp)')
 @click.option('--excluded', is_flag=True,
               help='show excluded exps (for the main info report)')
-@click.option('--tables', default='raw,calib,science', help='tables to show')
+@click.option('--tables', default='raw,calib,science',
+              help='tables to show, comma-separated list, allowed values are '
+              'raw, calib, and science. By default all tables are displayed.')
 @click.option('--no-header', is_flag=True, help='hide header')
 @click.pass_obj
 def info(mr, short, datasets, nights, runs, calibs, exps, raw, qc, date, run,
