@@ -108,6 +108,12 @@ def qa_sparta(mr, dates=None, skip=True, dry_run=False):
 
 
 def qa_psfrec(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
+    try:
+        import muse_psfr  # noqa
+    except ImportError:
+        logger.error('psfrec: could not find the muse-psfr package')
+        return
+
     rows = list(mr.raw.find(name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_raw, 'PR_vers')
@@ -128,10 +134,7 @@ def _find_existing_exp(table, key):
 
 
 def _psfrec(filename):
-    try:
-        from muse_psfr import compute_psf_from_sparta, __version__
-    except ImportError:
-        from psfrec import compute_psf_from_sparta, __version__
+    from muse_psfr import compute_psf_from_sparta, __version__
 
     res = compute_psf_from_sparta(filename, lmin=500, lmax=900, nl=3)
     data = res['FIT_MEAN'].data
