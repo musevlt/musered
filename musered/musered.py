@@ -54,7 +54,8 @@ class MuseRed(Reporter):
         self.raw_path = self.conf['raw_path']
         self.reduced_path = self.conf['reduced_path']
 
-        self.db = load_db(self.conf['db'])
+        self.db = load_db(filename=self.conf.get('db'),
+                          db_env=self.conf.get('db_env'))
 
         version = self.version.replace('.', '_')
         self.tables = {
