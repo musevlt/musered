@@ -44,21 +44,20 @@ def cli(ctx, redversion, loglevel, drslevel, settings, pdb, debug):
         logger.error("settings file '%s' not found", settings)
         sys.exit(1)
 
-    try:
-        ctx.obj = mr = MuseRed(settings, version=redversion)
-    except Exception as e:
-        logger.error('failed to create the Musered object: %s', e)
-        sys.exit(1)
-
     if debug:
         loglevel = 'debug'
         pdb = True
 
     if loglevel is not None:
-        mr.set_loglevel(loglevel)
         if loglevel.lower() == 'debug':
             # this is for astroquery, but could be done better..
             logging.getLogger('astropy').setLevel('DEBUG')
+
+    try:
+        ctx.obj = mr = MuseRed(settings, version=redversion, loglevel=loglevel)
+    except Exception as e:
+        logger.error('failed to create the Musered object: %s', e)
+        sys.exit(1)
 
     if drslevel is not None:
         mr.set_loglevel(drslevel, cpl=True)

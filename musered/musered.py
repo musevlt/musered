@@ -37,7 +37,7 @@ class MuseRed(Reporter):
     """
 
     def __init__(self, settings_file='settings.yml', report_format='txt',
-                 version=None, settings_kw=None):
+                 version=None, settings_kw=None, loglevel=None):
         super().__init__(report_format=report_format)
 
         self.logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class MuseRed(Reporter):
         if settings_kw:
             self.conf.update(settings_kw)
 
-        self.set_loglevel(self.conf.get('loglevel', 'info'))
+        self.set_loglevel(loglevel or self.conf.get('loglevel', 'INFO'))
         self.version = version or self.conf.get('version', '0.1')
         self.datasets = self.conf['datasets']
         self.raw_path = self.conf['raw_path']
