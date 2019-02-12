@@ -1,10 +1,18 @@
 import logging
 import numpy as np
 import os
-import zap
+import sys
 from astropy.io import fits
 from os.path import join
 from mpdaf.scripts.make_white_image import make_white_image
+
+try:
+    import zap
+except ImportError:
+    ZAP_VERSION = 'unknown'
+    zap = None
+else:
+    ZAP_VERSION = zap.__version__
 
 from .recipe import PythonRecipe
 
@@ -14,6 +22,10 @@ def do_zap(inputfile, outputfile, skyfile=None, imgfile=None, cfwidthSVD=100,
            compute_mask=False, additional_mask=None, mask_edges=False,
            n_components=None, ncpu=None, varcurvefile=None):
     logger = logging.getLogger(__name__)
+
+    if zap is None:
+        logger.error('zap is not installed')
+        sys.exit(1)
 
     if compute_mask:
         from mpdaf.obj import mask_sources
@@ -60,7 +72,7 @@ class ZAP(PythonRecipe):
     output_dir = 'zap'
     output_frames = ['DATACUBE_ZAP', 'IMAGE_ZAP', 'SKYCUBE_ZAP',
                      'VARCURVE_ZAP']
-    version = f'zap-{zap.__version__}'
+    version = f'zap-{ZAP_VERSION}'
     n_inputs_rec = 1
 
     default_params = dict(
