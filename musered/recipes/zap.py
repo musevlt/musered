@@ -15,12 +15,13 @@ else:
     ZAP_VERSION = zap.__version__
 
 from .recipe import PythonRecipe
+from ..utils import make_band_images
 
 
 def do_zap(inputfile, outputfile, skyfile=None, imgfile=None, cfwidthSVD=100,
            cfwidthSP=100, cftype='fit', zlevel='median', mask=None,
            compute_mask=False, additional_mask=None, mask_edges=False,
-           n_components=None, ncpu=None, varcurvefile=None):
+           n_components=None, ncpu=None, varcurvefile=None, filter=None):
     logger = logging.getLogger(__name__)
 
     if zap is None:
@@ -63,6 +64,12 @@ def do_zap(inputfile, outputfile, skyfile=None, imgfile=None, cfwidthSVD=100,
         im.write(imgfile, savemask='nan')
         cube.write(outputfile, savemask='nan')
         fits.writeto(maskfile, mask, header=im.get_wcs_header(), clobber=True)
+    else:
+        cube = None
+
+    if filter:
+        bandname = imgfile.replace('.fits', '_{filt}.fits')
+        make_band_images(cube or outputfile, bandname, filter)
 
 
 class ZAP(PythonRecipe):
@@ -84,6 +91,7 @@ class ZAP(PythonRecipe):
         n_components=None,
         ncpu=None,
         zlevel='median',
+        filter='white,Johnson_V,Cousins_R,Cousins_I'
     )
 
     @property

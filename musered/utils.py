@@ -12,8 +12,9 @@ from astropy.io import ascii, fits
 from astropy.table import Table, MaskedColumn, vstack
 from astropy.stats import sigma_clip
 from collections import OrderedDict, defaultdict
+from mpdaf.obj import Cube
 from sqlalchemy.engine import Engine
-from sqlalchemy import event, pool, sql, func, engine_from_config
+from sqlalchemy import event, pool, sql, func
 
 from .settings import RAW_FITS_KEYWORDS
 
@@ -717,3 +718,19 @@ def ensure_list(value):
         return value.tolist()
     else:
         return value
+
+
+def make_band_images(cube, imgname, filter):
+    logger = logging.getLogger(__name__)
+    if isinstance(filter, str):
+        filter = filter.split(',')
+    if isinstance(cube, str):
+        cube = Cube(cube)
+
+    for filt in filter:
+        if filt == 'white':
+            continue
+        im = cube.get_band_image(filt)
+        fname = imgname.format(filt=filt)
+        logger.info('Saving img: %s', fname)
+        im.write(fname, savemask='nan')

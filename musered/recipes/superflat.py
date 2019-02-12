@@ -11,6 +11,7 @@ from os.path import join
 from tempfile import TemporaryDirectory
 
 from ..masking import mask_sources
+from ..utils import make_band_images
 from .recipe import PythonRecipe
 from .science import SCIPOST
 
@@ -25,7 +26,8 @@ class SUPERFLAT(PythonRecipe):
     # Save the V,R,I images
     default_params = {
         'method': 'sigclip',
-        'scipost': {'filter': 'white,Johnson_V,Cousins_R,Cousins_I'}
+        'scipost': {'filter': 'white'},
+        'filter': 'white,Johnson_V,Cousins_R,Cousins_I',
     }
 
     @property
@@ -123,7 +125,11 @@ class SUPERFLAT(PythonRecipe):
         im = expcube.mean(axis=0)
 
         expcube.write(join(outdir, 'DATACUBE_FINAL.fits'), savemask='nan')
-        im.write(join(outdir, 'IMAGE_FOV_0001.fits'), savemask='nan')
+        im.write(join(outdir, 'IMAGE_WHITE.fits'), savemask='nan')
+
+        if self.param['filter']:
+            make_band_images(expcube, 'IMAGE_FOV_{filt}.fits',
+                             self.param['filter'])
 
 
 def mask_cube(cubef, outf):

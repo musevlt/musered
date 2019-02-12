@@ -5,6 +5,7 @@ from mpdaf.obj import CubeList, CubeMosaic
 from os.path import join
 
 from .recipe import PythonRecipe
+from ..utils import make_band_images
 
 
 def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
@@ -57,16 +58,9 @@ def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
     im = cube.mean(axis=0)
     im.write(img_name, savemask='nan')
 
-    if filter is not None:
-        if isinstance(filter, str):
-            filter = filter.split(',')
-        for filt in filter:
-            if filt == 'white':
-                continue
-            im = cube.get_band_image(filt)
-            fname = img_name.replace('.fits', '_{}.fits'.format(filt))
-            logger.info('Saving img: %s', fname)
-            im.write(fname, savemask='nan')
+    if filter:
+        bandname = img_name.replace('.fits', '_{filt}.fits')
+        make_band_images(cube, bandname, filter)
 
     cube = None
 
