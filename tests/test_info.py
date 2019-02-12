@@ -1,3 +1,4 @@
+import logging
 import textwrap
 from click.testing import CliRunner
 
@@ -190,7 +191,7 @@ def test_info_raw(mr, capsys, caplog):
 
     # test missing exp/night
     mr.info_raw(night='2017-06-20')
-    assert caplog.records[0].message == 'Could not find exposures'
+    assert caplog.records[-1].message == 'Could not find exposures'
 
 
 def test_info_qc(mr):

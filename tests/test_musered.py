@@ -59,7 +59,8 @@ def test_process_calib(mr, caplog):
     runner = CliRunner()
     result = runner.invoke(cli, ['process-calib', '--dry-run'])
     assert result.exit_code == 0
-    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+    assert [rec.message for rec in caplog.records if rec.levelno > 10] == \
+        textwrap.dedent("""\
         Running muse_bias for 3 calibration sequences
         Already processed, nothing to do
         Running muse_flat for 3 calibration sequences
@@ -78,7 +79,8 @@ def test_process_exp(mr, caplog):
     runner = CliRunner()
     result = runner.invoke(cli, ['process-exp', '--dry-run'])
     assert result.exit_code == 0
-    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+    assert [rec.message for rec in caplog.records if rec.levelno > 10] == \
+        textwrap.dedent("""\
         Running muse_scibasic for 6 exposures
         Already processed, nothing to do
         Running muse_scibasic for 1 exposures
@@ -95,7 +97,8 @@ def test_clean(mr, caplog):
     runner = CliRunner()
     result = runner.invoke(cli, ['clean', '-r', 'bias'])
     assert result.exit_code == 0
-    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+    assert [rec.message for rec in caplog.records if rec.levelno > 10] == \
+        textwrap.dedent("""\
         Dry-run mode, nothing will be done
         Would remove 4 exposures/nights from the database
     """).splitlines()
@@ -103,7 +106,8 @@ def test_clean(mr, caplog):
     caplog.clear()
     result = runner.invoke(cli, ['clean', '-n', '2017-06-13'])
     assert result.exit_code == 0
-    assert [rec.message for rec in caplog.records] == textwrap.dedent("""\
+    assert [rec.message for rec in caplog.records if rec.levelno > 10] == \
+        textwrap.dedent("""\
         Dry-run mode, nothing will be done
         Would remove 1 exposures/nights from the database
     """).splitlines()
