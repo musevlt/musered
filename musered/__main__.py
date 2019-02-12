@@ -247,11 +247,12 @@ def process_calib(mr, date, force, dry_run, bias, dark, flat, wavecal, lsf,
 @click.option('--scipost', is_flag=True, help='run muse_scipost')
 @click.option('--makecube', is_flag=True, help='run muse_scipost_make_cube')
 @click.option('--superflat', is_flag=True, help='run superflat')
+@click.option('--zap', is_flag=True, help='run zap')
 @click.option('--params', help='name of the parameters block')
 @click.option('--dataset', help='process exposures for a given dataset')
 @click.pass_obj
 def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
-                makecube, superflat, params, dataset):
+                makecube, superflat, zap, params, dataset):
     """Run recipes for science exposures.
 
     By default, run scibasic, standard, and scipost, for all exposures.
@@ -263,7 +264,7 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
 
     kwargs = dict(dates=date, skip=not force, params_name=params,
                   dry_run=dry_run)
-    run_all = not any([scibasic, standard, scipost, makecube, superflat])
+    run_all = not any([scibasic, standard, scipost, makecube, superflat, zap])
 
     if scibasic or run_all:
         # if force:
@@ -287,6 +288,9 @@ def process_exp(mr, date, force, dry_run, scibasic, standard, scipost,
 
     if superflat:
         mr.process_exp('superflat', dataset=dataset, **kwargs)
+
+    if zap:
+        mr.process_exp('zap', dataset=dataset, **kwargs)
 
 
 @click.argument('dataset')

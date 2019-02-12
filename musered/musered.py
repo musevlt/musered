@@ -142,7 +142,7 @@ class MuseRed(Reporter):
         return QAFlags(flags_tbl, additional_flags=self.conf.get('flags'))
 
     def set_loglevel(self, level, cpl=False):
-        logger = logging.getLogger('cpl' if cpl else 'musered')
+        logger = logging.getLogger('cpl' if cpl else '')
         level = level.upper()
         logger.setLevel(level)
         logger.handlers[0].setLevel(level)
@@ -207,11 +207,16 @@ class MuseRed(Reporter):
         return [x[0] for x in self.execute(select)]
 
     def select_dates(self, dpr_type=None, table='raw', column='name',
-                     **kwargs):
+                     where=None, **kwargs):
         """Select the list of dates to process."""
         tbl = self.get_table(table)
-        wc = (tbl.table.c.DPR_TYPE == dpr_type) if dpr_type else None
-        dates = self.select_column(column, where=wc, table=table, **kwargs)
+        if dpr_type is not None:
+            wc = (tbl.table.c.DPR_TYPE == dpr_type)
+            if where is not None:
+                where = where & wc
+            else:
+                where = wc
+        dates = self.select_column(column, where=where, table=table, **kwargs)
         dates = self.frames.filter_valid(dates, DPR_TYPE=dpr_type,
                                          column=column)
         return list(sorted(dates))
@@ -741,17 +746,24 @@ class MuseRed(Reporter):
                     params_name=None, **kwargs):
         """Run a science recipe."""
 
-        # get the list of dates to process
-        if dates is None and dataset:
-            dates = self.exposures[dataset]
-        else:
-            dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
-
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
+        redc = self.reduced.table.c
+
+        # get the list of dates to process
+        if dates is None:
+            if 'from_recipe' in recipe_conf:
+                dates = [o['name'] for o in self.reduced.find(
+                    recipe_name=recipe_conf['from_recipe'])]
+                dates = self.select_dates(
+                    table='reduced', distinct=True,
+                    where=(redc.recipe_name == recipe_conf['from_recipe']))
+            elif dataset:
+                dates = self.exposures[dataset]
+        if dates is None:
+            dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
 
         if recipe_name == 'superflat':
             # Build a Table (name, run, path)
-            redc = self.reduced.table.c
             rawc = self.rawc
             wc = (redc.DPR_TYPE == 'PIXTABLE_REDUCED')
             if 'from_recipe' in recipe_conf:

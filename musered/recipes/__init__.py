@@ -8,6 +8,12 @@ from .std import STDCOMBINE
 from .superflat import SUPERFLAT
 from ..utils import all_subclasses
 
+try:
+    from .zap import ZAP
+except ImportError:
+    # skip if zap is not installed
+    pass
+
 recipe_classes = {cls.recipe_name: cls for cls in
                   all_subclasses(BaseRecipe) if cls.recipe_name}
 
