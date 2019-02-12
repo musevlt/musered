@@ -57,6 +57,8 @@ def cli(ctx, redversion, loglevel, drslevel, settings, pdb, debug):
         ctx.obj = mr = MuseRed(settings, version=redversion, loglevel=loglevel)
     except Exception as e:
         logger.error('failed to create the Musered object: %s', e)
+        if debug or pdb:
+            raise
         sys.exit(1)
 
     if drslevel is not None:

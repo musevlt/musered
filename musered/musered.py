@@ -884,16 +884,25 @@ class MuseRed(Reporter):
         recipe_cls = get_recipe_cls(recipe_name)
         DPR_TYPE = recipe_cls.DPR_TYPE
         name_dict = {'muse_exp_combine': 'drs', 'mpdaf_combine': 'mpdaf'}
-        name = (name or recipe_conf.get('name') or '{}_{}'.format(
-            dataset, name_dict.get(recipe_name, recipe_name)))
 
-        # get the list of files to process
-        flist = self.get_files(DPR_TYPE, first_only=True, OBJECT=dataset,
-                               recipe_name=from_recipe, remove_excludes=True,
-                               select=recipe_conf.get('select'),
-                               exclude_flags=recipe_conf.get('exclude_flags'))
-        self._run_recipe_simple(recipe_cls, name, dataset, flist,
-                                params_name=params_name, **kwargs)
+        names_select = recipe_conf.get('names_with_selection')
+        if not names_select:
+            name = (name or recipe_conf.get('name') or '{}_{}'.format(
+                dataset, name_dict.get(recipe_name, recipe_name)))
+            names_select = {name: recipe_conf.get('select')}
+
+        if name is not None:
+            names_select = {name: names_select[name]}
+
+        flags = recipe_conf.get('exclude_flags')
+        for name, select in names_select.items():
+            # get the list of files to process
+            self.logger.info('Processing %s', name)
+            flist = self.get_files(DPR_TYPE, first_only=True, OBJECT=dataset,
+                                   recipe_name=from_recipe, select=select,
+                                   remove_excludes=True, exclude_flags=flags)
+            self._run_recipe_simple(recipe_cls, name, dataset, flist,
+                                    params_name=params_name, **kwargs)
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
                     params_name=None, force=False, **kwargs):
