@@ -1,6 +1,9 @@
 import logging
 import numpy as np
 import os
+import pathlib
+import platform
+import shutil
 
 from astropy.io import fits
 from astropy.table import Table
@@ -25,6 +28,7 @@ class SUPERFLAT(PythonRecipe):
     version = '0.1'
     # Save the V,R,I images
     default_params = {
+        'cache_pixtables': False,
         'method': 'sigclip',
         'scipost': {'filter': 'white'},
         'filter': 'white,Johnson_V,Cousins_R,Cousins_I',
@@ -39,6 +43,24 @@ class SUPERFLAT(PythonRecipe):
                    'LSF_PROFILE', 'SKY_CONTINUUM')
         return [f for f in SCIPOST(verbose=False).calib_frames
                 if f not in exclude]
+
+    def get_pixtables(self, name, path):
+        """Return pixtables path, after optionally caching them."""
+        cachedir = self.param.get('cache_pixtables')
+        if isinstance(cachedir, dict):
+            # get cachedir specific to a given hostname
+            cachedir = cachedir.get(platform.node())
+
+        if cachedir:
+            cachedir = pathlib.Path(cachedir) / name
+            if not cachedir.exists():
+                cachedir.mkdir(parents=True)
+                for f in glob(f"{path}/PIXTABLE_REDUCED*.fits"):
+                    self.logger.debug('copy %s to %s', f, cachedir)
+                    shutil.copy(f, cachedir)
+            return glob(f"{cachedir}/PIXTABLE_REDUCED*.fits")
+        else:
+            return glob(f"{path}/PIXTABLE_REDUCED*.fits")
 
     def _run(self, flist, *args, exposures=None, name=None, **kwargs):
         hdr = fits.getheader(flist[0])
@@ -82,7 +104,7 @@ class SUPERFLAT(PythonRecipe):
                 info('%d/%d : %s already processed', i, nexps, exp['name'])
             else:
                 info('%d/%d : %s processing', i, nexps, exp['name'])
-                explist = glob(f"{exp['path']}/PIXTABLE_REDUCED*.fits")
+                explist = self.get_pixtables(exp['name'], exp['path'])
                 self.raw['SUPERFLAT_EXPS'] += explist
                 recipe.run(explist, output_dir=outdir,
                            params=self.param['scipost'], **recipe_kw)
