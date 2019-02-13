@@ -861,7 +861,7 @@ class MuseRed(Reporter):
                         keys=('name', 'recipe_name', 'DPR_TYPE'))
 
     def exp_combine(self, dataset, recipe_name='muse_exp_combine', name=None,
-                    params_name=None, **kwargs):
+                    params_name=None, force=False, **kwargs):
         """Combine exposures for a dataset.
 
         Parameters
@@ -875,9 +875,10 @@ class MuseRed(Reporter):
             Name of the output record, default to '{dataset}_{recipe_name}'.
         params_name : str
             Name of the parameter block, default to recipe_name.
+        force : bool
+            Force processing if it was already done previously.
 
         """
-
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_scipost')
@@ -894,8 +895,14 @@ class MuseRed(Reporter):
         if name is not None:
             names_select = {name: names_select[name]}
 
+        params = params_name or recipe_name
+        processed = self.get_processed(recipe_name=params)
+
         flags = recipe_conf.get('exclude_flags')
         for name, select in names_select.items():
+            if not force and name in processed:
+                self.logger.info('Skipping %s, already processed', name)
+                continue
             # get the list of files to process
             self.logger.info('Processing %s', name)
             flist = self.get_files(DPR_TYPE, first_only=True, OBJECT=dataset,
