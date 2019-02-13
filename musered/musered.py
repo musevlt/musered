@@ -267,7 +267,7 @@ class MuseRed(Reporter):
             exc.update(self.frames.get_excludes(DPR_TYPE=DPR_TYPE))
 
         if exclude_flags is not None:
-            exc.update(self.flags.find(*exclude_flags))
+            exc.update(self.get_flagged(exclude_flags))
 
         if select is not None:
             names = set()
@@ -304,6 +304,24 @@ class MuseRed(Reporter):
 
         self.logger.info('Selected %d files out of %d', len(flist), ntot)
         return flist
+
+    def get_flagged(self, exclude_flags):
+        """Return the list of flagged exposures.
+
+        Parameters
+        ----------
+        exclude_flags : list or bool
+            List of flags, or True to use all flags.
+
+        """
+        if isinstance(exclude_flags, dict):
+            return self.flags.find(*exclude_flags)
+        elif exclude_flags is True:
+            # exclude all flagged exposures
+            return self.flags.find(*list(self.flags.flags))
+        else:
+            raise ValueError('wrong format for exclude_flags, it should '
+                             'be a dict or True to exclude all flags')
 
     def update_db(self, force=False):
         """Create or update the database containing FITS keywords."""
@@ -763,11 +781,17 @@ class MuseRed(Reporter):
             dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
 
         if recipe_name == 'superflat':
-            # Build a Table (name, run, path)
+            # Build a Table (name, run, path) for PIXTABLE_REDUCED that can
+            # be used for the superflats
             rawc = self.rawc
             wc = (redc.DPR_TYPE == 'PIXTABLE_REDUCED')
             if 'from_recipe' in recipe_conf:
                 wc = wc & (redc.recipe_name == recipe_conf['superflat_from'])
+            if 'exclude_flags' in recipe_conf:
+                # exclude flagged exposures
+                excludes = self.get_flagged(recipe_conf['exclude_flags'])
+                wc = wc & (redc.name.notin_(excludes))
+
             exps = [
                 (name, run, path)
                 for (name, run, path) in self.execute(
