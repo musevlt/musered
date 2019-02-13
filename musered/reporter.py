@@ -75,12 +75,17 @@ class Reporter:
         if not self.runs:
             return
 
+        exc = self.flags.find(*list(self.flags.flags))
         self.fmt.show_title('Runs:')
         for name in sorted(self.runs):
             run = self.conf['runs'][name]
             nexp = self.raw.count(run=name, DPR_TYPE='OBJECT')
-            self.fmt.show_text(f"- {name} : {run['start_date']} - "
-                               f"{run['end_date']}, {nexp} exposures")
+            nexc = self.raw.count(run=name, DPR_TYPE='OBJECT', name=exc)
+            text = (f"- {name} : {run['start_date']} - {run['end_date']}, "
+                    f"{nexp} exposures")
+            if nexc > 0:
+                text += f" ({nexc} flagged)"
+            self.fmt.show_text(text)
 
     def list_calibs(self):
         """Print the list of calibration sequences."""
