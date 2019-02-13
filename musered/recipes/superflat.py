@@ -66,11 +66,15 @@ class SUPERFLAT(PythonRecipe):
         os.environ['MUSE_SUPERFLAT_POS'] = ','.join(
             map(str, (ra, dec, hdr['ESO INS DROT POSANG'])))
 
+        # Prepare scipost recipe and args, and remove OFFSET_LIST as offsets
+        # are applied manually above
         recipe = SCIPOST(log_dir=self.log_dir)
         recipe_kw = {key: kwargs[key] for key in self.calib_frames
                      if key in kwargs and key != 'OFFSET_LIST'}
 
         cubelist = []
+        self.raw['SUPERFLAT_EXPS'] = []
+
         for i, exp in enumerate(exps, start=1):
             outdir = join(self.output_dir, 'cubes', exp['name'])
             outname = f'{outdir}/DATACUBE_FINAL.fits'
@@ -79,6 +83,7 @@ class SUPERFLAT(PythonRecipe):
             else:
                 info('%d/%d : %s processing', i, nexps, exp['name'])
                 explist = glob(f"{exp['path']}/PIXTABLE_REDUCED*.fits")
+                self.raw['SUPERFLAT_EXPS'] += explist
                 recipe.run(explist, output_dir=outdir,
                            params=self.param['scipost'], **recipe_kw)
             cubelist.append(outname)
