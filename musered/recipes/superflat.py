@@ -32,10 +32,13 @@ class SUPERFLAT(PythonRecipe):
 
     @property
     def calib_frames(self):
-        frames = SCIPOST(verbose=False).calib_frames
-        if 'SKY_CONTINUUM' in frames:
-            frames.remove('SKY_CONTINUUM')
-        return frames
+        # We suppose that most of the scipost steps were already run (flux
+        # calibration, sky subtraction, autocalib), so we exclude all these
+        # frames to speedup the frame association.
+        exclude = ('RAMAN_LINES', 'STD_RESPONSE', 'STD_TELLURIC',
+                   'LSF_PROFILE', 'SKY_CONTINUUM')
+        return [f for f in SCIPOST(verbose=False).calib_frames
+                if f not in exclude]
 
     def _run(self, flist, *args, exposures=None, name=None, **kwargs):
         hdr = fits.getheader(flist[0])
