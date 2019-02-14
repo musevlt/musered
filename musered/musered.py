@@ -768,16 +768,15 @@ class MuseRed(Reporter):
         redc = self.reduced.table.c
 
         # get the list of dates to process
-        if dates is None:
-            if 'from_recipe' in recipe_conf:
-                dates = [o['name'] for o in self.reduced.find(
-                    recipe_name=recipe_conf['from_recipe'])]
-                dates = self.select_dates(
-                    table='reduced', distinct=True,
-                    where=(redc.recipe_name == recipe_conf['from_recipe']))
-            elif dataset:
-                dates = self.exposures[dataset]
-        if dates is None:
+        if dates is None and dataset:
+            dates = self.exposures[dataset]
+        elif dates is None and 'from_recipe' in recipe_conf:
+            dates = [o['name'] for o in self.reduced.find(
+                recipe_name=recipe_conf['from_recipe'])]
+            dates = self.select_dates(
+                table='reduced', distinct=True,
+                where=(redc.recipe_name == recipe_conf['from_recipe']))
+        else:
             dates = self.prepare_dates(dates, DPR_TYPE='OBJECT')
 
         if recipe_name == 'superflat':
