@@ -29,9 +29,16 @@ class SUPERFLAT(PythonRecipe):
     # Save the V,R,I images
     default_params = {
         'cache_pixtables': False,
-        'method': 'sigclip',
-        'scipost': {'filter': 'white'},
         'filter': 'white,Johnson_V,Cousins_R,Cousins_I',
+        'keep_cubes': False,
+        'masking_njobs': 8,
+        'method': 'sigclip',
+        'scipost': {
+            'filter': 'white',
+            'save': 'cube',
+            'skymethod': 'none',
+        },
+        'temp_dir': None,
     }
 
     @property
@@ -40,13 +47,13 @@ class SUPERFLAT(PythonRecipe):
         # calibration, sky subtraction, autocalib), so we exclude all these
         # frames to speedup the frame association.
         exclude = ('RAMAN_LINES', 'STD_RESPONSE', 'STD_TELLURIC',
-                   'LSF_PROFILE', 'SKY_CONTINUUM')
+                   'LSF_PROFILE', 'SKY_CONTINUUM', 'SKY_LINES')
         return [f for f in SCIPOST(verbose=False).calib_frames
                 if f not in exclude]
 
     def get_pixtables(self, name, path):
         """Return pixtables path, after optionally caching them."""
-        cachedir = self.param.get('cache_pixtables')
+        cachedir = self.param['cache_pixtables']
         if isinstance(cachedir, dict):
             # get cachedir specific to a given hostname
             cachedir = cachedir.get(platform.node())
@@ -97,8 +104,21 @@ class SUPERFLAT(PythonRecipe):
         cubelist = []
         self.raw['SUPERFLAT_EXPS'] = []
 
+        # cubes directory: either inside tmpdir or inside output_dir if the
+        # keep_cubes option is True
+        if self.param['keep_cubes']:
+            cubesdir = join(self.output_dir, 'cubes')
+        else:
+            temp_dir = self.param['temp_dir'] or self.temp_dir
+            if isinstance(temp_dir, dict):
+                # get temp_dir specific to a given hostname
+                temp_dir = temp_dir.get(platform.node())
+            os.makedirs(temp_dir, exist_ok=True)
+            temp_dir = TemporaryDirectory(dir=temp_dir)
+            cubesdir = temp_dir.name
+
         for i, exp in enumerate(exps, start=1):
-            outdir = join(self.output_dir, 'cubes', exp['name'])
+            outdir = join(cubesdir, exp['name'])
             outname = f'{outdir}/DATACUBE_FINAL.fits'
             if os.path.exists(outname):
                 info('%d/%d : %s already processed', i, nexps, exp['name'])
@@ -111,30 +131,31 @@ class SUPERFLAT(PythonRecipe):
             cubelist.append(outname)
 
         # 2. Mask sources and combine exposures to obtain the superflat
-        prefix = f"superflat.{exp['name']}"
-        with TemporaryDirectory(dir=self.temp_dir, prefix=prefix) as tmpdir:
-            cubes_masked = [join(tmpdir, *cubef.split(os.sep)[-2:])
-                            for cubef in cubelist]
-            Parallel(n_jobs=8)(delayed(mask_cube)(cubef, outf)
-                               for cubef, outf in zip(cubelist, cubes_masked))
+        Parallel(n_jobs=self.param['masking_njobs'])(
+            delayed(mask_cube)(cubef) for cubef in cubelist)
 
-            method = self.param['method']
-            info(f'Combining cubes with method {method}')
-            cubes = CubeList(cubes_masked)
-            if method == 'median':
-                supercube, expmap, stat = cubes.median()
-            elif method == 'sigclip':
-                supercube, expmap, stat = cubes.combine(var='propagate',
-                                                        mad=True)
-                # Mask values where the variance is NaN
-                supercube.mask |= np.isnan(supercube._var)
-            else:
-                raise ValueError(f'unknown method {method}')
+        method = self.param['method']
+        info(f'Combining cubes with method {method}')
+        cubes = CubeList(cubelist)
+        if method == 'median':
+            supercube, expmap, stat = cubes.median()
+        elif method == 'sigclip':
+            supercube, expmap, stat = cubes.combine(var='propagate', mad=True)
+            # Mask values where the variance is NaN
+            supercube.mask |= np.isnan(supercube._var)
+        else:
+            raise ValueError(f'unknown method {method}')
 
+        # remove temp directory
+        if not self.param['keep_cubes']:
+            info('Removing temporary files')
+            temp_dir.cleanup()
+
+        info('Saving superflat cube and images')
         superim = supercube.mean(axis=0)
         expim = expmap.mean(axis=0)
         outdir = self.output_dir
-        supercube.write(join(outdir, 'DATACUBE_SUPERFLAT.fits'),
+        supercube.write(join(outdir, 'DATACUBE_SUPERFLAT.fits.gz'),
                         savemask='nan')
         expmap.write(join(outdir, 'DATACUBE_EXPMAP.fits.gz'), savemask='nan')
         expim.write(join(outdir, 'IMAGE_EXPMAP.fits'), savemask='nan')
@@ -142,7 +163,7 @@ class SUPERFLAT(PythonRecipe):
         superim.write(join(outdir, 'IMAGE_SUPERFLAT.fits'), savemask='nan')
 
         # 3. Subtract superflat
-        self.logger.info('Applying superflat to %s', flist[0])
+        info('Applying superflat to %s', flist[0])
         expcube = Cube(flist[0])
         assert expcube.shape == supercube.shape
 
@@ -155,22 +176,28 @@ class SUPERFLAT(PythonRecipe):
         im = expcube.mean(axis=0)
 
         expcube.write(join(outdir, 'DATACUBE_FINAL.fits'), savemask='nan')
-        im.write(join(outdir, 'IMAGE_WHITE.fits'), savemask='nan')
+        im.write(join(outdir, 'IMAGE_FOV.fits'), savemask='nan')
 
-        if self.param['filter']:
-            make_band_images(expcube, 'IMAGE_FOV_{filt}.fits',
-                             self.param['filter'])
+        filt = self.param['filter']
+        if filt:
+            info('Making band images')
+            make_band_images(
+                expcube, join(outdir, 'IMAGE_FOV_{filt}.fits'), filt)
+            make_band_images(
+                supercube, join(outdir, 'IMAGE_SUPERFLAT_{filt}.fits'), filt)
 
 
-def mask_cube(cubef, outf):
+def mask_cube(cubef):
     logger = logging.getLogger(__name__)
     logger.debug('Masking %s', cubef)
     cubedir = os.path.dirname(cubef)
-    maskf = join(cubedir, 'MASK_SOURCES.fits')
     mask = mask_sources(join(cubedir, 'IMAGE_FOV_0001.fits'), sigma=5.,
                         iterations=2, opening_iterations=1)
-    mask.write(maskf, savemask='none')
-    cube = Cube(cubef)
-    cube.mask |= mask._data.astype(bool)
-    os.makedirs(os.path.dirname(outf), exist_ok=True)
-    cube.write(outf, savemask='nan')
+
+    with fits.open(cubef, mode='update') as hdul:
+        if hdul['DATA'].header.get('MASKED'):
+            logger.info('%s is already masked', cubef)
+        else:
+            hdul['DATA'].header['MASKED'] = True
+            hdul['DATA'].data[:, mask._data.astype(bool)] = np.nan
+            hdul.flush()
