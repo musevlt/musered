@@ -191,13 +191,19 @@ def mask_cube(cubef):
     logger = logging.getLogger(__name__)
     logger.debug('Masking %s', cubef)
     cubedir = os.path.dirname(cubef)
+
+    try:
+        fits.getval(cubef, 'MASKED', extname='DATA')
+    except KeyError:
+        pass
+    else:
+        logger.info('%s is already masked', cubef)
+        return
+
     mask = mask_sources(join(cubedir, 'IMAGE_FOV_0001.fits'), sigma=5.,
                         iterations=2, opening_iterations=1)
 
     with fits.open(cubef, mode='update') as hdul:
-        if hdul['DATA'].header.get('MASKED'):
-            logger.info('%s is already masked', cubef)
-        else:
-            hdul['DATA'].header['MASKED'] = True
-            hdul['DATA'].data[:, mask._data.astype(bool)] = np.nan
-            hdul.flush()
+        hdul['DATA'].header['MASKED'] = True
+        hdul['DATA'].data[:, mask._data.astype(bool)] = np.nan
+        hdul.flush()
