@@ -1,9 +1,25 @@
 import logging
+import numpy as np
 import os
-from musered.utils import (parse_raw_keywords, parse_qc_keywords,
-                           find_outliers_qc_chan, stat_qc_chan, find_outliers)
+import shutil
+from musered.utils import (
+    parse_raw_keywords, parse_qc_keywords, find_outliers_qc_chan, stat_qc_chan,
+    find_outliers, dict_values, ensure_list, parse_weather_conditions
+)
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))
+TESTDIR = os.path.join(CURDIR, '..', 'docs', '_static')
+
+
+def test_dict_values():
+    d = dict(a=['foo'], b=['bar', 'baz'])
+    assert dict_values(d) == ['foo', 'bar', 'baz']
+
+
+def test_ensure_list():
+    assert ensure_list('foo') == ['foo']
+    assert ensure_list(['foo']) == ['foo']
+    assert ensure_list(np.array([1, 2])) == [1, 2]
 
 
 def test_parse_keywords(mr, caplog, tmpdir):
@@ -60,6 +76,24 @@ def test_parse_qc(mr):
             'filename': 'MUSE.2017-06-16T01:34:56.867.fits',
             'hdu': 'PRIMARY'}.items():
         assert row[key] == expected
+
+
+def test_parse_weather(mr, caplog):
+    parse_weather_conditions(mr)
+    assert caplog.messages == ['Skipping 11 nights',
+                               'Nothing to do for weather conditions']
+
+    caplog.clear()
+    parse_weather_conditions(mr, force=True)
+    assert caplog.messages[1] == \
+        'File ./raw/MUSE.2017-06-16T01:34:56.867.NL.txt not found'
+
+    caplog.clear()
+    shutil.copytree(os.path.join(TESTDIR, 'raw'), 'raw')
+    parse_weather_conditions(mr, force=True)
+    assert caplog.messages == [
+        'Night 2017-06-15, ./raw/MUSE.2017-06-16T01:34:56.867.NL.txt',
+        'Importing weather conditions, 11 entries']
 
 
 def test_qc_outliers(mr):

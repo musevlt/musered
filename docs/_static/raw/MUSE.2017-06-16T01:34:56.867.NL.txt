@@ -1,0 +1,82 @@
+General weather conditions:
+Seeing:          0.29 - 1.1"
+Humidity:        5 - 25 %
+Wind:            0.7 - 6.1 m/s
+Temperature:     10.5 - 14.7 C
+Overall comment: 
+---------------------------------------------------
+
+Weather observations:
+Time	Conditions	Comment
+22:04	ThickCirrus	we started night with thick clouds
+23:16	ThickCirrus	same condition, more than half sky covered by thick clouds, more clouds are coming from West.
+00:06	ThinCirrus	thin clouds, 25 % of sky with thick clouds.
+02:04	ThinCirrus	Thin condition
+03:20	ThinCirrus	
+04:29	ThinCirrus	
+05:18	Clear	clear condition, few thin clouds leaving, a line clouds passed fast
+06:30	Clear	clear condition, some thin clouds are coming from W
+07:13	Clear	a line clouds passed fast
+08:33	Clear	clear condition, thin clouds around the summit, about 20 deg
+09:57	Clear	
+---------------------------------------------------
+
+See: http://archive.eso.org/asm/ambient-server?night=15+Jun+2017&site=paranal
+---------------------------------------------------
+
+General Comments:
+---------------------------------------------------
+
+OB:         1755413
+Instrument: MUSE
+Name:       IC4406
+Target:     IC4406
+Run:        60.A-9100(G)
+Container:  0
+---------------------------------------------------
+
+Comments:
+No comments
+---------------------------------------------------
+
+Constraint       	Fulfilled	Requested
+Seeing:          	n/a		2.0
+Sky transparency:	n/a		PHOTOMETRIC
+Airmass:         	n/a		5.0
+FLI:             	n/a		1.0
+Moon distance:   	n/a		30
+Twilight:        	n/a		0
+Water Vapour:    	-		0.0
+Strehl:          	-		0.0
+ATM:             	-		NATM
+Fringe Quality:  	n/a
+Ellipticity:     	n/a
+I.Q. Variation:  	n/a
+Grade:       	 	X
+---------------------------------------------------
+
+Files produced and additional information
+---------------------------------------------------
+OBS.ID: 1755413
+OBS.START: 2017-06-16T01:23:29
+---------------------------------------------------
+---------------------------------------------------
+Template: MUSE_wfm-ao_obs_genericoffsetLGS
+Data Product: SCIENCE/OBJECT/IFU
+Mode: WFM-AO-N
+---------------------------------------------------
+Original Filename	Archive Filename	TPL.EXPNO/NEXP	EXPTIME	AIRMASS	DIMM	
+MUSE_WFM-AO_OBS167_0001.fits	MUSE.2017-06-16T01:34:56.867	1/6	30.0	1.062	0.47	
+MUSE_WFM-AO_OBS167_0002.fits	MUSE.2017-06-16T01:37:47.867	2/6	30.0	1.062	0.52	
+MUSE_WFM-AO_OBS167_0003.fits	MUSE.2017-06-16T01:40:40.868	3/6	30.0	1.063	0.4	
+MUSE_WFM-AO_OBS167_0004.fits	MUSE.2017-06-16T01:43:32.868	4/6	30.0	1.063	0.44	
+MUSE_WFM-AO_OBS167_0005.fits	MUSE.2017-06-16T01:46:25.866	5/6	30.0	1.064	0.38	
+MUSE_WFM-AO_OBS167_0006.fits	MUSE.2017-06-16T01:49:19.866	6/6	30.0	1.065	0.49	
+---------------------------------------------------
+OB Grades
+A : Fully within constraints - OB completed
+B : Mostly within constraints, some constraint is ~10% violated - OB completed
+C : Out of constraints - OB must be repeated
+D : Out of constraints - OB considered completed
+X : Uncertain / Not Applicable
+_ : no grade assigned
