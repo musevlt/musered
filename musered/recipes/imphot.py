@@ -230,6 +230,7 @@ def _process_exp(i, nfiles, filename, output_dir, param):
 
 
 class IMPHOT(PythonRecipe):
+    """Recipe to compute offsets with Imphot."""
 
     recipe_name = 'imphot'
     DPR_TYPE = 'DATACUBE_FINAL'

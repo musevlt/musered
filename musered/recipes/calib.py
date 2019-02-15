@@ -6,6 +6,7 @@ class CalibRecipe(Recipe):
 
 
 class BIAS(CalibRecipe):
+    """muse_bias recipe."""
 
     recipe_name = 'muse_bias'
     DPR_TYPE = 'BIAS'
@@ -18,6 +19,7 @@ class BIAS(CalibRecipe):
 
 
 class DARK(CalibRecipe):
+    """muse_dark recipe."""
 
     recipe_name = 'muse_dark'
     DPR_TYPE = 'DARK'
@@ -26,6 +28,7 @@ class DARK(CalibRecipe):
 
 
 class FLAT(CalibRecipe):
+    """muse_flat recipe."""
 
     recipe_name = 'muse_flat'
     DPR_TYPE = 'FLAT,LAMP'
@@ -44,6 +47,7 @@ class FLAT(CalibRecipe):
 
 
 class WAVECAL(CalibRecipe):
+    """muse_wavecal recipe."""
 
     recipe_name = 'muse_wavecal'
     DPR_TYPE = 'WAVE'
@@ -54,6 +58,7 @@ class WAVECAL(CalibRecipe):
 
 
 class LSF(CalibRecipe):
+    """muse_lsf recipe."""
 
     recipe_name = 'muse_lsf'
     DPR_TYPE = 'WAVE'
@@ -61,6 +66,7 @@ class LSF(CalibRecipe):
 
 
 class SKYFLAT(CalibRecipe):
+    """muse_twilight recipe."""
 
     recipe_name = 'muse_twilight'
     DPR_TYPE = 'FLAT,SKY'

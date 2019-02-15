@@ -20,6 +20,7 @@ from .science import SCIPOST
 
 
 class SUPERFLAT(PythonRecipe):
+    """Recipe to compute and subtract a superflat."""
 
     recipe_name = 'superflat'
     DPR_TYPE = 'DATACUBE_FINAL'

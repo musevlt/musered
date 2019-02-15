@@ -36,6 +36,7 @@ def combine_std_median(flist, DPR_TYPE, outf=None, lmin=4500, lmax=9500,
 
 
 class STDCOMBINE(PythonRecipe):
+    """Recipe to combine standard for a run."""
 
     recipe_name = 'muse_std_combine'
     DPR_TYPE = 'STD_RESPONSE'

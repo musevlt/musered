@@ -6,6 +6,7 @@ class ScienceRecipe(Recipe):
 
 
 class SCIBASIC(ScienceRecipe):
+    """muse_scibasic recipe."""
 
     recipe_name = 'muse_scibasic'
     output_dir = 'scibasic'
@@ -15,6 +16,7 @@ class SCIBASIC(ScienceRecipe):
 
 
 class STANDARD(ScienceRecipe):
+    """muse_standard recipe."""
 
     recipe_name = 'muse_standard'
     DPR_TYPE = 'PIXTABLE_STD'
@@ -26,6 +28,7 @@ class STANDARD(ScienceRecipe):
 
 
 class SCIPOST(ScienceRecipe):
+    """muse_scipost recipe."""
 
     recipe_name = 'muse_scipost'
     DPR_TYPE = 'PIXTABLE_OBJECT'
@@ -36,6 +39,7 @@ class SCIPOST(ScienceRecipe):
 
 
 class MAKECUBE(ScienceRecipe):
+    """muse_scipost_make_cube recipe."""
 
     # The muse_scipost_make_cube recipe from the DRS miss some options
     # (OFFSET_LIST), so instead we use muse_scipost, which skips the steps that
@@ -58,6 +62,7 @@ class MAKECUBE(ScienceRecipe):
 
 
 class EXPALIGN(ScienceRecipe):
+    """muse_exp_align recipe."""
 
     recipe_name = 'muse_exp_align'
     DPR_TYPE = 'IMAGE_FOV'
@@ -66,6 +71,7 @@ class EXPALIGN(ScienceRecipe):
 
 
 class EXPCOMBINE(ScienceRecipe):
+    """muse_exp_combine recipe."""
 
     recipe_name = 'muse_exp_combine'
     DPR_TYPE = 'PIXTABLE_REDUCED'

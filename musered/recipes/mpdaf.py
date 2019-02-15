@@ -80,6 +80,7 @@ def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
 
 
 class MPDAFCOMBINE(PythonRecipe):
+    """Recipe to combine data cubes with MPDAF."""
 
     recipe_name = 'mpdaf_combine'
     DPR_TYPE = 'DATACUBE_FINAL'

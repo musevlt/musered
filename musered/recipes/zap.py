@@ -73,6 +73,7 @@ def do_zap(inputfile, outputfile, skyfile=None, imgfile=None, cfwidthSVD=100,
 
 
 class ZAP(PythonRecipe):
+    """Recipe to subtract sky with ZAP."""
 
     recipe_name = 'zap'
     DPR_TYPE = 'DATACUBE_FINAL'
