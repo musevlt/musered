@@ -142,13 +142,14 @@ class MuseRed(Reporter):
         return QAFlags(flags_tbl, additional_flags=self.conf.get('flags'))
 
     def set_loglevel(self, level, cpl=False):
+        """Set the logging level for the root logger or the cpl logger."""
         logger = logging.getLogger('cpl' if cpl else '')
         level = level.upper()
         logger.setLevel(level)
         logger.handlers[0].setLevel(level)
 
     def get_table(self, name):
-        """Return a table from the database as an astropy Table."""
+        """Return the dataset.Table from the database."""
         name = self.tables.get(name, name)
         if name not in self.db:
             raise ValueError(f'unknown table {name}')
@@ -749,21 +750,47 @@ class MuseRed(Reporter):
 
         return date_list
 
-    def process_calib(self, recipe_name, dates=None, skip=False,
-                      params_name=None, **kwargs):
-        """Run a calibration recipe."""
+    def process_calib(self, recipe_name, dates=None, params_name=None,
+                      **kwargs):
+        """Run a calibration recipe.
 
+        Parameters
+        ----------
+        recipe_name : str
+            Recipe to run.
+        dates : str or list of str
+            List of dates to process.
+        params_name : str
+            Name of the parameter block, default to recipe_name.
+        **kwargs :
+            Additional arguments passed to _run_recipe_loop.
+
+        """
         recipe_cls = get_recipe_cls(recipe_name)
         # get the list of nights to process
         dates = self.prepare_dates(dates, DPR_TYPE=recipe_cls.DPR_TYPE,
                                    datecol='TPL_START')
-        self._run_recipe_loop(recipe_cls, dates, calib=True, skip=skip,
+        self._run_recipe_loop(recipe_cls, dates, calib=True,
                               params_name=params_name, **kwargs)
 
-    def process_exp(self, recipe_name, dates=None, dataset=None, skip=False,
+    def process_exp(self, recipe_name, dates=None, dataset=None,
                     params_name=None, **kwargs):
-        """Run a science recipe."""
+        """Run a science recipe.
 
+        Parameters
+        ----------
+        recipe_name : str
+            Recipe to run.
+        dates : str or list of str
+            List of dates to process.
+        dataset : str
+            If given, all exposures from this dataset are processed.
+        params_name : str
+            Name of the parameter block, default to recipe_name.
+        **kwargs :
+            Additional arguments passed to _run_recipe_loop.
+
+        """
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         redc = self.reduced.table.c
 
@@ -805,14 +832,24 @@ class MuseRed(Reporter):
 
         recipe_cls = get_recipe_cls(recipe_name)
         use_reduced = recipe_cls.recipe_name not in ('muse_scibasic', )
-        self._run_recipe_loop(recipe_cls, dates, skip=skip,
-                              params_name=params_name, use_reduced=use_reduced,
-                              **kwargs)
+        self._run_recipe_loop(recipe_cls, dates, params_name=params_name,
+                              use_reduced=use_reduced, **kwargs)
 
     def process_standard(self, recipe_name='muse_standard', dates=None,
-                         skip=False, **kwargs):
-        """Reduce a standard exposure, running both muse_scibasic and
-        muse_standard.
+                         **kwargs):
+        """Reduce a standard exposure.
+
+        Running both muse_scibasic and muse_standard.
+
+        Parameters
+        ----------
+        recipe_name : str
+            Recipe to run.
+        dates : str or list of str
+            List of dates to process.
+        **kwargs :
+            Additional arguments passed to _run_recipe_loop.
+
         """
         recipe_sci = get_recipe_cls('muse_scibasic')
         recipe_std = get_recipe_cls(recipe_name)
@@ -824,18 +861,36 @@ class MuseRed(Reporter):
         recipe = self._instantiate_recipe(recipe_std, recipe_name,
                                           verbose=False)
         recipe_kw = {'tag': 'STD', 'output_dir': recipe.output_dir}
-        self._run_recipe_loop(recipe_sci, dates, skip=skip,
-                              recipe_kwargs=recipe_kw, **kwargs)
+        self._run_recipe_loop(recipe_sci, dates, recipe_kwargs=recipe_kw,
+                              **kwargs)
 
         # run muse_standard
-        self._run_recipe_loop(recipe_std, dates, skip=skip, use_reduced=True,
-                              **kwargs)
+        self._run_recipe_loop(recipe_std, dates, use_reduced=True, **kwargs)
 
     def exp_align(self, dataset, recipe_name='muse_exp_align', filt='white',
                   params_name=None, name=None, exps=None, force=False,
                   **kwargs):
-        """Compute offsets between exposures of a dataset."""
+        """Compute offsets between exposures of a dataset.
 
+        Parameters
+        ----------
+        dataset : str
+            Dataset name.
+        recipe_name : str
+            Recipe to run: 'muse_exp_align' (DRS, default), or 'imphot'.
+        filt : str
+            Filter to use for the images, only for muse_exp_align.
+        params_name : str
+            Name of the parameter block, default to recipe_name.
+        name : str
+            Name of the output record, default to '{dataset}_{recipe_name}'.
+        exps : list of str
+            List of exposures to process. By default all exposures of the
+            dataset are processed.
+        force : bool
+            Force processing if it was already done previously.
+
+        """
         recipe_name = normalize_recipe_name(recipe_name)
         params_name = params_name or recipe_name
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
@@ -936,8 +991,23 @@ class MuseRed(Reporter):
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
                     params_name=None, force=False, **kwargs):
-        """Combine std stars for a list of runs."""
+        """Combine std stars for a list of runs.
 
+        Parameters
+        ----------
+        runs : list of str
+            List of run names.
+        recipe_name : str
+            Recipe to run: 'muse_exp_combine' (DRS, default), or
+            'mpdaf_combine' (cube combination with MPDAF).
+        name : str
+            Name of the output record, default to '{dataset}_{recipe_name}'.
+        params_name : str
+            Name of the parameter block, default to recipe_name.
+        force : bool
+            Force processing if it was already done previously.
+
+        """
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         from_recipe = recipe_conf.get('from_recipe', 'muse_standard')
