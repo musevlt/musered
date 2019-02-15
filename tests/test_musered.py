@@ -104,16 +104,15 @@ def test_clean(mr, caplog):
     """).splitlines()
 
     caplog.clear()
-    result = runner.invoke(cli, ['clean', '-n', '2017-06-13'])
+    result = runner.invoke(cli, ['clean', '-n', '2017-06-15'])
     assert result.exit_code == 0
     assert [rec.message for rec in caplog.records if rec.levelno > 10] == \
         textwrap.dedent("""\
         Dry-run mode, nothing will be done
-        Would remove 1 exposures/nights from the database
+        Would remove 9 exposures/nights from the database
     """).splitlines()
 
 
-@pytest.mark.xfail
 def test_frames(mr, monkeypatch):
     if not os.path.exists(mr.conf['muse_calib_path']):
         pytest.skip('static calib directory is missing')
@@ -160,11 +159,19 @@ def test_frames(mr, monkeypatch):
         assert res[0].endswith(
             '2017-06-20T10:38:50.WFM-AO-N/MASTER_BIAS*.fits')
 
+
+@pytest.mark.xfail
+def test_frames2(mr, monkeypatch):
+    def mockglob(path):
+        # monkey patch glob which is used to return the list of files
+        return [path] * 24
+
     def mockisfile(path):
         # monkey patch isfile
         print(path)
         return True
 
+    frames = mr.frames
     recipe_cls = get_recipe_cls('scipost')
     recipe = mr._instantiate_recipe(recipe_cls, recipe_cls.recipe_name)
     recipe_conf = mr._get_recipe_conf('muse_scipost')
@@ -287,6 +294,12 @@ def test_flags():
     # check custom flag defined in settings
     assert 'MY_FLAG' in flags.names
 
+    # check that flags are available as attributes
+    assert set(flags.names).issubset(dir(flags))
+    assert flags.BAD_CENTERING
+    with pytest.raises(AttributeError):
+        assert flags.NOT_A_FLAG
+
     # add flags to an exposure or a list of exposures
     flags.add('2017-06-16T01:34:56.867',
               flags.BAD_SLICE, flags.SLICE_GRADIENT)
@@ -312,6 +325,7 @@ def test_flags():
     flags.remove('2017-06-16T01:43:32.868', flags.BAD_IMAQUALITY)
 
     # list flags for exposures
+    assert flags.list('2014-05-55T55:55:55.555') == []
     assert flags.list('2017-06-16T01:34:56.867') == [
         flags.BAD_SLICE, flags.SHORT_EXPTIME, flags.SLICE_GRADIENT]
     assert (
@@ -326,6 +340,16 @@ def test_flags():
             ['2017-06-16T01:34:56.867'])
     # assert (flags.find(flags.SHORT_EXPTIME, flags.BAD_SLICE, _not=True) ==
     #         ['2017-06-16T01:43:32.868'])
+
+    assert repr(flags.as_table()).splitlines() == [
+        '<Table masked=True length=3>',
+        '          name          BAD_SLICE SHORT_EXPTIME SLICE_GRADIENT',
+        '         str23            int64       int64         int64     ',
+        '----------------------- --------- ------------- --------------',
+        '2017-06-16T01:34:56.867         2             1              1',
+        '2017-06-16T01:40:40.868        --             1             --',
+        '2017-06-16T01:43:32.868        --            --             --'
+    ]
 
 
 def test_qc_outliers(mr):

@@ -98,7 +98,7 @@ class FramesFinder:
             return self._excludes[key][column]
 
         conf = self.frames.get('exclude', {})
-        self._excludes[key] = exc = defaultdict(list)
+        self._excludes[key] = exc = defaultdict(set)
 
         # this func iterates on the lines of an exclude block, and exclude
         # exposures matching the query defined by this line
@@ -107,15 +107,15 @@ class FramesFinder:
             kw = dict(DPR_TYPE=DPR_TYPE) if DPR_TYPE is not None else {}
             for item in items:
                 if isinstance(item, str):
-                    exc['name'].append(item)
-                    exc['TPL_START'].append(item)
+                    exc['name'].add(item)
+                    exc['TPL_START'].add(item)
                 elif isinstance(item, dict):
                     # if the item is a dict use the keys/values to query the db
                     for o in tbl.find(**item, **kw):
-                        exc['name'].append(o['name'])
-                        exc['night'].append(o['night'])
+                        exc['name'].add(o['name'])
+                        exc['night'].add(o['night'])
                         if 'TPL_START' in o:
-                            exc['TPL_START'].append(o['TPL_START'])
+                            exc['TPL_START'].add(o['TPL_START'])
                 else:
                     raise ValueError(f'wrong format for {DPR_TYPE} excludes')
 

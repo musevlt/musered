@@ -78,6 +78,8 @@ retrieve_data:
 
 frames:
   exclude:
+    raw:
+      - night: ["2017-06-13"]
     BIAS:
       - "2017-06-14T09:01:03"
     MASTER_BIAS:
