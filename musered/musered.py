@@ -314,7 +314,7 @@ class MuseRed(Reporter):
             List of flags, or True to use all flags.
 
         """
-        if isinstance(exclude_flags, dict):
+        if isinstance(exclude_flags, (list, tuple)):
             return self.flags.find(*exclude_flags)
         elif exclude_flags is True:
             # exclude all flagged exposures
