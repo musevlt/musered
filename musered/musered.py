@@ -813,11 +813,6 @@ class MuseRed(Reporter):
             wc = (redc.DPR_TYPE == 'PIXTABLE_REDUCED')
             if 'from_recipe' in recipe_conf:
                 wc = wc & (redc.recipe_name == recipe_conf['superflat_from'])
-            if 'exclude_flags' in recipe_conf:
-                # exclude flagged exposures
-                excludes = self.get_flagged(recipe_conf['exclude_flags'])
-                wc = wc & (redc.name.notin_(excludes))
-
             exps = [
                 (name, run, path)
                 for (name, run, path) in self.execute(
@@ -827,8 +822,16 @@ class MuseRed(Reporter):
                     .where(wc)
                     .order_by(rawc.name))
             ]
-            kwargs['exposures'] = Table(rows=exps,
-                                        names=('name', 'run', 'path'))
+            tbl = Table(rows=exps, names=('name', 'run', 'path'))
+
+            if 'exclude_flags' in recipe_conf:
+                # exclude flagged exposures
+                excludes = self.get_flagged(recipe_conf['exclude_flags'])
+                tbl['excluded'] = np.in1d(tbl['name'], excludes)
+            else:
+                tbl['excluded'] = False
+
+            kwargs['exposures'] = tbl
 
         recipe_cls = get_recipe_cls(recipe_name)
         use_reduced = recipe_cls.recipe_name not in ('muse_scibasic', )

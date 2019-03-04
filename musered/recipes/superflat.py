@@ -78,6 +78,7 @@ class SUPERFLAT(PythonRecipe):
         # 1. Run scipost for all exposures used to build the superflat
         run = exposures[exposures['name'] == name]['run'][0]
         exps = exposures[(exposures['run'] == run) &
+                         (~exposures['excluded']) &
                          (exposures['name'] != name)]
         nexps = len(exps)
         info('Found %d exposures for run %s', nexps, run)
