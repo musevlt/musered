@@ -391,11 +391,19 @@ def parse_weather_conditions(mr, force=False):
 
     query = (sql.select([mr.rawc.night, mr.rawc.path])
              .where(wc)
-             .order_by(mr.rawc.path)
-             .group_by(mr.rawc.night))
+             .order_by(mr.rawc.path))
     tables = []
+    cur_night = None
 
     for night, path in mr.execute(query):
+        # group_by seems not predictable and is making the test to fail,
+        # so instead we use this to read the weather file from the first
+        # exposure of the night...
+        if night == cur_night:
+            continue
+        else:
+            cur_night = night
+
         try:
             cond_file = path.split('.fits')[0] + '.NL.txt'
         except Exception:
