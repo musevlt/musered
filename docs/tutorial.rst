@@ -389,20 +389,44 @@ And run with::
 Combining exposures
 -------------------
 
-To combine the exposures, with the ``muse_exp_combine`` recipe::
+With the DRS
+^^^^^^^^^^^^
+
+To combine the exposures for the IC4406 dataset, with the ``muse_exp_combine``
+recipe::
 
     $ musered exp-combine IC4406
 
-And with the parameters with the ``OFFSET_LIST`` frame:
+This will use by default the ``muse_exp_combine`` parameters block, which
+includes here the ``OFFSET_LIST`` frame:
 
 .. literalinclude:: _static/settings.yml
    :start-at: muse_exp_combine:
    :end-at: OFFSET_LIST: '{workdir}/OFFSET_LIST_new.fits'
 
-It is also possible to use MPDAF to combine the data cube. For this we need
-data cubes, which can be produced directly with ``muse_scipost`` or later from
-the pixtables. The ``muse_scipost_make_cube`` recipe allows to create cubes
-from ``PIXTABLE_REDUCED``::
+With MPDAF
+^^^^^^^^^^
+
+It is also possible to use MPDAF to produce the combined data cube, using the
+``--method`` argument::
+
+    $ musered exp-combine --method mpdaf IC4406
+
+By default this uses the ``mpdaf_combine`` parameters block, though as usual
+this can be specified with the ``--params`` argument.
+
+.. literalinclude:: _static/settings.yml
+   :start-at: mpdaf_combine:
+   :end-at: version
+
+For this we need data cubes, which can be produced directly with
+``muse_scipost`` (adding ``cube`` to the ``save`` option), or later from the
+pixtables. As for other recipes, ``from_recipe`` allows to specify the recipe
+from which data cubes are used.
+
+The ``muse_scipost_make_cube`` recipe allows to create cubes from
+``PIXTABLE_REDUCED``. To be combined by MPDAF, cubes must be on the same grid,
+and thus they must use the same ``OUTPUT_WCS`` frame::
 
    $ musered process-exp --makecube
 
@@ -410,9 +434,10 @@ from ``PIXTABLE_REDUCED``::
    :start-at: muse_scipost_make_cube:
    :end-at: output_dir
 
-.. literalinclude:: _static/settings.yml
-   :start-at: mpdaf_combine:
-   :end-at: version
+**TODO**: Mosaic. Using weights.
+
+**TODO**: Already implemented but needs documentation: exposures selection with
+database queries, exclusion of flagged exposures.
 
 Combining standards
 -------------------
