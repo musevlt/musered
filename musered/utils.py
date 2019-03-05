@@ -391,6 +391,7 @@ def parse_weather_conditions(mr, force=False):
 
     query = (sql.select([mr.rawc.night, mr.rawc.path])
              .where(wc)
+             .order_by(mr.rawc.path)
              .group_by(mr.rawc.night))
     tables = []
 
