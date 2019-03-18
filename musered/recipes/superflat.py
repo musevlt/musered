@@ -25,7 +25,9 @@ class SUPERFLAT(PythonRecipe):
     recipe_name = 'superflat'
     DPR_TYPE = 'DATACUBE_FINAL'
     output_dir = 'superflat'
-    output_frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'SUPERFLAT']
+    output_frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'DATACUBE_SUPERFLAT',
+                     'IMAGE_SUPERFLAT', 'DATACUBE_EXPMAP', 'IMAGE_EXPMAP',
+                     'STATPIX']
     version = '0.1'
     # Save the V,R,I images
     default_params = {
