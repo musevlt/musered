@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Usage:
 #  fit_cube_pointing cube aux_dir [hst_dir]
 #
@@ -20,14 +19,12 @@ import astropy.units as u
 import logging
 import numpy as np
 import os
-# import re
 
 from astropy.io import fits
 from astropy.table import Table, vstack
 from joblib import Parallel, delayed
 from mpdaf.obj import Image, Cube
 from os.path import join, exists
-# from textwrap import dedent
 
 from .recipe import PythonRecipe
 from ..utils import get_exp_name

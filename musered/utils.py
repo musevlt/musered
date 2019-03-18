@@ -41,9 +41,9 @@ def load_yaml_config(filename):
         return confdict
 
     # We need to do 2 passes, before and after key substitution
-    conf = yaml.load(conftext)
+    conf = yaml.safe_load(conftext)
     conf = expanduser(conf)
-    conf = yaml.load(conftext.format(**conf))
+    conf = yaml.safe_load(conftext.format(**conf))
     conf = expanduser(conf)
 
     return conf

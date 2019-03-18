@@ -367,7 +367,7 @@ cfg = os.path.join(click.get_app_dir('musered', force_posix=True),
                    'plugins.yml')
 if os.path.exists(cfg):
     with open(cfg) as f:
-        conf = yaml.load(f)
+        conf = yaml.safe_load(f)
     plugins = conf.get('plugins', {})
     for path in plugins.get('paths'):
         sys.path.insert(0, path)
