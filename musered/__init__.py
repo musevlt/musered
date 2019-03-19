@@ -1,9 +1,10 @@
 from astropy.units import UnitsWarning
-from mpdaf.log import setup_logging
+from mpdaf.log import setup_logging, clear_loggers
 import warnings
 
 setup_logging(name='', level='INFO', color=True,
               fmt='%(levelname)s %(message)s')
+clear_loggers('mpdaf')
 
 from .flags import QAFlags  # noqa
 from .musered import MuseRed  # noqa

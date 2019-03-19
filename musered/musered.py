@@ -9,7 +9,7 @@ import os
 import shutil
 
 from astropy.io import fits
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
@@ -241,7 +241,8 @@ class MuseRed(Reporter):
         return processed
 
     def get_files(self, DPR_TYPE, first_only=False, remove_excludes=False,
-                  select=None, exclude_flags=None, **clauses):
+                  select=None, exclude_flags=None, return_explist=False,
+                  **clauses):
         """Return the list of files for a given DPR_TYPE and a query.
 
         Parameters
@@ -258,6 +259,8 @@ class MuseRed(Reporter):
             with dataset's find method.
         exclude_flags : list of flags
             List of flags to exclude.
+        return_explist : bool
+            If True, also return the list of exposure names.
         **clauses
             Parameters passed to `self.reduced.find`.
 
@@ -292,11 +295,14 @@ class MuseRed(Reporter):
 
             clauses['name'] = list(names)
 
-        ntot = self.reduced.count(DPR_TYPE=DPR_TYPE, **clauses)
+        ntot = 0
+        explist = []
         for r in self.reduced.find(DPR_TYPE=DPR_TYPE, **clauses):
+            ntot += 1
             if r['name'] in exc:
                 continue
 
+            explist.append(r['name'])
             files = iglob(f"{r['path']}/{DPR_TYPE}*.fits")
             if first_only:
                 flist.append(next(files))
@@ -304,7 +310,10 @@ class MuseRed(Reporter):
                 flist.extend(files)
 
         self.logger.info('Selected %d files out of %d', len(flist), ntot)
-        return flist
+        if return_explist:
+            return flist, explist
+        else:
+            return flist
 
     def get_flagged(self, exclude_flags):
         """Return the list of flagged exposures.
@@ -976,6 +985,7 @@ class MuseRed(Reporter):
         if name is not None:
             names_select = {name: names_select[name]}
 
+        use_scale = recipe_conf.get('use_scale')
         params = params_name or recipe_name
         processed = self.get_processed(recipe_name=params)
 
@@ -986,11 +996,20 @@ class MuseRed(Reporter):
                 continue
             # get the list of files to process
             self.logger.info('Processing %s', name)
-            flist = self.get_files(DPR_TYPE, first_only=True, OBJECT=dataset,
-                                   recipe_name=from_recipe, select=select,
-                                   remove_excludes=True, exclude_flags=flags)
-            self._run_recipe_simple(recipe_cls, name, dataset, flist,
-                                    params_name=params_name, **kwargs)
+            flist, explist = self.get_files(
+                DPR_TYPE, first_only=True, OBJECT=dataset,
+                recipe_name=from_recipe, select=select, remove_excludes=True,
+                exclude_flags=flags, order_by='name', return_explist=True)
+
+            if use_scale:
+                scale_tbl = self._get_scales(explist, use_scale['from'],
+                                             use_scale['bands'])
+            else:
+                scale_tbl = None
+
+            self._run_recipe_simple(
+                recipe_cls, name, dataset, flist, params_name=params_name,
+                scale_table=scale_tbl, **kwargs)
 
     def std_combine(self, runs, recipe_name='muse_std_combine', name=None,
                     params_name=None, force=False, **kwargs):
@@ -1110,3 +1129,27 @@ class MuseRed(Reporter):
         self.logger.info('Processed data (%s) available in %s',
                          ', '.join(row['DPR_TYPE'] for row in rows),
                          recipe.output_dir)
+
+    def _get_scales(self, explist, from_recipe, bands):
+        """Get scale and offset factors from the imphot tables."""
+        # read imphot tables, select useful columns, and stack them
+        tables = []
+        for o in self.reduced.find(name=explist, recipe_name=from_recipe,
+                                   DPR_TYPE='IMPHOT', order_by='name'):
+            data = fits.getdata(f"{o['path']}/IMPHOT.fits")
+            t = Table([[o['name']] * len(data), data['filter'],
+                       data['scale'], data['bg']],
+                      names=('name', 'filter', 'scale', 'offset'))
+            tables.append(t)
+
+        tbl = vstack(tables)
+
+        # select values for the bands of interest
+        if isinstance(bands, str):
+            scale_tbl = tbl[tbl['filter'] == bands]
+        else:
+            # compute the mean over the bands
+            tbl = tbl[np.logical_or.reduce(
+                [tbl['filter'] == f for f in bands], axis=0)]
+            scale_tbl = tbl.group_by('name').groups.aggregate(np.mean)
+        return scale_tbl

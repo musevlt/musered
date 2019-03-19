@@ -1,19 +1,27 @@
 import logging
 import mpdaf
+import numpy as np
 from astropy.io import fits
 from mpdaf.obj import CubeList, CubeMosaic
 from os.path import join
 
 from .recipe import PythonRecipe
-from ..utils import make_band_images
+from ..utils import make_band_images, get_exp_name
 
 
 def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
                method='sigclip', nmax=2, nclip=5.0, nstop=2, mosaic=False,
-               output_wcs=None, version=None, var='propagate', scales=None,
-               offsets=None, mad=False, filter=None):
+               output_wcs=None, version=None, var='propagate', mad=False,
+               scale_table=None, filter=None):
     logger = logging.getLogger('musered')
     logger.info('Combining %d datacubes', len(flist))
+
+    scales = offsets = None
+    if scale_table is not None:
+        if not np.all([get_exp_name(f) for f in flist] == scale_table['name']):
+            raise ValueError('scales do not match exposures')
+        scales = scale_table['scale']
+        offsets = scale_table['offset']
 
     if mosaic:
         if method != 'pysigclip':
@@ -26,10 +34,6 @@ def do_combine(flist, cube_name, expmap_name, stat_name, img_name, expimg_name,
                            offsetlist=offsets)
     else:
         cubes = CubeList(flist, scalelist=scales, offsetlist=offsets)
-
-    if (scales or offsets) and method != 'pysigclip':
-        logger.warning('scales and offsets can only be used with pysigclip')
-        method = 'pysigclip'
 
     field = fits.getval(flist[0], 'OBJECT')
     logger.info('method: %s', method)
@@ -98,13 +102,11 @@ class MPDAFCOMBINE(PythonRecipe):
         mosaic=False,
         version=None,
         var='propagate',
-        scales=None,
-        offsets=None,
         mad=False,
         filter='white,Johnson_V,Cousins_R,Cousins_I'
     )
 
-    def _run(self, flist, *args, **kwargs):
+    def _run(self, flist, *args, scale_table=None, **kwargs):
         field = fits.getval(flist[0], 'OBJECT')
         out = dict(
             cube=join(self.output_dir, f'DATACUBE_FINAL_{field}.fits'),
@@ -114,5 +116,6 @@ class MPDAFCOMBINE(PythonRecipe):
             expimg=join(self.output_dir, f'EXPMAP_IMAGE_{field}.fits')
         )
         do_combine(flist, out['cube'], out['expmap'], out['stat'],
-                   out['image'], out['expimg'], **self.param)
+                   out['image'], out['expimg'], scale_table=scale_table,
+                   **self.param)
         return out
