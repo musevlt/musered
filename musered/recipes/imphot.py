@@ -255,7 +255,13 @@ class IMPHOT(PythonRecipe):
         except AttributeError:
             return f'imphot-unknown'
 
-    def _run(self, flist, *args, processed=None, n_jobs=1, **kwargs):
+    def _run(self, flist, *args, processed=None, n_jobs=1, force=False,
+             **kwargs):
+
+        if force:
+            self.param['force_hst_image'] = True
+            self.param['force_muse_image'] = True
+
         nfiles = len(flist)
         processed = processed or set()
         to_compute = []

@@ -908,13 +908,15 @@ class MuseRed(Reporter):
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         recipe_cls = get_recipe_cls(recipe_name)
 
-        if recipe_name == 'imphot' and not force:
-            # Find already processed files
-            kwargs['processed'] = processed = self.get_processed(
-                OBJECT=dataset, DPR_TYPE='IMPHOT', recipe_name=params_name)
-            self.logger.info('Found %d processed exps', len(processed))
-        else:
-            processed = set()
+        processed = set()
+        if recipe_name == 'imphot':
+            if force:
+                kwargs['force'] = force
+            else:
+                # Find already processed files
+                kwargs['processed'] = processed = self.get_processed(
+                    OBJECT=dataset, DPR_TYPE='IMPHOT', recipe_name=params_name)
+                self.logger.info('Found %d processed exps', len(processed))
 
         DPR_TYPE = recipe_cls.DPR_TYPE
         name = (name or recipe_conf.get('name') or 'OFFSET_LIST_{}'.format(
