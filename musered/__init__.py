@@ -17,4 +17,4 @@ warnings.simplefilter('ignore', category=UnitsWarning)
 # fmt='%(levelname)s - %(name)s: %(message)s')
 # fmt='[%(process)s] %(levelname)s - %(name)s: %(message)s')
 
-del UnitsWarning, setup_logging
+del UnitsWarning, setup_logging, clear_loggers
