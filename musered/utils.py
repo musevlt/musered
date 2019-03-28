@@ -203,17 +203,26 @@ def parse_raw_keywords(flist, runs=None):
                            ('date_import', now)])
 
         if 'DATE-OBS' in hdr:
-            date = parse_datetime(hdr['DATE-OBS'])
-            night = date.date()
-            # Same as MuseWise
-            if date.time() < NOON:
-                night -= ONEDAY
-            row['night'] = night.isoformat()
+            try:
+                try:
+                    date = parse_datetime(hdr['DATE-OBS'])
+                    night = date.date()
+                    time = date.time()
+                except ValueError:
+                    night = parse_date(hdr['DATE-OBS'])
+                    time = NOON
 
-            for run_name, run in runs.items():
-                if run['start_date'] <= night <= run['end_date']:
-                    row['run'] = run_name
-                    break
+                # Same as MuseWise
+                if time < NOON:
+                    night -= ONEDAY
+                row['night'] = night.isoformat()
+
+                for run_name, run in runs.items():
+                    if run['start_date'] <= night <= run['end_date']:
+                        row['run'] = run_name
+                        break
+            except Exception as e:
+                logger.warning('could not parse DATE-OBS from %s: %s', f, e)
 
         for key in keywords:
             row[normalize_keyword(key)] = hdr.get(key)
