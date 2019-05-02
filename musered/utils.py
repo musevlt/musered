@@ -438,6 +438,10 @@ def parse_weather_conditions(mr, force=False):
                     if not line.startswith('New update'):
                         lines.append(line)
 
+        if not lines:
+            logger.warning('Weather conditions not found in %s', cond_file)
+            continue
+
         try:
             tbl = ascii.read(''.join(lines))
         except Exception as e:
