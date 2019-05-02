@@ -89,11 +89,25 @@ def test_parse_weather(mr, caplog):
         'File ./raw/MUSE.2017-06-16T01:34:56.867.NL.txt not found'
 
     caplog.clear()
-    shutil.copytree(os.path.join(TESTDIR, 'raw'), 'raw')
+    os.makedirs('raw')
+    shutil.copy(os.path.join(TESTDIR, 'raw',
+                             'MUSE.2017-06-16T01:34:56.867.NL.txt'), 'raw')
     parse_weather_conditions(mr, force=True)
     assert caplog.messages == [
         'Night 2017-06-15, ./raw/MUSE.2017-06-16T01:34:56.867.NL.txt',
         'Importing weather conditions, 11 entries']
+
+
+def test_parse_weather_invalid(mr, caplog):
+    os.makedirs('raw')
+    # copy the modified file (without the weather block) as if it was the file
+    # for the first observation of the night
+    shutil.copy(os.path.join(TESTDIR, 'raw',
+                             'MUSE.2017-06-16T01:37:47.867.invalid.txt'),
+                os.path.join('raw', 'MUSE.2017-06-16T01:34:56.867.NL.txt'))
+    parse_weather_conditions(mr, force=True)
+    assert caplog.messages[1] == ('Weather conditions not found in '
+                                  './raw/MUSE.2017-06-16T01:34:56.867.NL.txt')
 
 
 def test_qc_outliers(mr):

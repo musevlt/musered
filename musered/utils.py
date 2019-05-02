@@ -445,7 +445,7 @@ def parse_weather_conditions(mr, force=False):
         try:
             tbl = ascii.read(''.join(lines))
         except Exception as e:
-            logger.warning('Failed to parse lines: %s', e)
+            logger.warning('Failed to parse lines from %s: %s', cond_file, e)
             logger.debug(''.join(lines))
             continue
         tbl['night'] = night
