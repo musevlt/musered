@@ -1,4 +1,5 @@
 import datetime
+import fnmatch
 import itertools
 import logging
 import numbers
@@ -17,7 +18,7 @@ from mpdaf.obj import Cube
 from sqlalchemy import event, func, pool, sql
 from sqlalchemy.engine import Engine
 
-from .settings import RAW_FITS_KEYWORDS
+from .settings import RAW_FITS_KEYWORDS, QC_KEYWORDS
 
 EXP_PATTERN = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}"
 DATETIME_PATTERN = "%Y-%m-%dT%H:%M:%S.%f"
@@ -261,6 +262,9 @@ def parse_qc_keywords(flist):
     rows = []
     for f in sorted(flist):
         with fits.open(f) as hdul:
+            catg = hdul[0].header.get("ESO PRO CATG")
+            keyw_filter = QC_KEYWORDS.get(catg)
+
             for hdu in hdul:
                 if "." in hdu.name:
                     name, ext = hdu.name.split(".")
@@ -272,6 +276,13 @@ def parse_qc_keywords(flist):
                     normalize_keyword(key): val
                     for key, val in hdu.header["ESO QC*"].items()
                 }
+
+                if keyw_filter:
+                    keys = set()
+                    for filt in keyw_filter:
+                        keys.update(fnmatch.filter(cards.keys(), filt))
+                    cards = {k: v for k, v in cards.items() if k in keys}
+
                 if len(cards) == 0:
                     logger.debug("%s - %s : no QC keywords", f, name)
                     continue
