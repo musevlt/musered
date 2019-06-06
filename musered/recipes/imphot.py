@@ -45,7 +45,7 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
                      hst_basename=None, hst_resample_each=False,
                      extramask=None, nprocess=8, fix_beta=None, expname=None,
                      force_muse_image=False, force_hst_image=False,
-                     exclude_regions=None):
+                     exclude_regions=None, fix_bg=None, min_scale=None):
     """Fit pointing offsets to the MUSE observation in a specified cube.
 
     Parameters
@@ -78,6 +78,10 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
         The beta exponent of the Moffat PSF is fixed to the specified value
         while fitting, unless the value is None. Can be a list of values for
         each filter.
+    fix_bg : float or list of float
+       The calibration zero-offset, (MUSE_flux - HST_flux) is fixed
+       to the specified value while fitting, unless the value is None. Can
+       be a list of values for each filter.
     exclude_regions : str
         DS9 regions that can be used to exclude problematic areas of an
         image or sources that would degrade the global PSF fit, such as
@@ -113,8 +117,10 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     if hst_img_dir is None:
         raise ValueError('hst_img_dir is not specified')
 
-    if fix_beta is not None and not isinstance(fix_beta, (list, tuple)):
+    if not isinstance(fix_beta, (list, tuple)):
         fix_beta = [fix_beta] * len(hst_filters)
+    if not isinstance(fix_bg, (list, tuple)):
+        fix_bg = [fix_bg] * len(hst_filters)
 
     for i, filter_name in enumerate(hst_filters):
         # Extract an image from the cube with the spectral characteristics
@@ -165,9 +171,16 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
             hst.write(resamp_name, savemask="nan")
 
         logger.info(" Fitting for photometric parameters")
-        imfit = imphot.fit_image_photometry(hst, muse, fix_beta=fix_beta[i],
-                                            save=True, extramask=extramask,
-                                            regions=exclude_regions)
+        imfit = imphot.fit_image_photometry(
+            hst,
+            muse,
+            extramask=extramask,
+            fix_beta=fix_beta[i],
+            fix_bg=fix_bg[i],
+            min_scale=min_scale,
+            regions=exclude_regions,
+            save=True,
+        )
         imfits[filter_name] = imfit
 
     for i, imfit in enumerate(imfits.values()):
@@ -235,15 +248,17 @@ class IMPHOT(PythonRecipe):
     output_frames = ['OFFSET_LIST']
 
     default_params = dict(
+        exclude_regions=None,
         extramask=None,
         fix_beta=None,
+        fix_bg=None,
         force_hst_image=False,
         force_muse_image=False,
         hst_filters_dir=None,
         hst_filters=None,
         hst_img_dir=None,
         hst_resample_each=False,
-        exclude_regions=None,
+        min_scale=0,
     )
 
     @property
