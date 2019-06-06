@@ -266,18 +266,19 @@ def query_count_to_table(table, exclude_obj=None, where=None,
                          date_list=None, run=None, datecol='name',
                          countcol='OBJECT', exclude_names=None):
     c = table.table.c
+    datecol, countcol = c[datecol], c[countcol]
 
     if date_list:
         if len(date_list) == 1:
-            whereclause = [c[datecol].like(f'%{date_list[0]}%')]
+            whereclause = [datecol.like(f'%{date_list[0]}%')]
         else:
-            whereclause = [c[datecol].in_(date_list)]
+            whereclause = [datecol.in_(date_list)]
     elif run is not None and 'run' in c:
         whereclause = [c['run'].like(f'%{run}%')]
     else:
-        whereclause = [c[datecol].isnot(None)]
+        whereclause = [datecol.isnot(None)]
 
-    whereclause.append(c[countcol].isnot(None))
+    whereclause.append(countcol.isnot(None))
 
     if exclude_obj is not None:
         whereclause.append(c.OBJECT.notin_(exclude_obj))
@@ -286,9 +287,10 @@ def query_count_to_table(table, exclude_obj=None, where=None,
     if where is not None:
         whereclause.append(where)
 
-    query = (sql.select([c[datecol], c[countcol], func.count()])
+    query = (sql.select([datecol, countcol, func.count()])
              .where(sql.and_(*whereclause))
-             .group_by(c[datecol], c[countcol]))
+             .order_by(datecol)
+             .group_by(datecol, countcol))
 
     # reorganize rows to have types (in columns) per night (rows)
     rows = defaultdict(dict)
