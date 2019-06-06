@@ -4,18 +4,25 @@ import itertools
 import json
 import logging
 import os
+
 # import shutil
 import time
+
 # from astropy.io import fits
 from cpl.param import ParameterList
 from mpdaf.log import setup_logging
 
-__all__ = ('init_cpl_params', 'BaseRecipe', 'Recipe', 'PythonRecipe')
+__all__ = ("init_cpl_params", "BaseRecipe", "Recipe", "PythonRecipe")
 
 
-def init_cpl_params(recipe_path=None, esorex_msg=None, esorex_msg_format=None,
-                    log_dir='.', msg='info',
-                    msg_format='%(levelname)s - %(name)s: %(message)s'):
+def init_cpl_params(
+    recipe_path=None,
+    esorex_msg=None,
+    esorex_msg_format=None,
+    log_dir=".",
+    msg="info",
+    msg_format="%(levelname)s - %(name)s: %(message)s",
+):
     """Load esorex.rc settings and override with the settings file."""
     cpl.esorex.init()
 
@@ -29,15 +36,14 @@ def init_cpl_params(recipe_path=None, esorex_msg=None, esorex_msg_format=None,
     os.makedirs(log_dir, exist_ok=True)
 
     # terminal logging: disable cpl's logger as it uses the root logger.
-    cpl.esorex.msg.level = 'off'
+    cpl.esorex.msg.level = "off"
     try:
-        setup_logging(name='cpl', level=msg.upper(), color=True,
-                      fmt=msg_format)
+        setup_logging(name="cpl", level=msg.upper(), color=True, fmt=msg_format)
     except Exception:
         # This fails for some reason when running unit tests on Gitlab CI when
         # using Click's runner...
         pass
-    logging.getLogger('cpl').setLevel('DEBUG')
+    logging.getLogger("cpl").setLevel("DEBUG")
 
 
 class BaseRecipe:
@@ -67,7 +73,7 @@ class BaseRecipe:
     n_inputs_min = None
     """Minimum number of input files, as required by the DRS."""
 
-    def __init__(self, output_dir=None, log_dir='.', temp_dir=None, **kwargs):
+    def __init__(self, output_dir=None, log_dir=".", temp_dir=None, **kwargs):
         self.nbwarn = 0
         self.timeit = 0
         self.logger = logging.getLogger(__name__)
@@ -76,7 +82,7 @@ class BaseRecipe:
         self.log_file = None
         self.param = {}  # recipe parameters
         self.calib = {}  # calib frames
-        self.raw = {}    # raw frames
+        self.raw = {}  # raw frames
 
         self.temp_dir = temp_dir
         if temp_dir is not None:
@@ -97,16 +103,16 @@ class BaseRecipe:
     def dump(self, include_files=False, json_col=False):
         """Dump recipe results, stats, parameters in a dict."""
         info = {
-            'tottime': self.timeit,
-            'nbwarn': self.nbwarn,
-            'log_file': self.log_file,
-            'params': self.dump_params(json_col=json_col),
-            'recipe_version': self.version,
+            "tottime": self.timeit,
+            "nbwarn": self.nbwarn,
+            "log_file": self.log_file,
+            "params": self.dump_params(json_col=json_col),
+            "recipe_version": self.version,
         }
         if include_files:
             calib = dict(iter(self.calib))
-            info['raw'] = json.dumps(self.raw) if json_col else self.raw
-            info['calib'] = json.dumps(calib) if json_col else calib
+            info["raw"] = json.dumps(self.raw) if json_col else self.raw
+            info["calib"] = json.dumps(calib) if json_col else calib
         return info
 
     def _run(self, *args, **kwargs):
@@ -140,26 +146,25 @@ class BaseRecipe:
         elif isinstance(flist, dict):
             nfiles = len(list(itertools.chain(*flist.values())))
         else:
-            raise ValueError('flist should be a list or dict')
+            raise ValueError("flist should be a list or dict")
 
         if nfiles == 0:
-            raise ValueError('no exposure found')
+            raise ValueError("no exposure found")
 
         if self.n_inputs_min is not None and nfiles < self.n_inputs_min:
-            raise ValueError(f'need at least {self.n_inputs_min} exposures')
+            raise ValueError(f"need at least {self.n_inputs_min} exposures")
 
         date = datetime.datetime.now().isoformat()
-        self.log_file = os.path.join(self.log_dir,
-                                     f"{self.recipe_name}-{date}.log")
+        self.log_file = os.path.join(self.log_dir, f"{self.recipe_name}-{date}.log")
 
-        if 'output_dir' in kwargs:
-            self.output_dir = kwargs['output_dir']
+        if "output_dir" in kwargs:
+            self.output_dir = kwargs["output_dir"]
 
         os.makedirs(self.output_dir, exist_ok=True)
 
-        info('- Log file           : %s', self.log_file)
-        info('- Output directory   : %s', self.output_dir)
-        info('- Non-default params :')
+        info("- Log file           : %s", self.log_file)
+        info("- Output directory   : %s", self.output_dir)
+        info("- Non-default params :")
 
         for key, value in self.default_params.items():
             self.param[key] = value
@@ -168,14 +173,17 @@ class BaseRecipe:
             for key, value in params.items():
                 self.param[key] = value
 
-        param = (dict(iter(self.param)) if not isinstance(self.param, dict)
-                 else self.param)
+        param = (
+            dict(iter(self.param)) if not isinstance(self.param, dict) else self.param
+        )
         for key, value in param.items():
-            default = (self.param[key].default
-                       if isinstance(self.param, ParameterList)
-                       else self.default_params.get(key, ''))
+            default = (
+                self.param[key].default
+                if isinstance(self.param, ParameterList)
+                else self.default_params.get(key, "")
+            )
             if value != default:
-                info('%15s = %s (%s)', key, value, default)
+                info("%15s = %s (%s)", key, value, default)
 
         if isinstance(flist, dict):
             assert self.DPR_TYPE in flist
@@ -186,8 +194,8 @@ class BaseRecipe:
 
         self.results = results
         self.timeit = (time.time() - t0) / 60
-        info('%s successfully run, %d warnings', self.recipe_name, self.nbwarn)
-        info('Execution time %.2f minutes', self.timeit)
+        info("%s successfully run, %d warnings", self.recipe_name, self.nbwarn)
+        info("Execution time %.2f minutes", self.timeit)
         return results
 
 
@@ -238,7 +246,7 @@ class Recipe(BaseRecipe):
     env = None
     """Default environment variables."""
 
-    exclude_frames = ('MASTER_DARK', 'NONLINEARITY_GAIN')
+    exclude_frames = ("MASTER_DARK", "NONLINEARITY_GAIN")
     """Frames that must be excluded by default."""
 
     use_illum = None
@@ -247,10 +255,18 @@ class Recipe(BaseRecipe):
     QC_keywords = {}
     """QC keywords to show, for each frame."""
 
-    def __init__(self, output_dir=None, use_drs_output=True, temp_dir='.',
-                 log_dir='.', version=None, nifu=-1, tag=None, verbose=True):
-        super().__init__(output_dir=output_dir, log_dir=log_dir,
-                         temp_dir=temp_dir)
+    def __init__(
+        self,
+        output_dir=None,
+        use_drs_output=True,
+        temp_dir=".",
+        log_dir=".",
+        version=None,
+        nifu=-1,
+        tag=None,
+        verbose=True,
+    ):
+        super().__init__(output_dir=output_dir, log_dir=log_dir, temp_dir=temp_dir)
         self.use_drs_output = use_drs_output
 
         recipe_name = self.recipe_name_drs or self.recipe_name
@@ -258,13 +274,14 @@ class Recipe(BaseRecipe):
 
         if tag is not None:
             if tag not in self._recipe.tags:
-                raise ValueError(f'invalid tag {tag} for {recipe_name}, '
-                                 'should be in {self._recipe.tags}')
+                raise ValueError(
+                    f"invalid tag {tag} for {recipe_name}, "
+                    "should be in {self._recipe.tags}"
+                )
             self._recipe.tag = tag
 
         if self.DPR_TYPE is None:
-            self.DPR_TYPE = self.DPR_TYPES.get(self._recipe.tag,
-                                               self._recipe.tag)
+            self.DPR_TYPE = self.DPR_TYPES.get(self._recipe.tag, self._recipe.tag)
 
         elif self.output_dir is None:
             self.output_dir = self.output_frames[0]
@@ -278,12 +295,16 @@ class Recipe(BaseRecipe):
         if self.env is not None:
             self._recipe.env.update(self.env)
 
-        if 'nifu' in self.param:
-            self.param['nifu'] = nifu
+        if "nifu" in self.param:
+            self.param["nifu"] = nifu
 
         if verbose:
-            self.logger.info('%s recipe (DRS v%s from %s)', recipe_name,
-                             self._recipe.version[1], cpl.Recipe.path)
+            self.logger.info(
+                "%s recipe (DRS v%s from %s)",
+                recipe_name,
+                self._recipe.version[1],
+                cpl.Recipe.path,
+            )
 
     @property
     def calib_frames(self):
@@ -293,20 +314,25 @@ class Recipe(BaseRecipe):
     def output_frames(self):
         """Return the list of output frames."""
         frames = self._recipe.output[self._recipe.tag]
-        if self.recipe_name == 'muse_scipost':
+        if self.recipe_name == "muse_scipost":
             # special case for scipost, for which some output frames are
             # missing from cpl's generated list. This was fixed in the DRS and
             # should appear in version > v2.5.2
-            if 'DATACUBE_FINAL' not in frames:
-                frames = ['DATACUBE_FINAL', 'IMAGE_FOV', 'OBJECT_RESAMPLED',
-                          'PIXTABLE_REDUCED', 'PIXTABLE_POSITIONED',
-                          'PIXTABLE_COMBINED'] + frames
+            if "DATACUBE_FINAL" not in frames:
+                frames = [
+                    "DATACUBE_FINAL",
+                    "IMAGE_FOV",
+                    "OBJECT_RESAMPLED",
+                    "PIXTABLE_REDUCED",
+                    "PIXTABLE_POSITIONED",
+                    "PIXTABLE_COMBINED",
+                ] + frames
         return frames
 
     @property
     def version(self):
         """Return the recipe version"""
-        return f'DRS-{self._recipe.version[1]}'
+        return f"DRS-{self._recipe.version[1]}"
 
     def dump_params(self, json_col=False):
         params = {p.name: p.value for p in self.param if p.value is not None}
@@ -314,8 +340,12 @@ class Recipe(BaseRecipe):
 
     def dump(self, include_files=False, json_col=False):
         info = super().dump(include_files=include_files, json_col=json_col)
-        info.update({'user_time': self.results.stat.user_time,
-                     'sys_time': self.results.stat.sys_time})
+        info.update(
+            {
+                "user_time": self.results.stat.user_time,
+                "sys_time": self.results.stat.sys_time,
+            }
+        )
         return info
 
     # def _write_fits(self, name_or_hdulist, filename):
@@ -352,8 +382,11 @@ class Recipe(BaseRecipe):
         cpl.esorex.log.filename = self.log_file
 
         if self.n_inputs_rec and len(flist) != self.n_inputs_rec:
-            self.logger.warning('Got %d files though the recommended number '
-                                'is %d', len(flist), self.n_inputs_rec)
+            self.logger.warning(
+                "Got %d files though the recommended number " "is %d",
+                len(flist),
+                self.n_inputs_rec,
+            )
 
         if self._recipe.output_dir is None:
             raise NotImplementedError
@@ -366,12 +399,13 @@ class Recipe(BaseRecipe):
                 pass
 
         self.raw = {self._recipe.tag: flist}
-        if self.use_illum and kwargs.get('illum'):
-            self.raw['ILLUM'] = kwargs.pop('illum')
+        if self.use_illum and kwargs.get("illum"):
+            self.raw["ILLUM"] = kwargs.pop("illum")
 
         results = self._recipe(raw=self.raw, **kwargs)
 
         self.nbwarn = len(results.log.warning)
-        self.logger.info('DRS user time: %s, sys: %s', results.stat.user_time,
-                         results.stat.sys_time)
+        self.logger.info(
+            "DRS user time: %s, sys: %s", results.stat.user_time, results.stat.sys_time
+        )
         return results

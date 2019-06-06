@@ -6,29 +6,34 @@ from musered.__main__ import cli
 
 def test_list_datasets(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--datasets'])
+    result = runner.invoke(cli, ["info", "--datasets"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
         Datasets:
         - IC4406 : 6 exposures
-        """)
+        """
+    )
 
 
 def test_list_runs(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--runs'])
+    result = runner.invoke(cli, ["info", "--runs"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
         Runs:
         - GTO17 : 2017-04-01 - 2017-06-30, 6 exposures
-        """)
+        """
+    )
 
 
 def test_list_nights(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--nights'])
+    result = runner.invoke(cli, ["info", "--nights"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
         Nights:
         - 2017-04-23
         - 2017-06-13
@@ -38,14 +43,16 @@ def test_list_nights(mr):
         - 2017-06-19
         - 2017-10-25
         - 2017-10-26
-        """)
+        """
+    )
 
 
 def test_list_exposures(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--exps'])
+    result = runner.invoke(cli, ["info", "--exps"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
         Exposures:
         - IC4406
           - 2017-06-16T01:34:56.867
@@ -54,14 +61,16 @@ def test_list_exposures(mr):
           - 2017-06-16T01:43:32.868
           - 2017-06-16T01:46:25.866
           - 2017-06-16T01:49:19.866
-        """)
+        """
+    )
 
 
 def test_list_calibs(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--calibs'])
+    result = runner.invoke(cli, ["info", "--calibs"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
         Calibrations:
         - BIAS
           - 2017-06-16T10:40:27
@@ -87,14 +96,16 @@ def test_list_calibs(mr):
           - 2017-06-16T12:32:03
           - 2017-06-18T12:51:47
           - 2017-06-19T12:20:06
-        """)
+        """
+    )
 
 
 def test_info(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info'])
+    result = runner.invoke(cli, ["info"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
         Reduction version 0.1
         155 files
 
@@ -135,83 +146,88 @@ def test_info(mr):
                      IC4406_drs            -- ...                --          --
                    IC4406_mpdaf             5 ...                --          --
                 OFFSET_LIST_drs            -- ...                --          --
-        """)
+        """
+    )
 
 
 def test_info_exp(mr, caplog):
     # test missing exp/night
-    mr.set_loglevel('DEBUG')
-    mr.info_exp('2017-06-20')
-    assert caplog.records[0].message == '2017-06-20 not found'
+    mr.set_loglevel("DEBUG")
+    mr.info_exp("2017-06-20")
+    assert caplog.records[0].message == "2017-06-20 not found"
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['info-exp', '2017-06-16T01:34:56.867'])
+    result = runner.invoke(cli, ["info-exp", "2017-06-16T01:34:56.867"])
     assert result.exit_code == 0
     out = result.output.splitlines()
-    for line in ['★ GTO logs:',
-                 '★ Weather Conditions:',
-                 '★ Recipe: muse_scibasic',
-                 '★ Recipe: muse_scipost_rec',
-                 '★ Recipe: muse_scipost',
-                 '★ Recipe: muse_scipost_make_cube']:
+    for line in [
+        "★ GTO logs:",
+        "★ Weather Conditions:",
+        "★ Recipe: muse_scibasic",
+        "★ Recipe: muse_scipost_rec",
+        "★ Recipe: muse_scipost",
+        "★ Recipe: muse_scipost_make_cube",
+    ]:
         assert line in out
 
 
 def test_info_night(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info-exp', '--night', '2017-06-15',
-                                 '--recipe', 'bias'])
+    result = runner.invoke(
+        cli, ["info-exp", "--night", "2017-06-15", "--recipe", "bias"]
+    )
     assert result.exit_code == 0
     out = result.output.splitlines()
-    assert '★ Recipe: muse_bias' in out
+    assert "★ Recipe: muse_bias" in out
 
-    result = runner.invoke(cli, ['info-exp', '--night', '2017-06-15',
-                                 '--short'])
+    result = runner.invoke(cli, ["info-exp", "--night", "2017-06-15", "--short"])
     assert result.exit_code == 0
     out = result.output.splitlines()
-    assert '★ Recipe: muse_bias' in out
+    assert "★ Recipe: muse_bias" in out
 
 
 def test_info_raw(mr, capsys, caplog):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info-raw', 'night:2017-06-17'])
+    result = runner.invoke(cli, ["info-raw", "night:2017-06-17"])
     assert result.exit_code == 0
     out = result.output.splitlines()
     assert len(out) == 39
 
-    result = runner.invoke(cli, ['info-raw', 'night:2017-06-17',
-                                 'OBJECT:BIAS'])
+    result = runner.invoke(cli, ["info-raw", "night:2017-06-17", "OBJECT:BIAS"])
     assert result.exit_code == 0
     out = result.output.splitlines()
     assert len(out) == 13
 
     # test missing exp/night
-    mr.info_raw(night='2017-06-20')
-    assert caplog.records[-1].message == 'Could not find exposures'
+    mr.info_raw(night="2017-06-20")
+    assert caplog.records[-1].message == "Could not find exposures"
 
 
 def test_info_qc(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT',
-                                 '--date', '2017-06-16T12:15:46'])
+    result = runner.invoke(
+        cli, ["info", "--qc", "MASTER_FLAT", "--date", "2017-06-16T12:15:46"]
+    )
     assert result.exit_code == 0
     assert len(result.output.splitlines()) == 29  # 24 rows + header + expname
 
-    result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT',
-                                 '--date', '2017-06-16T*'])
+    result = runner.invoke(
+        cli, ["info", "--qc", "MASTER_FLAT", "--date", "2017-06-16T*"]
+    )
     assert result.exit_code == 0
     assert len(result.output.splitlines()) == 29  # 24 rows + header + expname
 
-    result = runner.invoke(cli, ['info', '--qc', 'MASTER_FLAT'])
+    result = runner.invoke(cli, ["info", "--qc", "MASTER_FLAT"])
     assert result.exit_code == 0
     assert len(result.output.splitlines()) == 29 * 3  # 3 nights
 
 
 def test_info_warnings(mr):
     runner = CliRunner()
-    result = runner.invoke(cli, ['info-warnings'])
+    result = runner.invoke(cli, ["info-warnings"])
     assert result.exit_code == 0
-    assert result.output == textwrap.dedent("""\
+    assert result.output == textwrap.dedent(
+        """\
               name          muse_scipost muse_wavecal
     ----------------------- ------------ ------------
     2017-06-16T01:34:56.867            1           --
@@ -221,20 +237,20 @@ def test_info_warnings(mr):
     2017-06-16T01:46:25.866            1           --
     2017-06-16T01:49:19.866            1           --
     2017-06-19T12:20:06               --            5
-    """)
+    """
+    )
 
-    result = runner.invoke(cli, ['info-warnings', '-m', 'list',
-                                 '-r', 'muse_wavecal'])
+    result = runner.invoke(cli, ["info-warnings", "-m", "list", "-r", "muse_wavecal"])
     assert result.exit_code == 0
     assert result.output.splitlines() == [
-        'recipe_name  ...                            log_file                           ',
-        '------------ ... --------------------------------------------------------------',
-        'muse_wavecal ... ./reduced/0.1/logs/muse_wavecal-2018-11-14T20:03:11.243195.log'
+        "recipe_name  ...                            log_file                           ",
+        "------------ ... --------------------------------------------------------------",
+        "muse_wavecal ... ./reduced/0.1/logs/muse_wavecal-2018-11-14T20:03:11.243195.log",
     ]
 
-    result = runner.invoke(cli, ['info-warnings', '-m', 'detail',
-                                 '-d', '2017-06-16T01:46:25.866'])
+    result = runner.invoke(
+        cli, ["info-warnings", "-m", "detail", "-d", "2017-06-16T01:46:25.866"]
+    )
     # cannot be fully tested since log file is not in the test directory
     assert result.exit_code == 1
-    assert result.output.strip() == \
-        "muse_scipost, 2017-06-16T01:46:25.866, 1 warnings"
+    assert result.output.strip() == "muse_scipost, 2017-06-16T01:46:25.866, 1 warnings"

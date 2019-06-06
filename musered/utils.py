@@ -18,26 +18,27 @@ from sqlalchemy import event, pool, sql, func
 
 from .settings import RAW_FITS_KEYWORDS
 
-EXP_PATTERN = r'\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}'
-DATETIME_PATTERN = '%Y-%m-%dT%H:%M:%S.%f'
-DATE_PATTERN = '%Y-%m-%d'
+EXP_PATTERN = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}"
+DATETIME_PATTERN = "%Y-%m-%dT%H:%M:%S.%f"
+DATE_PATTERN = "%Y-%m-%d"
 NOON = datetime.time(20, 40, 0)
 ONEDAY = datetime.timedelta(days=1)
 
 
 def load_yaml_config(filename):
     """Load a YAML config file, with string substitution."""
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         conftext = f.read()
 
     def expanduser(confdict):
         """Expand ~ in paths."""
-        for key in ('workdir', 'raw_path', 'reduced_path', 'muse_calib_path'):
+        for key in ("workdir", "raw_path", "reduced_path", "muse_calib_path"):
             if key in confdict:
                 confdict[key] = os.path.expanduser(confdict[key])
-        if 'recipe_path' in confdict.get('cpl', {}):
-            confdict['cpl']['recipe_path'] = os.path.expanduser(
-                confdict['cpl']['recipe_path'])
+        if "recipe_path" in confdict.get("cpl", {}):
+            confdict["cpl"]["recipe_path"] = os.path.expanduser(
+                confdict["cpl"]["recipe_path"]
+            )
         return confdict
 
     # We need to do 2 passes, before and after key substitution
@@ -52,40 +53,44 @@ def load_yaml_config(filename):
 def load_db(filename=None, db_env=None, **kwargs):
     """Open a sqlite database with dataset."""
 
-    kwargs.setdefault('engine_kwargs', {})
+    kwargs.setdefault("engine_kwargs", {})
 
     if filename is not None:
         path = os.path.dirname(os.path.abspath(filename))
         if not os.path.isdir(path):
-            raise ValueError(f'database path "{path}/" does not exist, you '
-                             'should create it before running musered.')
+            raise ValueError(
+                f'database path "{path}/" does not exist, you '
+                "should create it before running musered."
+            )
 
         # Use a NullPool by default, which is sqlalchemy's default but dataset
         # uses instead a StaticPool.
-        kwargs['engine_kwargs'].setdefault('poolclass', pool.NullPool)
+        kwargs["engine_kwargs"].setdefault("poolclass", pool.NullPool)
 
-        url = f'sqlite:///{filename}'
+        url = f"sqlite:///{filename}"
     elif db_env is not None:
         url = os.environ.get(db_env)
     else:
-        raise ValueError('database url should be provided either with '
-                         'filename or with db_env')
+        raise ValueError(
+            "database url should be provided either with " "filename or with db_env"
+        )
 
     logger = logging.getLogger(__name__)
-    debug = os.getenv('SQLDEBUG')
+    debug = os.getenv("SQLDEBUG")
     if debug is not None:
-        logger.info('Activate debug mode')
-        kwargs['engine_kwargs']['echo'] = True
+        logger.info("Activate debug mode")
+        kwargs["engine_kwargs"]["echo"] = True
 
-    logger.debug('Connecting to %s', url)
+    logger.debug("Connecting to %s", url)
     db = dataset.connect(url, **kwargs)
 
-    if db.engine.driver == 'pysqlite':
-        @event.listens_for(Engine, 'connect')
+    if db.engine.driver == "pysqlite":
+
+        @event.listens_for(Engine, "connect")
         def set_sqlite_pragma(dbapi_connection, connection_record):
             cursor = dbapi_connection.cursor()
-            cursor.execute('PRAGMA foreign_keys = ON')
-            cursor.execute('PRAGMA cache_size = -100000')
+            cursor.execute("PRAGMA foreign_keys = ON")
+            cursor.execute("PRAGMA cache_size = -100000")
             # cursor.execute('PRAGMA journal_mode = WAL')
             cursor.close()
 
@@ -97,8 +102,11 @@ def load_table(db, name, indexes=None):
     logger = logging.getLogger(__name__)
     table = db[name]
     first = table.find_one()
-    t = Table(list(zip(*[list(o.values()) for o in table.find()])),
-              names=list(first.keys()), masked=True)
+    t = Table(
+        list(zip(*[list(o.values()) for o in table.find()])),
+        names=list(first.keys()),
+        masked=True,
+    )
 
     for name, col in t.columns.items():
         if col.dtype is np.dtype(object):
@@ -107,9 +115,13 @@ def load_table(db, name, indexes=None):
             except Exception:
                 pass
             else:
-                logger.debug('Converted %s column to float', col.name)
-                c = MaskedColumn(name=col.name, dtype=float, fill_value=np.nan,
-                                 data=np.ma.masked_invalid(data))
+                logger.debug("Converted %s column to float", col.name)
+                c = MaskedColumn(
+                    name=col.name,
+                    dtype=float,
+                    fill_value=np.nan,
+                    data=np.ma.masked_invalid(data),
+                )
                 t.replace_column(name, c)
         elif np.issubdtype(col.dtype, np.floating):
             t[name] = np.ma.masked_greater_equal(t[name], 1e20)
@@ -170,9 +182,9 @@ def normalize_keyword(key):
     'DPR_TYPE'
 
     """
-    if key.startswith('ESO '):
+    if key.startswith("ESO "):
         key = key[4:]
-    return key.replace(' ', '_').replace('-', '_')
+    return key.replace(" ", "_").replace("-", "_")
 
 
 def parse_raw_keywords(flist, runs=None):
@@ -180,49 +192,52 @@ def parse_raw_keywords(flist, runs=None):
     rows = []
     runs = runs or {}
     now = datetime.datetime.now().isoformat()
-    keywords = [k.split('/')[0].strip()
-                for k in RAW_FITS_KEYWORDS.splitlines() if k]
+    keywords = [k.split("/")[0].strip() for k in RAW_FITS_KEYWORDS.splitlines() if k]
     invalid = []
 
     for f in ProgressBar(flist):
-        with open(f, mode='rb') as fd:
-            if fd.read(30) != b'SIMPLE  =                    T':
+        with open(f, mode="rb") as fd:
+            if fd.read(30) != b"SIMPLE  =                    T":
                 size = os.stat(f).st_size
                 if 11_000 < size < 12_000:
                     invalid.append(f)
                 else:
-                    logger.error('invalid FITS file %s', f)
+                    logger.error("invalid FITS file %s", f)
                 continue
 
-        logger.debug('parsing %s', f)
+        logger.debug("parsing %s", f)
         hdr = fits.getheader(f, ext=0)
-        row = OrderedDict([('name', get_exp_name(f)),
-                           ('filename', os.path.basename(f)),
-                           ('path', f),
-                           ('night', None),
-                           ('date_import', now)])
+        row = OrderedDict(
+            [
+                ("name", get_exp_name(f)),
+                ("filename", os.path.basename(f)),
+                ("path", f),
+                ("night", None),
+                ("date_import", now),
+            ]
+        )
 
-        if 'DATE-OBS' in hdr:
+        if "DATE-OBS" in hdr:
             try:
                 try:
-                    date = parse_datetime(hdr['DATE-OBS'])
+                    date = parse_datetime(hdr["DATE-OBS"])
                     night = date.date()
                     time = date.time()
                 except ValueError:
-                    night = parse_date(hdr['DATE-OBS'])
+                    night = parse_date(hdr["DATE-OBS"])
                     time = NOON
 
                 # Same as MuseWise
                 if time < NOON:
                     night -= ONEDAY
-                row['night'] = night.isoformat()
+                row["night"] = night.isoformat()
 
                 for run_name, run in runs.items():
-                    if run['start_date'] <= night <= run['end_date']:
-                        row['run'] = run_name
+                    if run["start_date"] <= night <= run["end_date"]:
+                        row["run"] = run_name
                         break
             except Exception as e:
-                logger.warning('could not parse DATE-OBS from %s: %s', f, e)
+                logger.warning("could not parse DATE-OBS from %s: %s", f, e)
 
         for key in keywords:
             row[normalize_keyword(key)] = hdr.get(key)
@@ -230,11 +245,13 @@ def parse_raw_keywords(flist, runs=None):
         rows.append(row)
 
     if invalid:
-        logger.error('Found invalid files that looks like login pages. '
-                     'This happens when been logged out from ESO archive. ')
-        logger.error('Deleting these files, you should restart retrieve_data')
+        logger.error(
+            "Found invalid files that looks like login pages. "
+            "This happens when been logged out from ESO archive. "
+        )
+        logger.error("Deleting these files, you should restart retrieve_data")
         for f in invalid:
-            logger.error('- %s', f)
+            logger.error("- %s", f)
             os.remove(f)
 
     return rows
@@ -246,35 +263,43 @@ def parse_qc_keywords(flist):
     for f in sorted(flist):
         with fits.open(f) as hdul:
             for hdu in hdul:
-                if '.' in hdu.name:
-                    name, ext = hdu.name.split('.')
-                    if ext in ('DQ', 'STAT'):
+                if "." in hdu.name:
+                    name, ext = hdu.name.split(".")
+                    if ext in ("DQ", "STAT"):
                         continue
                 else:
                     name = hdu.name
-                cards = {normalize_keyword(key): val
-                         for key, val in hdu.header['ESO QC*'].items()}
+                cards = {
+                    normalize_keyword(key): val
+                    for key, val in hdu.header["ESO QC*"].items()
+                }
                 if len(cards) == 0:
-                    logger.debug('%s - %s : no QC keywords', f, name)
+                    logger.debug("%s - %s : no QC keywords", f, name)
                     continue
-                rows.append({'filename': os.path.basename(f),
-                             'hdu': name, **cards})
+                rows.append({"filename": os.path.basename(f), "hdu": name, **cards})
     return rows
 
 
-def query_count_to_table(table, exclude_obj=None, where=None,
-                         date_list=None, run=None, datecol='name',
-                         countcol='OBJECT', exclude_names=None):
+def query_count_to_table(
+    table,
+    exclude_obj=None,
+    where=None,
+    date_list=None,
+    run=None,
+    datecol="name",
+    countcol="OBJECT",
+    exclude_names=None,
+):
     c = table.table.c
     datecol, countcol = c[datecol], c[countcol]
 
     if date_list:
         if len(date_list) == 1:
-            whereclause = [datecol.like(f'%{date_list[0]}%')]
+            whereclause = [datecol.like(f"%{date_list[0]}%")]
         else:
             whereclause = [datecol.in_(date_list)]
-    elif run is not None and 'run' in c:
-        whereclause = [c['run'].like(f'%{run}%')]
+    elif run is not None and "run" in c:
+        whereclause = [c["run"].like(f"%{run}%")]
     else:
         whereclause = [datecol.isnot(None)]
 
@@ -287,16 +312,18 @@ def query_count_to_table(table, exclude_obj=None, where=None,
     if where is not None:
         whereclause.append(where)
 
-    query = (sql.select([datecol, countcol, func.count()])
-             .where(sql.and_(*whereclause))
-             .order_by(datecol)
-             .group_by(datecol, countcol))
+    query = (
+        sql.select([datecol, countcol, func.count()])
+        .where(sql.and_(*whereclause))
+        .order_by(datecol)
+        .group_by(datecol, countcol)
+    )
 
     # reorganize rows to have types (in columns) per night (rows)
     rows = defaultdict(dict)
     keys = set()
     for name, obj, count in table.db.executable.execute(query):
-        rows[name]['name'] = name
+        rows[name]["name"] = name
         rows[name][obj] = count
         keys.add(obj)
 
@@ -309,13 +336,13 @@ def query_count_to_table(table, exclude_obj=None, where=None,
 
     t = Table(rows=list(rows.values()), masked=True)
     # move name column to the beginning
-    t.columns.move_to_end('name', last=False)
+    t.columns.move_to_end("name", last=False)
     for col in t.columns.values()[1:]:
         col[col == 0] = np.ma.masked
 
     for col in t.columns.values()[1:]:
         # shorten recipe names
-        col.name = col.name.replace('muse_', '')
+        col.name = col.name.replace("muse_", "")
 
     return t
 
@@ -323,66 +350,68 @@ def query_count_to_table(table, exclude_obj=None, where=None,
 def isnotebook():  # pragma: no cover
     try:
         shell = get_ipython().__class__.__name__
-        if shell == 'ZMQInteractiveShell':
-            return True   # Jupyter notebook or qtconsole
-        elif shell == 'TerminalInteractiveShell':
+        if shell == "ZMQInteractiveShell":
+            return True  # Jupyter notebook or qtconsole
+        elif shell == "TerminalInteractiveShell":
             return False  # Terminal running IPython
         else:
             return False  # Other type (?)
     except NameError:
-        return False      # Probably standard Python interpreter
+        return False  # Probably standard Python interpreter
 
 
 def ProgressBar(*args, **kwargs):
     logger = logging.getLogger(__name__)
-    if logging.getLevelName(logger.getEffectiveLevel()) == 'DEBUG':
-        kwargs['disable'] = True
+    if logging.getLevelName(logger.getEffectiveLevel()) == "DEBUG":
+        kwargs["disable"] = True
 
     from tqdm import tqdm, tqdm_notebook
+
     func = tqdm_notebook if isnotebook() else tqdm
     return func(*args, **kwargs)
 
 
 def parse_gto_db(musered_db, gto_dblist):
-    ranks = {2: 'A', 3: 'B', 4: 'C', 5: 'D', 6: 'X', 7: 'a', 8: 'b'}
-    exps = list(musered_db['raw'].find(DPR_TYPE='OBJECT'))
-    OBstart = [exp['OBS_START'] for exp in exps]
-    arcf = [exp['ARCFILE'] for exp in exps]
+    ranks = {2: "A", 3: "B", 4: "C", 5: "D", 6: "X", 7: "a", 8: "b"}
+    exps = list(musered_db["raw"].find(DPR_TYPE="OBJECT"))
+    OBstart = [exp["OBS_START"] for exp in exps]
+    arcf = [exp["ARCFILE"] for exp in exps]
 
     flags, comments, fcomments = {}, {}, {}
     for f in gto_dblist:
         db = load_db(f)
-        flags.update({r['OBstart']: r
-                      for r in db['OBflags'].find(OBstart=OBstart)})
-        comments.update({r['OBstart']: r
-                         for r in db['OBcomments'].find(OBstart=OBstart)})
-        fcomments.update({r['arcfile']: r
-                          for r in db['fcomments'].find(arcfile=arcf)})
+        flags.update({r["OBstart"]: r for r in db["OBflags"].find(OBstart=OBstart)})
+        comments.update(
+            {r["OBstart"]: r for r in db["OBcomments"].find(OBstart=OBstart)}
+        )
+        fcomments.update({r["arcfile"]: r for r in db["fcomments"].find(arcfile=arcf)})
 
     rows = []
     for exp in exps:
-        comm = comments.get(exp['OBS_START'], {})
-        fcomm = fcomments.get(exp['ARCFILE'], {})
-        flag = flags.get(exp['OBS_START'], {})
-        rows.append({
-            'name': exp['name'],
-            'ARCFILE': exp['ARCFILE'],
-            'OBS_START': exp['OBS_START'],
-            'version': '0',
-            'flag': ranks.get(flag.get('flag'), ''),
-            'comment': comm.get('comment', ''),
-            'date': comm.get('date', ''),
-            'author': comm.get('author', ''),
-            'fcomment': fcomm.get('comment', ''),
-            'fdate': fcomm.get('date', ''),
-            'fauthor': fcomm.get('author', '')
-        })
+        comm = comments.get(exp["OBS_START"], {})
+        fcomm = fcomments.get(exp["ARCFILE"], {})
+        flag = flags.get(exp["OBS_START"], {})
+        rows.append(
+            {
+                "name": exp["name"],
+                "ARCFILE": exp["ARCFILE"],
+                "OBS_START": exp["OBS_START"],
+                "version": "0",
+                "flag": ranks.get(flag.get("flag"), ""),
+                "comment": comm.get("comment", ""),
+                "date": comm.get("date", ""),
+                "author": comm.get("author", ""),
+                "fcomment": fcomm.get("comment", ""),
+                "fdate": fcomm.get("date", ""),
+                "fauthor": fcomm.get("author", ""),
+            }
+        )
 
     with musered_db as tx:
-        table = tx['gto_logs']
+        table = tx["gto_logs"]
         table.drop()
         table.insert_many(rows)
-        table.create_index(['name', 'OBstart', 'flag', 'version'])
+        table.create_index(["name", "OBstart", "flag", "version"])
 
     return table
 
@@ -393,16 +422,14 @@ def parse_weather_conditions(mr, force=False):
     """
     logger = logging.getLogger(__name__)
 
-    wc = (mr.rawc.DPR_TYPE == 'OBJECT')
+    wc = mr.rawc.DPR_TYPE == "OBJECT"
     if not force:
-        weather_tbl = mr.db['weather_conditions']
-        existing_nights = [o['night'] for o in weather_tbl.find()]
-        logger.debug('Skipping %d nights', len(existing_nights))
+        weather_tbl = mr.db["weather_conditions"]
+        existing_nights = [o["night"] for o in weather_tbl.find()]
+        logger.debug("Skipping %d nights", len(existing_nights))
         wc = wc & (mr.rawc.night.notin_(existing_nights))
 
-    query = (sql.select([mr.rawc.night, mr.rawc.path])
-             .where(wc)
-             .order_by(mr.rawc.path))
+    query = sql.select([mr.rawc.night, mr.rawc.path]).where(wc).order_by(mr.rawc.path)
     tables = []
     cur_night = None
 
@@ -416,14 +443,14 @@ def parse_weather_conditions(mr, force=False):
             cur_night = night
 
         try:
-            cond_file = path.split('.fits')[0] + '.NL.txt'
+            cond_file = path.split(".fits")[0] + ".NL.txt"
         except Exception:
             continue
 
-        logger.debug('Night %s, %s', night, cond_file)
+        logger.debug("Night %s, %s", night, cond_file)
 
         if not os.path.exists(cond_file):
-            logger.debug('File %s not found', cond_file)
+            logger.debug("File %s not found", cond_file)
             continue
 
         get_lines = False
@@ -432,56 +459,56 @@ def parse_weather_conditions(mr, force=False):
             # Find lines between "Weather observations" and the next separator
             # line. Also skip malformed lines ("New update at...").
             for line in f:
-                if line.startswith('Weather observations'):
+                if line.startswith("Weather observations"):
                     get_lines = True
                 elif get_lines:
-                    if line.startswith('----------------------'):
+                    if line.startswith("----------------------"):
                         break
-                    if not line.startswith('New update'):
+                    if not line.startswith("New update"):
                         lines.append(line)
 
         if not lines:
-            logger.warning('Weather conditions not found in %s', cond_file)
+            logger.warning("Weather conditions not found in %s", cond_file)
             continue
 
         try:
-            tbl = ascii.read(''.join(lines))
+            tbl = ascii.read("".join(lines))
         except Exception as e:
-            logger.warning('Failed to parse lines from %s: %s', cond_file, e)
-            logger.debug(''.join(lines))
+            logger.warning("Failed to parse lines from %s: %s", cond_file, e)
+            logger.debug("".join(lines))
             continue
-        tbl['night'] = night
+        tbl["night"] = night
 
         # Fix when comment is incorrect, typically when there is no comment
-        if tbl['Comment'].dtype.kind != 'U':
-            tbl.replace_column('Comment', [str(s) for s in tbl['Comment']])
+        if tbl["Comment"].dtype.kind != "U":
+            tbl.replace_column("Comment", [str(s) for s in tbl["Comment"]])
 
         if tbl.masked:
             tbl = tbl.filled()
 
         dates = []
         for row in tbl:
-            night = row['night']
-            time = row['Time']
-            d = datetime.datetime.strptime(f'{night}T{time}', '%Y-%m-%dT%H:%M')
+            night = row["night"]
+            time = row["Time"]
+            d = datetime.datetime.strptime(f"{night}T{time}", "%Y-%m-%dT%H:%M")
             if d.time() < NOON:
                 d += ONEDAY
             dates.append(d.isoformat())
 
-        tbl['date'] = dates
+        tbl["date"] = dates
         tables.append(tbl)
 
     if len(tables) == 0:
-        logger.debug('Nothing to do for weather conditions')
+        logger.debug("Nothing to do for weather conditions")
         return
 
     tables = vstack(tables)
     # Move the night column at beginning
-    tables.columns.move_to_end('night', last=False)
+    tables.columns.move_to_end("night", last=False)
 
-    logger.info('Importing weather conditions, %d entries', len(tables))
+    logger.info("Importing weather conditions, %d entries", len(tables))
     rows = [dict(zip(tables.colnames, row)) for row in tables]
-    upsert_many(mr.db, 'weather_conditions', rows, ['night', 'date'])
+    upsert_many(mr.db, "weather_conditions", rows, ["night", "date"])
 
 
 def upsert_many(db, tablename, rows, keys):
@@ -503,8 +530,17 @@ def upsert_many(db, tablename, rows, keys):
             table.upsert(row, keys=keys)
 
 
-def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
-                use_labels=True, isouter=False, debug=False, **params):
+def join_tables(
+    db,
+    tablenames,
+    whereclause=None,
+    columns=None,
+    keys=None,
+    use_labels=True,
+    isouter=False,
+    debug=False,
+    **params,
+):
     """Join table with other catalogs.
 
     >>> import dataset
@@ -554,14 +590,14 @@ def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
         columns = tables
 
     if keys is None:
-        keys = [('name', 'name')] * (len(tables) - 1)
+        keys = [("name", "name")] * (len(tables) - 1)
 
-    query = sql.select(columns, use_labels=use_labels,
-                       whereclause=whereclause, **params)
+    query = sql.select(
+        columns, use_labels=use_labels, whereclause=whereclause, **params
+    )
     joincl = tables[0]
     for (key1, key2), other in zip(keys, tables[1:]):
-        joincl = joincl.join(other, tables[0].c[key1] == other.c[key2],
-                             isouter=isouter)
+        joincl = joincl.join(other, tables[0].c[key1] == other.c[key2], isouter=isouter)
     query = query.select_from(joincl)
 
     if debug:
@@ -571,11 +607,11 @@ def join_tables(db, tablenames, whereclause=None, columns=None, keys=None,
 
 def all_subclasses(cls):
     return set(cls.__subclasses__()).union(
-        [s for c in cls.__subclasses__() for s in all_subclasses(c)])
+        [s for c in cls.__subclasses__() for s in all_subclasses(c)]
+    )
 
 
-def find_outliers(table, colname, name='name', exps=None, sigma_lower=5,
-                  sigma_upper=5):
+def find_outliers(table, colname, name="name", exps=None, sigma_lower=5, sigma_upper=5):
     """Find outliers in a subset of a table,column.
 
     Parameters
@@ -612,11 +648,13 @@ def find_outliers(table, colname, name='name', exps=None, sigma_lower=5,
 
     vals = list(zip(*tab))[0]
     names = list(zip(*tab))[1]
-    vclip = sigma_clip(vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper,
-                       copy=True)
+    vclip = sigma_clip(
+        vals, sigma_lower=sigma_lower, sigma_upper=sigma_upper, copy=True
+    )
     flagged = np.count_nonzero(vclip.mask)
-    logger.debug('Found %d outliers values of %s over %d lines',
-                 flagged, colname, len(vals))
+    logger.debug(
+        "Found %d outliers values of %s over %d lines", flagged, colname, len(vals)
+    )
     mean = np.ma.mean(vclip)
     std = np.ma.std(vclip)
     if flagged == 0:
@@ -660,19 +698,23 @@ def stat_qc_chan(mr, table, qclist, nsigma=5, run=None):
 
     """
     table = mr.db[table]
-    find_kw = {'run': run} if run is not None else {}
+    find_kw = {"run": run} if run is not None else {}
     rows = []
     for k in range(1, 25):
         for q in qclist:
-            vals = [c[q] for c in table.find(hdu=f'CHAN{k:02d}', **find_kw)]
+            vals = [c[q] for c in table.find(hdu=f"CHAN{k:02d}", **find_kw)]
             clipvals = sigma_clip(vals, sigma=nsigma)
-            rows.append({'CHAN': k, 'QC': q,
-                         'MEAN': np.ma.mean(clipvals),
-                         'STD': np.ma.std(clipvals),
-                         'NCLIP': np.count_nonzero(clipvals.mask),
-                         'NKEEP': np.count_nonzero(~clipvals.mask)})
-    return Table(data=rows,
-                 names=['CHAN', 'QC', 'MEAN', 'STD', 'NCLIP', 'NKEEP'])
+            rows.append(
+                {
+                    "CHAN": k,
+                    "QC": q,
+                    "MEAN": np.ma.mean(clipvals),
+                    "STD": np.ma.std(clipvals),
+                    "NCLIP": np.count_nonzero(clipvals.mask),
+                    "NKEEP": np.count_nonzero(~clipvals.mask),
+                }
+            )
+    return Table(data=rows, names=["CHAN", "QC", "MEAN", "STD", "NCLIP", "NKEEP"])
 
 
 def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
@@ -703,30 +745,42 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
 
     """
     table = mr.db[table]
-    find_kw = {'run': run} if run is not None else {}
+    find_kw = {"run": run} if run is not None else {}
     rows = []
     for k in range(1, 25):
         for q in qclist:
             vals = []
             names = []
-            for c in table.find(hdu=f'CHAN{k:02d}', **find_kw):
-                names.append(c['name'])
+            for c in table.find(hdu=f"CHAN{k:02d}", **find_kw):
+                names.append(c["name"])
                 vals.append(c[q])
             clipvals = sigma_clip(vals, sigma=nsigma)
             if np.count_nonzero(clipvals.mask) == 0:
                 continue
             mean = np.ma.mean(clipvals)
             std = np.ma.std(clipvals)
-            for n, v in zip(np.array(names)[clipvals.mask],
-                            np.array(vals)[clipvals.mask]):
+            for n, v in zip(
+                np.array(names)[clipvals.mask], np.array(vals)[clipvals.mask]
+            ):
                 err = np.abs((v - mean) / std)
-                rows.append({'NAME': n, 'QC': q, 'CHAN': k, 'VAL': v,
-                             'MEAN': mean, 'STD': std, 'NSIGMA': err})
+                rows.append(
+                    {
+                        "NAME": n,
+                        "QC": q,
+                        "CHAN": k,
+                        "VAL": v,
+                        "MEAN": mean,
+                        "STD": std,
+                        "NSIGMA": err,
+                    }
+                )
 
-    tab = Table(names=['NAME', 'QC', 'CHAN', 'VAL', 'MEAN', 'STD', 'NSIGMA'],
-                data=rows if len(rows) else None)
-    for c in ('VAL', 'MEAN', 'STD', 'NSIGMA'):
-        tab[c].format = '.3f'
+    tab = Table(
+        names=["NAME", "QC", "CHAN", "VAL", "MEAN", "STD", "NSIGMA"],
+        data=rows if len(rows) else None,
+    )
+    for c in ("VAL", "MEAN", "STD", "NSIGMA"):
+        tab[c].format = ".3f"
     return tab
 
 
@@ -747,14 +801,14 @@ def ensure_list(value):
 def make_band_images(cube, imgname, filter):
     logger = logging.getLogger(__name__)
     if isinstance(filter, str):
-        filter = filter.split(',')
+        filter = filter.split(",")
     if isinstance(cube, str):
         cube = Cube(cube)
 
     for filt in filter:
-        if filt == 'white':
+        if filt == "white":
             continue
         im = cube.get_band_image(filt)
         fname = imgname.format(filt=filt)
-        logger.info('Saving img: %s', fname)
-        im.write(fname, savemask='nan')
+        logger.info("Saving img: %s", fname)
+        im.write(fname, savemask="nan")

@@ -42,15 +42,15 @@ ingested in the database.
 
 # List of static calibration frames
 STATIC_FRAMES = (
-    'ASTROMETRY_WCS',
-    'BADPIX_TABLE',
-    'EXTINCT_TABLE',
-    'FILTER_LIST',
-    'GEOMETRY_TABLE',
-    'LINE_CATALOG',
+    "ASTROMETRY_WCS",
+    "BADPIX_TABLE",
+    "EXTINCT_TABLE",
+    "FILTER_LIST",
+    "GEOMETRY_TABLE",
+    "LINE_CATALOG",
     # 'NONLINEARITY_GAIN'
-    'RAMAN_LINES',
-    'SKY_LINES',
-    'STD_FLUX_TABLE',
-    'VIGNETTING_MASK'
+    "RAMAN_LINES",
+    "SKY_LINES",
+    "STD_FLUX_TABLE",
+    "VIGNETTING_MASK",
 )

@@ -1,6 +1,6 @@
 from .recipe import BaseRecipe
-from .recipe import *   # noqa
-from .calib import *    # noqa
+from .recipe import *  # noqa
+from .calib import *  # noqa
 from .science import *  # noqa
 from .imphot import IMPHOT
 from .mpdaf import MPDAFCOMBINE
@@ -9,11 +9,14 @@ from .superflat import SUPERFLAT
 from .zap import ZAP
 from ..utils import all_subclasses
 
-recipe_classes = {cls.recipe_name: cls for cls in
-                  all_subclasses(BaseRecipe) if cls.recipe_name}
+recipe_classes = {
+    cls.recipe_name: cls for cls in all_subclasses(BaseRecipe) if cls.recipe_name
+}
 
 __all__ = [cls.__name__ for cls in all_subclasses(BaseRecipe)] + [
-    'normalize_recipe_name', 'get_recipe_cls']
+    "normalize_recipe_name",
+    "get_recipe_cls",
+]
 
 
 def normalize_recipe_name(recipe_name):
@@ -27,8 +30,8 @@ def normalize_recipe_name(recipe_name):
     """
     if recipe_name in recipe_classes:
         return recipe_name
-    elif not recipe_name.startswith('muse_'):
-        recipe_name = 'muse_' + recipe_name
+    elif not recipe_name.startswith("muse_"):
+        recipe_name = "muse_" + recipe_name
     return recipe_name
 
 

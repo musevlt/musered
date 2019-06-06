@@ -5,15 +5,33 @@ from datetime import datetime
 from .utils import join_tables, parse_datetime
 
 
-WeatherTranslate = dict(Photometric='PH', Clear='CL', ThinCirrus='TN',
-                        ThickCirrus='TK', Cloudy='CO', Windy='W')
-WeatherColors = dict(PH='green', CL='blue', TN='magenta', TK='red',
-                     CO='black', W='cyan')
+WeatherTranslate = dict(
+    Photometric="PH",
+    Clear="CL",
+    ThinCirrus="TN",
+    ThickCirrus="TK",
+    Cloudy="CO",
+    Windy="W",
+)
+WeatherColors = dict(
+    PH="green", CL="blue", TN="magenta", TK="red", CO="black", W="cyan"
+)
 
 
-def display_nights(ax, mr, tabname, colname, nights=None, weather=True,
-                   color='k', symbol='o', explist=[], return_pval=False,
-                   std=False, scol='black'):
+def display_nights(
+    ax,
+    mr,
+    tabname,
+    colname,
+    nights=None,
+    weather=True,
+    color="k",
+    symbol="o",
+    explist=[],
+    return_pval=False,
+    std=False,
+    scol="black",
+):
     """Display QA values for selection of nights.
 
     Parameters
@@ -50,57 +68,65 @@ def display_nights(ax, mr, tabname, colname, nights=None, weather=True,
     else:
         wc = None
 
-    exps = list(join_tables(mr.db, [qatab.name, mr.raw.name], columns=cols,
-                            use_labels=False, whereclause=wc))
+    exps = list(
+        join_tables(
+            mr.db,
+            [qatab.name, mr.raw.name],
+            columns=cols,
+            use_labels=False,
+            whereclause=wc,
+        )
+    )
 
     if weather:
-        w = mr.get_astropy_table('weather_conditions')
+        w = mr.get_astropy_table("weather_conditions")
 
-    dates = [parse_datetime(exp['name']) for exp in exps
-             if exp['name'] not in explist]
-    vals = [exp[colname] for exp in exps if exp['name'] not in explist]
+    dates = [parse_datetime(exp["name"]) for exp in exps if exp["name"] not in explist]
+    vals = [exp[colname] for exp in exps if exp["name"] not in explist]
     ax.plot_date(dates, vals, marker=symbol, color=color)
 
     if std:  # display std stars observation
-        wdates = {dt['name']: datetime.strptime(dt['name'],
-                                                '%Y-%m-%dT%H:%M:%S.%f')
-                  for dt in mr.raw.find(DPR_TYPE='STD', night=nights)}
-        exc = mr.frames.get_excludes(DPR_TYPE='STD')
+        wdates = {
+            dt["name"]: datetime.strptime(dt["name"], "%Y-%m-%dT%H:%M:%S.%f")
+            for dt in mr.raw.find(DPR_TYPE="STD", night=nights)
+        }
+        exc = mr.frames.get_excludes(DPR_TYPE="STD")
         for name, wt in wdates.items():
             if name in exc:
-                ax.axvline(wt, color=scol, ls='-.', alpha=0.6)
+                ax.axvline(wt, color=scol, ls="-.", alpha=0.6)
             else:
-                ax.axvline(wt, color=scol, ls='--', alpha=0.7)
+                ax.axvline(wt, color=scol, ls="--", alpha=0.7)
 
     if return_pval:
         pdates = dates
         pvals = vals
 
     if len(explist) > 0:
-        dates = [parse_datetime(exp['name']) for exp in exps
-                 if exp['name'] in explist]
+        dates = [parse_datetime(exp["name"]) for exp in exps if exp["name"] in explist]
         if len(dates) > 0:
-            vals = [exp[colname] for exp in exps if exp['name'] in explist]
-            ax.plot_date(dates, vals, marker=symbol, markerfacecolor='w',
-                         markeredgecolor=color)
+            vals = [exp[colname] for exp in exps if exp["name"] in explist]
+            ax.plot_date(
+                dates, vals, marker=symbol, markerfacecolor="w", markeredgecolor=color
+            )
             if return_pval:
                 pvals += vals
                 pdates += dates
     if weather:
-        nights = np.unique([exp['night'] for exp in exps])
-        mask = np.in1d(w['night'], nights)
+        nights = np.unique([exp["night"] for exp in exps])
+        mask = np.in1d(w["night"], nights)
         wn = w[mask]
         for e in wn:
-            wt = datetime.strptime(e['date'], '%Y-%m-%dT%H:%M:%S')
-            wcond = [WeatherTranslate[el] for el in e['Conditions'].split(',')]
+            wt = datetime.strptime(e["date"], "%Y-%m-%dT%H:%M:%S")
+            wcond = [WeatherTranslate[el] for el in e["Conditions"].split(",")]
             wcol = WeatherColors[wcond[0]]
             ax.axvline(wt, color=wcol, alpha=0.5)
     if return_pval:
         return (pdates, pvals)
 
 
-def display_runs(axlist, mr, tabname, colname, runs=None, median=False,
-                 color='k', **kwargs):
+def display_runs(
+    axlist, mr, tabname, colname, runs=None, median=False, color="k", **kwargs
+):
     """Display QA values for selection of runs.
 
     Parameters
@@ -130,11 +156,20 @@ def display_runs(axlist, mr, tabname, colname, runs=None, median=False,
     # loop on runs
     lvals = []
     for ax, run in zip(axlist, runs):
-        nights = np.unique([e['night'] for e in mr.raw.find(
-            run=run, name=mr.exposures['MXDF'])])
+        nights = np.unique(
+            [e["night"] for e in mr.raw.find(run=run, name=mr.exposures["MXDF"])]
+        )
         nights = nights.tolist()
-        dates, vals = display_nights(ax, mr, tabname, colname, nights=nights,
-                                     color=color, return_pval=True, **kwargs)
+        dates, vals = display_nights(
+            ax,
+            mr,
+            tabname,
+            colname,
+            nights=nights,
+            color=color,
+            return_pval=True,
+            **kwargs,
+        )
         if len(vals) > 0 and vals is not None:
             lvals += [v for v in vals if v is not None]
         ax.set_title(run)

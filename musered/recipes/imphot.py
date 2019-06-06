@@ -34,18 +34,32 @@ from ..utils import get_exp_name
 # for the published HST UDF images.
 HST_FILTERS = ["F606W", "F775W", "F814W", "F850LP"]
 
-HST_FILTERS_DIR = join(os.path.dirname(os.path.abspath(__file__)),
-                       '..', 'data', 'hst_filters')
+HST_FILTERS_DIR = join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "data", "hst_filters"
+)
 
 HST_BASENAME = "hlsp_xdf_hst_acswfc-30mas_hudf_%s_v1_sci.fits"
 
 
-def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
-                     muse_outdir=".", hst_outdir=".", hst_img_dir=None,
-                     hst_basename=None, hst_resample_each=False,
-                     extramask=None, nprocess=8, fix_beta=None, expname=None,
-                     force_muse_image=False, force_hst_image=False,
-                     exclude_regions=None, fix_bg=None, min_scale=None):
+def fit_cube_offsets(
+    cubename,
+    hst_filters_dir=None,
+    hst_filters=None,
+    muse_outdir=".",
+    hst_outdir=".",
+    hst_img_dir=None,
+    hst_basename=None,
+    hst_resample_each=False,
+    extramask=None,
+    nprocess=8,
+    fix_beta=None,
+    expname=None,
+    force_muse_image=False,
+    force_hst_image=False,
+    exclude_regions=None,
+    fix_bg=None,
+    min_scale=None,
+):
     """Fit pointing offsets to the MUSE observation in a specified cube.
 
     Parameters
@@ -113,9 +127,9 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     imfits = {}
 
     if extramask:
-        logger.info('Using extra mask: %s', extramask)
+        logger.info("Using extra mask: %s", extramask)
     if hst_img_dir is None:
-        raise ValueError('hst_img_dir is not specified')
+        raise ValueError("hst_img_dir is not specified")
 
     if not isinstance(fix_beta, (list, tuple)):
         fix_beta = [fix_beta] * len(hst_filters)
@@ -136,15 +150,19 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
         else:
             logger.info(" Computing MUSE image for %s", filter_name)
             curve = filter_curves[filter_name]
-            muse = imphot.bandpass_image(cube, curve[:, 0], curve[:, 1],
-                                         unit_wave=u.angstrom,
-                                         nprocess=nprocess,
-                                         truncation_warning=False)
+            muse = imphot.bandpass_image(
+                cube,
+                curve[:, 0],
+                curve[:, 1],
+                unit_wave=u.angstrom,
+                nprocess=nprocess,
+                truncation_warning=False,
+            )
             muse.write(fname, savemask="nan")
 
         # Get an HST image resampled onto the same spatial coordinate
         # grid as the MUSE cube.
-        field = muse.primary_header['OBJECT']
+        field = muse.primary_header["OBJECT"]
         hst_filename = join(hst_img_dir, hst_basename % filter_name.lower())
 
         if hst_resample_each:
@@ -152,13 +170,11 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
             # OUTPUT_WCS is not used. So we need to resample the HST image for
             # each MUSE exposures.
             if expname:
-                resamp_name = join(hst_outdir,
-                                   f"hst_{filter_name}_for_{expname}.fits")
+                resamp_name = join(hst_outdir, f"hst_{filter_name}_for_{expname}.fits")
             else:
                 resamp_name = join(hst_outdir, f"hst_{filter_name}.fits")
         else:
-            resamp_name = join(hst_outdir,
-                               f"hst_{filter_name}_for_{field}.fits")
+            resamp_name = join(hst_outdir, f"hst_{filter_name}_for_{field}.fits")
 
         if not force_hst_image and exists(resamp_name):
             logger.info(" Getting resampled HST image for %s", field)
@@ -193,8 +209,8 @@ def fit_cube_offsets(cubename, hst_filters_dir=None, hst_filters=None,
     # average of the offsets that were fitted to all of the filters.
     dra = np.array([i.dra.value for i in imfits.values()]).mean().item()
     ddec = np.array([i.ddec.value for i in imfits.values()]).mean().item()
-    ddec /= 3600.
-    dra /= 3600.
+    ddec /= 3600.0
+    dra /= 3600.0
     return ddec, dra, imfits
 
 
@@ -205,47 +221,51 @@ def _process_exp(i, nfiles, filename, output_dir, param):
     outdir = join(output_dir, expname)
     os.makedirs(outdir, exist_ok=True)
 
-    hst_outdir = outdir if param['hst_resample_each'] else output_dir
-    nproc = int(os.getenv('OMP_NUM_THREADS', 8))
+    hst_outdir = outdir if param["hst_resample_each"] else output_dir
+    nproc = int(os.getenv("OMP_NUM_THREADS", 8))
     ddec, dra, imfits = fit_cube_offsets(
-        filename, nprocess=nproc, muse_outdir=outdir,
-        hst_outdir=hst_outdir, **param)
+        filename, nprocess=nproc, muse_outdir=outdir, hst_outdir=hst_outdir, **param
+    )
 
     hdr = fits.getheader(filename)
 
     rows = []
     for filter_name, fit in imfits.items():
-        rows.append(dict([
-            ('filename', filename),
-            ('filter', filter_name),
-            ('dx', fit.dx.value),
-            ('dy', fit.dy.value),
-            ('dra', fit.dra.value.item()),
-            ('ddec', fit.ddec.value.item()),
-            ('scale', fit.scale.value),
-            ('fwhm', fit.fwhm.value),
-            ('beta', fit.beta.value),
-            ('bg', fit.bg.value),
-            ('rms', fit.rms_error)
-        ]))
+        rows.append(
+            dict(
+                [
+                    ("filename", filename),
+                    ("filter", filter_name),
+                    ("dx", fit.dx.value),
+                    ("dy", fit.dy.value),
+                    ("dra", fit.dra.value.item()),
+                    ("ddec", fit.ddec.value.item()),
+                    ("scale", fit.scale.value),
+                    ("fwhm", fit.fwhm.value),
+                    ("beta", fit.beta.value),
+                    ("bg", fit.bg.value),
+                    ("rms", fit.rms_error),
+                ]
+            )
+        )
     t = Table(rows=rows)
-    t.meta['EXPNAME'] = expname
-    t.meta['RA_OFF'] = dra
-    t.meta['DEC_OFF'] = ddec
-    t.meta['DATE-OBS'] = hdr['DATE-OBS']
-    t.meta['MJD-OBS'] = hdr['MJD-OBS']
-    t.write(join(outdir, 'IMPHOT.fits'), overwrite=True)
+    t.meta["EXPNAME"] = expname
+    t.meta["RA_OFF"] = dra
+    t.meta["DEC_OFF"] = ddec
+    t.meta["DATE-OBS"] = hdr["DATE-OBS"]
+    t.meta["MJD-OBS"] = hdr["MJD-OBS"]
+    t.write(join(outdir, "IMPHOT.fits"), overwrite=True)
 
-    return hdr['DATE-OBS'], hdr['MJD-OBS'], dra, ddec
+    return hdr["DATE-OBS"], hdr["MJD-OBS"], dra, ddec
 
 
 class IMPHOT(PythonRecipe):
     """Recipe to compute offsets with Imphot."""
 
-    recipe_name = 'imphot'
-    DPR_TYPE = 'DATACUBE_FINAL'
-    output_dir = 'exp_align'
-    output_frames = ['OFFSET_LIST']
+    recipe_name = "imphot"
+    DPR_TYPE = "DATACUBE_FINAL"
+    output_dir = "exp_align"
+    output_frames = ["OFFSET_LIST"]
 
     default_params = dict(
         exclude_regions=None,
@@ -265,17 +285,17 @@ class IMPHOT(PythonRecipe):
     def version(self):
         """Return the recipe version"""
         import imphot
-        try:
-            return f'imphot-{imphot.__version__}'
-        except AttributeError:
-            return f'imphot-unknown'
 
-    def _run(self, flist, *args, processed=None, n_jobs=1, force=False,
-             **kwargs):
+        try:
+            return f"imphot-{imphot.__version__}"
+        except AttributeError:
+            return f"imphot-unknown"
+
+    def _run(self, flist, *args, processed=None, n_jobs=1, force=False, **kwargs):
 
         if force:
-            self.param['force_hst_image'] = True
-            self.param['force_muse_image'] = True
+            self.param["force_hst_image"] = True
+            self.param["force_muse_image"] = True
 
         nfiles = len(flist)
         processed = processed or set()
@@ -285,35 +305,37 @@ class IMPHOT(PythonRecipe):
             if expname in processed:
                 self.logger.info("%d/%d Skipping %s", i, nfiles, filename)
             else:
-                to_compute.append((i, nfiles, filename, self.output_dir,
-                                   self.param))
+                to_compute.append((i, nfiles, filename, self.output_dir, self.param))
 
         offset_rows = Parallel(n_jobs=n_jobs)(
-            delayed(_process_exp)(*args) for args in to_compute)
+            delayed(_process_exp)(*args) for args in to_compute
+        )
 
-        outname = join(self.output_dir, 'OFFSET_LIST.fits')
+        outname = join(self.output_dir, "OFFSET_LIST.fits")
 
         if len(offset_rows) == 0:
-            self.logger.info('Already up-to-date')
+            self.logger.info("Already up-to-date")
             return outname
 
-        t = Table(rows=offset_rows,
-                  names=('DATE_OBS', 'MJD_OBS', 'RA_OFFSET', 'DEC_OFFSET'),
-                  dtype=('S23', float, float, float))
+        t = Table(
+            rows=offset_rows,
+            names=("DATE_OBS", "MJD_OBS", "RA_OFFSET", "DEC_OFFSET"),
+            dtype=("S23", float, float, float),
+        )
 
         if os.path.exists(outname):
-            self.logger.info('Updating OFFSET_LIST')
+            self.logger.info("Updating OFFSET_LIST")
             off = Table.read(outname)
             # find matches with the existing table
-            match = np.in1d(off['DATE_OBS'], t['DATE_OBS'])
+            match = np.in1d(off["DATE_OBS"], t["DATE_OBS"])
             if np.any(match):
                 # Remove rows have been recomputed
-                self.logger.info('Updating %d rows', np.count_nonzero(match))
+                self.logger.info("Updating %d rows", np.count_nonzero(match))
                 off = off[~match]
             # combine the new and old values
             t = vstack([off, t])
 
-        self.logger.info('Save OFFSET_LIST file: %s', outname)
+        self.logger.info("Save OFFSET_LIST file: %s", outname)
         t.write(outname, overwrite=True)
 
         return outname

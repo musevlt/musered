@@ -11,8 +11,14 @@ from os.path import join
 from .settings import STATIC_FRAMES
 from .utils import parse_date
 
-SPECIAL_FRAMES = ('OUTPUT_WCS', 'OFFSET_LIST', 'SKY_MASK', 'AUTOCAL_FACTORS',
-                  'SOURCE_MASK', 'ADDITIONAL_MASK')
+SPECIAL_FRAMES = (
+    "OUTPUT_WCS",
+    "OFFSET_LIST",
+    "SKY_MASK",
+    "AUTOCAL_FACTORS",
+    "SOURCE_MASK",
+    "ADDITIONAL_MASK",
+)
 """Frames that can be set manually (to a file path) in the settings."""
 
 
@@ -41,8 +47,8 @@ def get_file_from_date(files_dict: dict, date: str) -> str:
     file = None
     dateobj = parse_date(date)
     for item, val in files_dict.items():
-        start_date = val.get('start_date', datetime.date.min)
-        end_date = val.get('end_date', datetime.date.max)
+        start_date = val.get("start_date", datetime.date.min)
+        end_date = val.get("end_date", datetime.date.max)
         if start_date <= dateobj <= end_date:
             file = item
             break
@@ -65,11 +71,11 @@ class FramesFinder:
         self.mr = mr
         self.conf = mr.conf
         self.logger = logging.getLogger(__name__)
-        self.static_path = self.conf['muse_calib_path']
-        self.static_conf = self.conf.get('static_calib', {})
+        self.static_path = self.conf["muse_calib_path"]
+        self.static_conf = self.conf.get("static_calib", {})
 
         # frames settings
-        self.frames = self.conf.get('frames', {})
+        self.frames = self.conf.get("frames", {})
         self._excludes = {}
 
     @lazyproperty
@@ -82,46 +88,45 @@ class FramesFinder:
         """Dict of static files indexed by PRO.CATG."""
         cat = defaultdict(list)
         for f in self.static_files:
-            if f.endswith(('.fits', '.fits.fz', '.fits.gz')):
-                key = fits.getval(join(self.static_path, f), 'ESO PRO CATG',
-                                  ext=0)
+            if f.endswith((".fits", ".fits.fz", ".fits.gz")):
+                key = fits.getval(join(self.static_path, f), "ESO PRO CATG", ext=0)
                 cat[key].append(f)
         return cat
 
-    def get_excludes(self, DPR_TYPE=None, column='name'):
+    def get_excludes(self, DPR_TYPE=None, column="name"):
         """List of excluded files for each DPR_TYPE."""
 
         # the global list of excluded files is stored with the __all__ key
-        key = '__all__' if DPR_TYPE is None else DPR_TYPE
+        key = "__all__" if DPR_TYPE is None else DPR_TYPE
         # check if the list is already computed
         if key in self._excludes:
             return self._excludes[key][column]
 
-        conf = self.frames.get('exclude', {})
+        conf = self.frames.get("exclude", {})
         self._excludes[key] = exc = defaultdict(set)
 
         # this func iterates on the lines of an exclude block, and exclude
         # exposures matching the query defined by this line
-        def process_exc(items, table='raw'):
+        def process_exc(items, table="raw"):
             tbl = self.mr.get_table(table)
             kw = dict(DPR_TYPE=DPR_TYPE) if DPR_TYPE is not None else {}
             for item in items:
                 if isinstance(item, str):
-                    exc['name'].add(item)
-                    exc['TPL_START'].add(item)
+                    exc["name"].add(item)
+                    exc["TPL_START"].add(item)
                 elif isinstance(item, dict):
                     # if the item is a dict use the keys/values to query the db
                     for o in tbl.find(**item, **kw):
-                        exc['name'].add(o['name'])
-                        exc['night'].add(o['night'])
-                        if 'TPL_START' in o:
-                            exc['TPL_START'].add(o['TPL_START'])
+                        exc["name"].add(o["name"])
+                        exc["night"].add(o["night"])
+                        if "TPL_START" in o:
+                            exc["TPL_START"].add(o["TPL_START"])
                 else:
-                    raise ValueError(f'wrong format for {DPR_TYPE} excludes')
+                    raise ValueError(f"wrong format for {DPR_TYPE} excludes")
 
         # the raw block is special, it allows to match any raw file
-        if 'raw' in conf:
-            process_exc(conf['raw'])
+        if "raw" in conf:
+            process_exc(conf["raw"])
 
         # if the DPR_TYPE is not in the defined blocks, we are done. Return the
         # list of excluded files that may be empty and could also be filled by
@@ -131,19 +136,19 @@ class FramesFinder:
 
         # now process either all blocks, if DPR_TYPE is None, or just the one
         # of the DPR_TYPE
-        raw_types = self.mr.select_column('DPR_TYPE', distinct=True)
+        raw_types = self.mr.select_column("DPR_TYPE", distinct=True)
         for dpr, items in conf.items():
             if DPR_TYPE and dpr != DPR_TYPE:
                 continue
-            process_exc(items, table='raw' if dpr in raw_types else 'reduced')
+            process_exc(items, table="raw" if dpr in raw_types else "reduced")
 
         return self._excludes[key][column]
 
-    def is_valid(self, name, DPR_TYPE=None, column='name'):
+    def is_valid(self, name, DPR_TYPE=None, column="name"):
         """Check if an exposure is valid (i.e. not excluded)."""
         return name not in self.get_excludes(DPR_TYPE, column=column)
 
-    def filter_valid(self, names, DPR_TYPE=None, column='name'):
+    def filter_valid(self, names, DPR_TYPE=None, column="name"):
         exc = self.get_excludes(DPR_TYPE, column=column)
         return [name for name in names if name not in exc]
 
@@ -172,12 +177,15 @@ class FramesFinder:
         if file is None:
             # found nothing, use default from the static calib directory
             if len(self.static_by_catg[catg]) > 1:
-                self.logger.warning('multiple options for %s, using the first '
-                                    'one: %r', catg, self.static_by_catg[catg])
+                self.logger.warning(
+                    "multiple options for %s, using the first " "one: %r",
+                    catg,
+                    self.static_by_catg[catg],
+                )
             file = self.static_by_catg[catg][0]
 
         if file not in self.static_files:
-            raise ValueError(f'could not find {file}')
+            raise ValueError(f"could not find {file}")
         return join(self.static_path, file)
 
     def find_calib(self, night, DPR_TYPE, ins_mode, day_off=None):
@@ -187,19 +195,17 @@ class FramesFinder:
 
         # Find calibrations for the given night, mode and type
         clauses = dict(DPR_TYPE=DPR_TYPE)
-        if DPR_TYPE in ('MASTER_FLAT', 'STD_RESPONSE', 'STD_TELLURIC',
-                        'LSF_PROFILE'):
+        if DPR_TYPE in ("MASTER_FLAT", "STD_RESPONSE", "STD_TELLURIC", "LSF_PROFILE"):
             # For these DPR.TYPEs we need to match the INS.MODE
-            clauses['INS_MODE'] = ins_mode
+            clauses["INS_MODE"] = ins_mode
 
-        res = {o['name']: o for o in self.mr.reduced.find(night=night,
-                                                          **clauses)}
+        res = {o["name"]: o for o in self.mr.reduced.find(night=night, **clauses)}
 
         # Check if some calib must be excluded
         if res and excludes:
             for name in excludes:
                 if name in res:
-                    info('%s for night %s is excluded', DPR_TYPE, night)
+                    info("%s for night %s is excluded", DPR_TYPE, night)
                     del res[name]
 
         # If no calib was found, iterate on the days before/after
@@ -208,37 +214,49 @@ class FramesFinder:
                 night = parse_date(night)
             for off, direction in product(range(1, day_off + 1), (1, -1)):
                 off = datetime.timedelta(days=off * direction)
-                res = {o['name']: o for o in self.mr.reduced.find(
-                    night=(night + off).isoformat(), **clauses)}
+                res = {
+                    o["name"]: o
+                    for o in self.mr.reduced.find(
+                        night=(night + off).isoformat(), **clauses
+                    )
+                }
                 if res and excludes:
                     for name in excludes:
                         if name in res:
-                            info('%s for night %s is excluded', DPR_TYPE,
-                                 night)
+                            info("%s for night %s is excluded", DPR_TYPE, night)
                             del res[name]
                 if res:
-                    info('Using %s from night %s', DPR_TYPE, night + off)
+                    info("Using %s from night %s", DPR_TYPE, night + off)
                     break
 
         if not res:
-            raise ValueError(f'could not find {DPR_TYPE} for night {night}')
+            raise ValueError(f"could not find {DPR_TYPE} for night {night}")
         if len(res) == 1:
             # only one result, use it
             res = res.popitem()[1]
         elif len(res) > 1:
             # several results, take the first one
-            self.logger.warning('%d choices for %s, taking the first one',
-                                len(res), DPR_TYPE)
+            self.logger.warning(
+                "%d choices for %s, taking the first one", len(res), DPR_TYPE
+            )
             res = res.popitem()[1]
 
         flist = sorted(glob.glob(f"{res['path']}/{DPR_TYPE}*.fits"))
         if len(flist) not in (1, 24):
-            raise ValueError(f'found {len(flist)} {DPR_TYPE} files '
-                             f'instead of (1, 24)')
+            raise ValueError(
+                f"found {len(flist)} {DPR_TYPE} files " f"instead of (1, 24)"
+            )
         return flist
 
-    def get_frames(self, recipe, night=None, ins_mode=None, recipe_conf=None,
-                   OBJECT=None, dry_run=False):
+    def get_frames(
+        self,
+        recipe,
+        night=None,
+        ins_mode=None,
+        recipe_conf=None,
+        OBJECT=None,
+        dry_run=False,
+    ):
         """Return a dict with all calibration frames for a recipe.
 
         Parameters
@@ -260,38 +278,42 @@ class FramesFinder:
 
         """
         debug = self.logger.debug
-        debug('Building the calibration frames dict')
+        debug("Building the calibration frames dict")
 
         # Build the list of frames that must be found for the recipe
         frameset = set(recipe.calib_frames)
-        debug('- calib frames: %s', frameset)
+        debug("- calib frames: %s", frameset)
 
         # Remove frames excluded by default
         frameset.difference_update(recipe.exclude_frames)
-        debug('- excluded frames: %s', recipe.exclude_frames)
+        debug("- excluded frames: %s", recipe.exclude_frames)
 
-        frames_conf = recipe_conf.get('frames', {}) if recipe_conf else {}
+        frames_conf = recipe_conf.get("frames", {}) if recipe_conf else {}
         for key, val in frames_conf.items():
             if isinstance(val, str):
                 val = [val]
-            if key == 'exclude':  # Remove frames to exclude
-                debug('- exclude: %s', val)
+            if key == "exclude":  # Remove frames to exclude
+                debug("- exclude: %s", val)
                 frameset.difference_update(val)
-            elif key == 'include':  # Add frames to include
-                debug('- include: %s', val)
+            elif key == "include":  # Add frames to include
+                debug("- include: %s", val)
                 frameset.update(val)
 
         # Define day offsets, with default values that can be overloaded in
         # the settings
-        day_offsets = {'STD_TELLURIC': 5, 'STD_RESPONSE': 5,
-                       'TWILIGHT_CUBE': 3, **frames_conf.get('offsets', {})}
+        day_offsets = {
+            "STD_TELLURIC": 5,
+            "STD_RESPONSE": 5,
+            "TWILIGHT_CUBE": 3,
+            **frames_conf.get("offsets", {}),
+        }
 
         framedict = {}
         for frame in frameset:
             if frame in self.STATIC_FRAMES:
                 # Static frames
                 framedict[frame] = self.get_static(frame, date=night)
-                debug('- static: %s', framedict[frame])
+                debug("- static: %s", framedict[frame])
 
             elif frame in SPECIAL_FRAMES:
                 if frame in frames_conf:
@@ -304,26 +326,27 @@ class FramesFinder:
                         if file is not None:
                             framedict[frame] = file
                     else:
-                        raise ValueError(f'unknown format for frame {frame}, '
-                                         f'it should be a str or dict')
+                        raise ValueError(
+                            f"unknown format for frame {frame}, "
+                            f"it should be a str or dict"
+                        )
 
                     # except for OFFSET_LIST, that can be set to a name that
                     # can be found in the database
-                    if frame == 'OFFSET_LIST' and \
-                            not os.path.isfile(framedict[frame]):
+                    if frame == "OFFSET_LIST" and not os.path.isfile(framedict[frame]):
                         off = self.mr.reduced.find_one(
-                            DPR_TYPE='OFFSET_LIST', OBJECT=OBJECT,
-                            name=framedict[frame])
+                            DPR_TYPE="OFFSET_LIST", OBJECT=OBJECT, name=framedict[frame]
+                        )
                         if off is None and dry_run:
                             framedict[frame] = "NOT FOUND"
                         elif off is None:
-                            raise Exception(f'OFFSET_LIST "{framedict[frame]}"'
-                                            ' not found')
+                            raise Exception(
+                                f'OFFSET_LIST "{framedict[frame]}"' " not found"
+                            )
                         else:
-                            framedict[frame] = join(off['path'],
-                                                    "OFFSET_LIST.fits")
+                            framedict[frame] = join(off["path"], "OFFSET_LIST.fits")
 
-                    debug('- %s: %s', frame, framedict[frame])
+                    debug("- %s: %s", frame, framedict[frame])
 
             elif frame in frames_conf:
                 # If path or glob pattern is specified in settings
@@ -331,32 +354,32 @@ class FramesFinder:
                 if isinstance(val, dict):
                     framedict[frame] = get_file_from_date(val, night)
                 elif isinstance(val, str):
-                    if '*' in val:
+                    if "*" in val:
                         framedict[frame] = sorted(glob.glob(val))
-                    elif val.endswith(('.fits', '.fits.fz', '.fits.gz')):
+                    elif val.endswith((".fits", ".fits.fz", ".fits.gz")):
                         framedict[frame] = [val]
                     else:
-                        framedict[frame] = sorted(
-                            glob.glob(f"{val}/{frame}*.fits"))
+                        framedict[frame] = sorted(glob.glob(f"{val}/{frame}*.fits"))
                 else:
-                    raise ValueError(f'wrong format for {frame}')
-                debug('- from conf: %s', framedict[frame])
+                    raise ValueError(f"wrong format for {frame}")
+                debug("- from conf: %s", framedict[frame])
 
             else:
                 # Find frames in the database, for the given night, or using
                 # offsets
                 if ins_mode is None:
-                    raise ValueError('ins_mode must be specified')
+                    raise ValueError("ins_mode must be specified")
                 day_off = day_offsets.get(frame, 1)
                 try:
-                    framedict[frame] = self.find_calib(night, frame, ins_mode,
-                                                       day_off=day_off)
+                    framedict[frame] = self.find_calib(
+                        night, frame, ins_mode, day_off=day_off
+                    )
                 except ValueError:
                     if dry_run:
-                        framedict[frame] = 'NOT FOUND'
+                        framedict[frame] = "NOT FOUND"
                     else:
                         raise
-                debug('- from db: %s', framedict[frame])
+                debug("- from db: %s", framedict[frame])
 
         self.pprint_framedict(framedict)
         return framedict
@@ -365,10 +388,10 @@ class FramesFinder:
         info = self.logger.info
         for key, val in sorted(framedict.items()):
             if isinstance(val, str):
-                info('- %-18s : %s', key, val)
+                info("- %-18s : %s", key, val)
             elif len(val) == 1:
-                info('- %-18s : %s', key, val[0])
+                info("- %-18s : %s", key, val[0])
             else:
-                info('- %-18s :', key)
+                info("- %-18s :", key)
                 for v in val:
-                    info('  - %s', v)
+                    info("  - %s", v)
