@@ -1,17 +1,17 @@
 import logging
-import numpy as np
 import os
 import pathlib
 import platform
 import shutil
-
-from astropy.io import fits
-from astropy.table import Table
 from glob import glob
-from joblib import Parallel, delayed
-from mpdaf.obj import Cube, CubeList
 from os.path import join
 from tempfile import TemporaryDirectory
+
+import numpy as np
+from astropy.io import fits
+from astropy.table import Table
+from joblib import Parallel, delayed
+from mpdaf.obj import Cube, CubeList
 
 from ..masking import mask_sources
 from ..utils import make_band_images

@@ -1,14 +1,15 @@
-import click
 import importlib
 import logging
 import os
 import sys
+
+import click
 import yaml
 
 from .musered import MuseRed
-from .scripts.retrieve_data import retrieve_data, check_integrity
-from .scripts.update_qa import update_qa
+from .scripts.retrieve_data import check_integrity, retrieve_data
 from .scripts.shell import shell
+from .scripts.update_qa import update_qa
 from .version import __version__
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])

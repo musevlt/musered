@@ -1,13 +1,12 @@
-import cpl
 import datetime
 import itertools
 import json
 import logging
 import os
-
 # import shutil
 import time
 
+import cpl
 # from astropy.io import fits
 from cpl.param import ParameterList
 from mpdaf.log import setup_logging

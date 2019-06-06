@@ -1,9 +1,10 @@
 # musered display utilities
 
-import numpy as np
 from datetime import datetime
-from .utils import join_tables, parse_datetime
 
+import numpy as np
+
+from .utils import join_tables, parse_datetime
 
 WeatherTranslate = dict(
     Photometric="PH",

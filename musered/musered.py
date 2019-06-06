@@ -3,24 +3,27 @@ import fnmatch
 import inspect
 import json
 import logging
-import numpy as np
 import operator
 import os
 import shutil
-
-from astropy.io import fits
-from astropy.table import Table, vstack
-from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from glob import glob, iglob
 from os.path import join
-from sqlalchemy import sql, column as sql_column, text as sql_text
+
+import numpy as np
+from astropy.io import fits
+from astropy.table import Table, vstack
+from astropy.utils.decorators import lazyproperty
+from sqlalchemy import column as sql_column
+from sqlalchemy import sql
+from sqlalchemy import text as sql_text
 
 from .flags import QAFlags
 from .frames import FramesFinder
-from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
+from .recipes import get_recipe_cls, init_cpl_params, normalize_recipe_name
 from .reporter import Reporter
 from .utils import (
+    ProgressBar,
     dict_values,
     load_db,
     load_table,
@@ -29,7 +32,6 @@ from .utils import (
     parse_qc_keywords,
     parse_raw_keywords,
     parse_weather_conditions,
-    ProgressBar,
     upsert_many,
 )
 from .version import __version__

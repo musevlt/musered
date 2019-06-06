@@ -1,4 +1,5 @@
 import textwrap
+
 from click.testing import CliRunner
 
 from musered.__main__ import cli

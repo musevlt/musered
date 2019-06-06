@@ -2,11 +2,12 @@ import datetime
 import glob
 import logging
 import os
-from astropy.io import fits
-from astropy.utils.decorators import lazyproperty
 from collections import defaultdict
 from itertools import product
 from os.path import join
+
+from astropy.io import fits
+from astropy.utils.decorators import lazyproperty
 
 from .settings import STATIC_FRAMES
 from .utils import parse_date

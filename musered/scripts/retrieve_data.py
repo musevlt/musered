@@ -1,10 +1,12 @@
-import click
 import inspect
 import logging
 import os
 import sys
-from astropy.io import fits
 from collections import Counter
+
+import click
+from astropy.io import fits
+
 from musered.utils import upsert_many
 
 

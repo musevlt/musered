@@ -1,12 +1,13 @@
 import logging
+from os.path import join
+
 import mpdaf
 import numpy as np
 from astropy.io import fits
 from mpdaf.obj import CubeList, CubeMosaic
-from os.path import join
 
+from ..utils import get_exp_name, make_band_images
 from .recipe import PythonRecipe
-from ..utils import make_band_images, get_exp_name
 
 
 def do_combine(

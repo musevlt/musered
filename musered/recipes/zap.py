@@ -1,10 +1,14 @@
 import logging
-import numpy as np
 import os
 import sys
-from astropy.io import fits
 from os.path import join
+
+import numpy as np
+from astropy.io import fits
 from mpdaf.scripts.make_white_image import make_white_image
+
+from ..utils import make_band_images
+from .recipe import PythonRecipe
 
 try:
     import zap
@@ -13,9 +17,6 @@ except ImportError:
     zap = None
 else:
     ZAP_VERSION = zap.__version__
-
-from .recipe import PythonRecipe
-from ..utils import make_band_images
 
 
 def do_zap(

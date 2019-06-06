@@ -1,21 +1,21 @@
-import dataset
 import datetime
 import itertools
 import logging
-import os
 import numbers
-import numpy as np
+import os
 import re
-import yaml
+from collections import OrderedDict, defaultdict
 from os.path import expanduser
 
+import dataset
+import numpy as np
+import yaml
 from astropy.io import ascii, fits
-from astropy.table import Table, MaskedColumn, vstack
 from astropy.stats import sigma_clip
-from collections import OrderedDict, defaultdict
+from astropy.table import MaskedColumn, Table, vstack
 from mpdaf.obj import Cube
+from sqlalchemy import event, func, pool, sql
 from sqlalchemy.engine import Engine
-from sqlalchemy import event, pool, sql, func
 
 from .settings import RAW_FITS_KEYWORDS
 

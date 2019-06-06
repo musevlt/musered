@@ -15,19 +15,19 @@
 # .             If this directory is not specified, it will be assumed
 #              to be "/muse/UDF/public/HST/XUDF"
 
-import astropy.units as u
 import logging
-import numpy as np
 import os
+from os.path import exists, join
 
+import astropy.units as u
+import numpy as np
 from astropy.io import fits
 from astropy.table import Table, vstack
 from joblib import Parallel, delayed
-from mpdaf.obj import Image, Cube
-from os.path import join, exists
+from mpdaf.obj import Cube, Image
 
-from .recipe import PythonRecipe
 from ..utils import get_exp_name
+from .recipe import PythonRecipe
 
 # List the subset of the HST WFC filters that both significantly
 # overlap with the wavelength range of MUSE, and that were used

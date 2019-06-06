@@ -1,6 +1,7 @@
+from enum import Enum
+
 import numpy as np
 from astropy.utils.decorators import lazyproperty
-from enum import Enum
 from sqlalchemy import sql
 
 from .utils import ensure_list, load_table

@@ -1,16 +1,18 @@
 import logging
-import numpy as np
 import os
 import shutil
+
+import numpy as np
+
 from musered.utils import (
-    parse_raw_keywords,
-    parse_qc_keywords,
-    find_outliers_qc_chan,
-    stat_qc_chan,
-    find_outliers,
     dict_values,
     ensure_list,
+    find_outliers,
+    find_outliers_qc_chan,
+    parse_qc_keywords,
+    parse_raw_keywords,
     parse_weather_conditions,
+    stat_qc_chan,
 )
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))

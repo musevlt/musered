@@ -1,7 +1,7 @@
 import logging
-import numpy as np
 import warnings
 
+import numpy as np
 from astropy.stats import sigma_clipped_stats
 from mpdaf.obj import Image
 from scipy import ndimage as ndi

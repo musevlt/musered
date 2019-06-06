@@ -1,20 +1,20 @@
-import click
 import json
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 import re
 import textwrap
-
-from astropy.io import fits
-from astropy.table import Table
 from collections import defaultdict
 from glob import iglob
-from mpdaf.obj import Image, Cube
+
+import click
+import matplotlib.pyplot as plt
+import numpy as np
+from astropy.io import fits
+from astropy.table import Table
+from mpdaf.obj import Cube, Image
 from sqlalchemy import sql
 
-from .recipes import recipe_classes, normalize_recipe_name
-from .utils import query_count_to_table, get_exp_name
+from .recipes import normalize_recipe_name, recipe_classes
+from .utils import get_exp_name, query_count_to_table
 
 try:
     from IPython.display import display, HTML

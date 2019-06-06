@@ -1,13 +1,14 @@
-import dataset
 import glob
 import logging
 import os
-import pytest
 import shutil
 import textwrap
+
+import dataset
+import pytest
 from click.testing import CliRunner
 
-from musered import get_recipe_cls, MuseRed
+from musered import MuseRed, get_recipe_cls
 from musered.__main__ import cli
 from musered.flags import QAFlags
 

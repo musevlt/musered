@@ -1,8 +1,9 @@
-import click
 import itertools
 import logging
-import numpy as np
 import pprint
+
+import click
+import numpy as np
 from astropy.table import Table
 
 from musered.recipes import normalize_recipe_name
