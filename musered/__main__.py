@@ -19,8 +19,7 @@ logger = logging.getLogger(__name__)
 @click.group(context_settings=CONTEXT_SETTINGS)
 @click.version_option(version=__version__)
 @click.option(
-    "--redversion",
-    help="version of the reduction (overrides the " "version in settings",
+    "--redversion", help="version of the reduction (overrides the version in settings"
 )
 @click.option("--loglevel", help="log level (debug, info, warning, etc.)")
 @click.option("--drslevel", help="log level for the DRS")
@@ -411,22 +410,22 @@ def std_combine(mr, run, params, force):
 
 
 for cmd in (
-    info,
-    info_warnings,
-    info_raw,
-    info_exp,
+    check_integrity,
     clean,
-    retrieve_data,
-    update_db,
-    update_qc,
-    process_calib,
-    update_qa,
-    process_exp,
     exp_align,
     exp_combine,
+    info,
+    info_exp,
+    info_raw,
+    info_warnings,
+    process_calib,
+    process_exp,
+    retrieve_data,
     shell,
-    check_integrity,
     std_combine,
+    update_db,
+    update_qa,
+    update_qc,
 ):
     cli.command(context_settings=CONTEXT_SETTINGS)(cmd)
 

@@ -177,11 +177,8 @@ class FramesFinder:
         if file is None:
             # found nothing, use default from the static calib directory
             if len(self.static_by_catg[catg]) > 1:
-                self.logger.warning(
-                    "multiple options for %s, using the first " "one: %r",
-                    catg,
-                    self.static_by_catg[catg],
-                )
+                msg = "multiple options for %s, using the first one: %r"
+                self.logger.warning(msg, catg, self.static_by_catg[catg])
             file = self.static_by_catg[catg][0]
 
         if file not in self.static_files:

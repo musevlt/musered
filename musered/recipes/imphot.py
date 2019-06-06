@@ -232,21 +232,19 @@ def _process_exp(i, nfiles, filename, output_dir, param):
     rows = []
     for filter_name, fit in imfits.items():
         rows.append(
-            dict(
-                [
-                    ("filename", filename),
-                    ("filter", filter_name),
-                    ("dx", fit.dx.value),
-                    ("dy", fit.dy.value),
-                    ("dra", fit.dra.value.item()),
-                    ("ddec", fit.ddec.value.item()),
-                    ("scale", fit.scale.value),
-                    ("fwhm", fit.fwhm.value),
-                    ("beta", fit.beta.value),
-                    ("bg", fit.bg.value),
-                    ("rms", fit.rms_error),
-                ]
-            )
+            {
+                "filename": filename,
+                "filter": filter_name,
+                "dx": fit.dx.value,
+                "dy": fit.dy.value,
+                "dra": fit.dra.value.item(),
+                "ddec": fit.ddec.value.item(),
+                "scale": fit.scale.value,
+                "fwhm": fit.fwhm.value,
+                "beta": fit.beta.value,
+                "bg": fit.bg.value,
+                "rms": fit.rms_error,
+            }
         )
     t = Table(rows=rows)
     t.meta["EXPNAME"] = expname

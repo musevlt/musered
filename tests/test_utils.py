@@ -119,7 +119,7 @@ def test_parse_weather_invalid(mr, caplog):
     )
     parse_weather_conditions(mr, force=True)
     assert caplog.messages[1] == (
-        "Weather conditions not found in " "./raw/MUSE.2017-06-16T01:34:56.867.NL.txt"
+        "Weather conditions not found in ./raw/MUSE.2017-06-16T01:34:56.867.NL.txt"
     )
 
 

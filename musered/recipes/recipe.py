@@ -383,7 +383,7 @@ class Recipe(BaseRecipe):
 
         if self.n_inputs_rec and len(flist) != self.n_inputs_rec:
             self.logger.warning(
-                "Got %d files though the recommended number " "is %d",
+                "Got %d files though the recommended number is %d",
                 len(flist),
                 self.n_inputs_rec,
             )

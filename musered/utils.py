@@ -7,6 +7,7 @@ import numbers
 import numpy as np
 import re
 import yaml
+from os.path import expanduser
 
 from astropy.io import ascii, fits
 from astropy.table import Table, MaskedColumn, vstack
@@ -30,22 +31,20 @@ def load_yaml_config(filename):
     with open(filename, "r") as f:
         conftext = f.read()
 
-    def expanduser(confdict):
+    def expand_user_in_conf(confdict):
         """Expand ~ in paths."""
         for key in ("workdir", "raw_path", "reduced_path", "muse_calib_path"):
             if key in confdict:
-                confdict[key] = os.path.expanduser(confdict[key])
+                confdict[key] = expanduser(confdict[key])
         if "recipe_path" in confdict.get("cpl", {}):
-            confdict["cpl"]["recipe_path"] = os.path.expanduser(
-                confdict["cpl"]["recipe_path"]
-            )
+            confdict["cpl"]["recipe_path"] = expanduser(confdict["cpl"]["recipe_path"])
         return confdict
 
     # We need to do 2 passes, before and after key substitution
     conf = yaml.safe_load(conftext)
-    conf = expanduser(conf)
+    conf = expand_user_in_conf(conf)
     conf = yaml.safe_load(conftext.format(**conf))
-    conf = expanduser(conf)
+    conf = expand_user_in_conf(conf)
 
     return conf
 
@@ -72,7 +71,7 @@ def load_db(filename=None, db_env=None, **kwargs):
         url = os.environ.get(db_env)
     else:
         raise ValueError(
-            "database url should be provided either with " "filename or with db_env"
+            "database url should be provided either with filename or with db_env"
         )
 
     logger = logging.getLogger(__name__)

@@ -21,16 +21,16 @@ from .frames import FramesFinder
 from .recipes import get_recipe_cls, normalize_recipe_name, init_cpl_params
 from .reporter import Reporter
 from .utils import (
-    load_yaml_config,
+    dict_values,
     load_db,
     load_table,
-    parse_raw_keywords,
-    parse_qc_keywords,
-    ProgressBar,
+    load_yaml_config,
     parse_gto_db,
-    upsert_many,
+    parse_qc_keywords,
+    parse_raw_keywords,
     parse_weather_conditions,
-    dict_values,
+    ProgressBar,
+    upsert_many,
 )
 from .version import __version__
 
@@ -556,8 +556,8 @@ class MuseRed(Reporter):
                 "date": o["DATE_OBS"],  # Date
                 "temp": abs(o["INS_TEMP7_VAL"] - ref_temp),  # Temperature diff
                 "mjd": abs(o["MJD_OBS"] - ref_mjd_date) * 24,  # Date diff (hours)
-                "path": o["path"],
-            }  # File path
+                "path": o["path"],  # File path
+            }
             for o in self.raw.find(DPR_TYPE="FLAT,LAMP,ILLUM", night=night)
         ]
 
@@ -580,25 +580,18 @@ class MuseRed(Reporter):
             res = close_illums[0]
         else:
             logger.debug(
-                "More than one ILLUM in less than 2h, take closest " "temperature"
+                "More than one ILLUM in less than 2h, take closest temperature"
             )
             # Sort by temperature difference
             close_illums.sort(key=operator.itemgetter("temp"))
             res = close_illums[0]
+            msg = "%s Temp diff=%.2f Time diff=%.2f"
             for illum in close_illums:
-                logger.debug(
-                    "%s Temp diff=%.2f Time diff=%.2f",
-                    illum["date"],
-                    illum["temp"],
-                    illum["mjd"] * 60,
-                )
+                logger.debug(msg, illum["date"], illum["temp"], illum["mjd"] * 60)
 
-        logger.info(
-            "Found ILLUM : %s (Temp diff: %.3f, Time diff: %.2f min.)",
-            res["date"],
-            res["temp"],
-            res["mjd"] * 60,
-        )
+        msg = "Found ILLUM : %s (Temp diff: %.3f, Time diff: %.2f min.)"
+        logger.info(msg, res["date"], res["temp"], res["mjd"] * 60)
+
         if res["temp"] > 1:
             logger.warning("ILLUM with Temp difference > 1°, not using it")
             return None
@@ -693,7 +686,7 @@ class MuseRed(Reporter):
                 elif len(res) > 1:
                     raise RuntimeError(
                         "found several input frames instead of "
-                        'one. Maybe use "from_recipe" ?'
+                        "one. Maybe use 'from_recipe' ?"
                     )
                 flist = sorted(glob(f"{res[0]['path']}/{DPR_TYPE}*.fits"))
                 ins_mode = res[0]["INS_MODE"]
@@ -702,20 +695,14 @@ class MuseRed(Reporter):
                 ins_mode = set(o["INS_MODE"] for o in res)
                 if len(ins_mode) > 1:
                     raise ValueError(
-                        f"{label} with multiple INS.MODE, " "not supported yet"
+                        f"{label} with multiple INS.MODE, not supported yet"
                     )
                 ins_mode = ins_mode.pop()
 
             night = res[0]["night"]
+            msg = "%d/%d - %s %s : %d %s file(s), mode=%s"
             log.info(
-                "%d/%d - %s %s : %d %s file(s), mode=%s",
-                i,
-                ndates,
-                label.capitalize(),
-                date,
-                len(flist),
-                DPR_TYPE,
-                ins_mode,
+                msg, i, ndates, label.capitalize(), date, len(flist), DPR_TYPE, ins_mode
             )
 
             if getattr(recipe, "use_drs_output", True):
@@ -1097,12 +1084,8 @@ class MuseRed(Reporter):
                 for item in query
                 if item["name"] not in processed
             ]
-            upsert_many(
-                self.db,
-                self.reduced.name,
-                rows,
-                keys=("name", "recipe_name", "DPR_TYPE"),
-            )
+            keys = ("name", "recipe_name", "DPR_TYPE")
+            upsert_many(self.db, self.reduced.name, rows, keys=keys)
 
     def exp_combine(
         self,
