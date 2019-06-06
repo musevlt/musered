@@ -186,6 +186,10 @@ class MuseRed(Reporter):
 
         # To force the creation of the table
         row = tbl.find_one(recipe_name=recipes)
+        if row is None:
+            self.logger.error('could not find recipes %s', recipes)
+            return
+
         del row['id']
         self.reduced.upsert(row, keys)
 
