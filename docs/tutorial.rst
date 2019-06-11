@@ -434,12 +434,14 @@ and thus they must use the same ``OUTPUT_WCS`` frame::
    :start-at: muse_scipost_make_cube:
    :end-at: output_dir
 
-**TODO**: Mosaic. Using weights.
+.. todo:: Add docs about mosaics.
 
-**TODO**: Already implemented but needs documentation: exposures selection with
-database queries, exclusion of flagged exposures.
+.. todo:: Add docs about using weights.
+
+.. todo:: Already implemented but needs documentation: exposures selection with
+   database queries, exclusion of flagged exposures.
 
 Combining standards
 -------------------
 
-**TODO**
+.. todo:: Add docs about combining standards

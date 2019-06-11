@@ -6,7 +6,6 @@ from sqlalchemy import sql
 
 from .utils import ensure_list, load_table
 
-# pre-defined list of flags, can be extended in the settings file
 FLAGS = {
     "BAD_CENTERING": "Centering offset is wrong",
     "BAD_IMAQUALITY": "Bad image quality",
@@ -20,6 +19,7 @@ FLAGS = {
     "SHORT_EXPTIME": "Incomplete observation",
     "SLICE_GRADIENT": "Slices show a flux gradient",
 }
+"""List of pre-defined quality flags, can be extended in the settings file."""
 
 
 def flag_name(flag):

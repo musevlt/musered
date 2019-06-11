@@ -8,7 +8,7 @@ from mpdaf.log import clear_loggers, setup_logging
 setup_logging(name="", level="INFO", color=True, fmt="%(levelname)s %(message)s")
 clear_loggers("mpdaf")
 
-from .flags import QAFlags  # noqa
+from .flags import QAFlags, FLAGS  # noqa
 from .musered import MuseRed  # noqa
 from .recipes import *  # noqa
 from .settings import RAW_FITS_KEYWORDS  # noqa

@@ -4,6 +4,41 @@ Advanced topics
 Flags
 -----
 
+It is possible to add flags to exposures, which can then be used in the
+exposures combination. These flags are linked to a version of the reduction.
+MuseRed comes with a set of predefined flags, which are defined in the
+``musered.flags`` module:
+
+ .. autodata::
+    musered.FLAGS
+
+It is also possible to define additional flags in the settings file:
+
+.. literalinclude:: _static/settings.yml
+   :start-at: Define additional flags
+   :end-at: MY_FLAG
+
+To use flags, one must add them to the individual exposures using the Python
+API. The `musered.MuseRed.flags` attribute is a `musered.QAFlags` object, with
+various methods to add, remove, or list flags for a given exposure, or to find
+exposures with specific flags.
+
+.. todo:: Add example, which probably needs an update of the test database.
+
+It is then possible to use these flags to exclude exposures for the combine
+recipe. The ``exclude_flags`` setting can be set to `True` to exclude all
+flagged exposures, or it can be a list of flags to exclude:
+
+.. code-block:: yaml
+
+  mpdaf_combine:
+    from_recipe: muse_scipost
+    exclude_flags:
+      - SHORT_EXPTIME
+      - VERYBAD_IMAQUALITY
+      - VERYBAD_SLICE
+
+
 Exposure selection for ``exp-combine``
 --------------------------------------
 
