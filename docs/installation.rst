@@ -16,10 +16,10 @@ The following dependencies are required:
 - click, command-line interface
 - dataset, database access
 - joblib, multiprocessing
-- mpdaf,
+- mpdaf, MUSE Python utilities
 - python-cpl, Python interface for the MUSE DRS
 - PyYAML, for the settings file
-- tqdm, progress bars
+- tqdm, progress bar
 
 Storing password to retrieve data
 ---------------------------------
@@ -52,3 +52,43 @@ And edit the ``keyringrc.cfg`` file to specify the backend::
 .. _astroquery: https://astroquery.readthedocs.io/en/latest/
 .. _keyring: https://pypi.org/project/keyring/
 .. _keyrings.alt: https://pypi.org/project/keyrings.alt/
+
+
+Using another database instead of SQLite
+----------------------------------------
+
+MuseRed uses by default an SQLite database, which is usually a good choice, but
+it is sometimes useful to use another databases. In particular, when willing to
+use several computing machines with a shared NFS storage, SQLite is not
+recommended.
+
+MuseRed uses the `dataset <http://github.com/pudo/dataset/>`_ package to access
+the database, and this package is itself based on the `SQLAlchemy
+<https://www.sqlalchemy.org/>`_ ORM. So MuseRed is able to use any database
+supported by SQLAlchemy, e.g. SQLite, PostgreSQL, or MySQL for the most
+well-known.
+
+By default (in the documentation and example settings file), MuseRed uses
+SQLite as this database requires no setup and is easy to use and backup:
+
+.. code-block:: yaml
+
+    db: 'musered.db'
+
+But SQLite has some limitations, the most annoying being for parallel use of
+the database. In particular one should not use SQLite from multiple computers
+with a database stored on a NFS mount. In this case one should move to a more
+robust database with MySQL or PostgreSQL.
+
+To connect to the database, SQLAlchemy needs a `database URL
+<https://docs.sqlalchemy.org/en/latest/core/engines.html#database-urls>` which
+contains the username, password, and URL. Instead of putting this information in
+the settings file, MuseRed allows instead to specify the name of an environment
+variable that contain the URL:
+
+.. code-block:: yaml
+
+    db_env: 'MUSERED_DB'
+
+Additional dependencies may also be needed, depending on the database:
+``psycopg2-binary`` for PostgreSQL, ``mysql-python`` for MySQL.
