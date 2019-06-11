@@ -441,6 +441,11 @@ and thus they must use the same ``OUTPUT_WCS`` frame::
 .. todo:: Already implemented but needs documentation: exposures selection with
    database queries, exclusion of flagged exposures.
 
+Selection of exposures
+^^^^^^^^^^^^^^^^^^^^^^
+
+See the paragraphs about flags and exposure selection in the :doc:`advanced`.
+
 Combining standards
 -------------------
 

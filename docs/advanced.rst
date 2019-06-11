@@ -1,8 +1,10 @@
 Advanced topics
 ===============
 
-Flags
------
+.. contents::
+
+Using flags
+-----------
 
 It is possible to add flags to exposures, which can then be used in the
 exposures combination. These flags are linked to a version of the reduction.
@@ -41,6 +43,42 @@ flagged exposures, or it can be a list of flags to exclude:
 
 Exposure selection for ``exp-combine``
 --------------------------------------
+
+By default the ``exp-combine`` recipe will use all the exposures with the given
+OBJECT name. Of course it may be useful to do a finer selection of the
+exposures. One aspect of this is to use flags, to mark exposures affected by
+a specific issue (which may or may not be fixable in a following reduction). But
+it may also be useful to select exposures based on other criteria.
+
+The ``names_with_selection`` setting allows to define selections of exposures
+for the combination, using queries on the database. The following example
+defines two selections with date ranges, using the ``run`` column from the
+``raw`` table:
+
+.. code-block:: yaml
+
+  mpdaf_combine:
+    from_recipe: muse_scipost
+    names_with_selection:
+      GTO26:
+        raw: "run = 'GTO26'"
+      GTO27:
+        raw: "run = 'GTO27'"
+
+Another example, combining the exposures with the best atmospheric conditions,
+using the FWHM estimation from *MUSE-PSFR* which is stored in the ``PR_fwhmV``
+column of the ``qa_raw`` table:
+
+.. code-block:: yaml
+
+  mpdaf_combine_best:
+    from_recipe: muse_scipost
+    names_with_selection:
+      gradeA:
+        qa_raw: '"PR_fwhmV" < 0.6'
+      gradeAB:
+        qa_raw: '"PR_fwhmV" < 0.8'
+    exclude_flags: True
 
 Managing versions
 -----------------
