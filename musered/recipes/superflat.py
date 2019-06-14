@@ -6,6 +6,7 @@ import shutil
 from glob import glob
 from os.path import join
 from tempfile import TemporaryDirectory
+from time import time
 
 import numpy as np
 from astropy.io import fits
@@ -40,7 +41,6 @@ class SUPERFLAT(PythonRecipe):
         "cache_pixtables": False,
         "filter": "white,Johnson_V,Cousins_R,Cousins_I",
         "keep_cubes": False,
-        "masking_njobs": 8,
         "method": "sigclip",
         "scipost": {"filter": "white", "save": "cube", "skymethod": "none"},
         "temp_dir": None,
@@ -134,9 +134,11 @@ class SUPERFLAT(PythonRecipe):
             temp_dir = TemporaryDirectory(dir=temp_dir)
             cubesdir = temp_dir.name
 
+        t0 = time()
         for i, exp in enumerate(exps, start=1):
             outdir = join(cubesdir, exp["name"])
             outname = f"{outdir}/DATACUBE_FINAL.fits"
+
             if os.path.exists(outname):
                 info("%d/%d : %s already processed", i, nexps, exp["name"])
             else:
@@ -149,15 +151,17 @@ class SUPERFLAT(PythonRecipe):
                     params=self.param["scipost"],
                     **recipe_kw,
                 )
+
+            # Mask sources
+            mask_cube(outname)
             cubelist.append(outname)
 
-        # 2. Mask sources and combine exposures to obtain the superflat
-        Parallel(n_jobs=self.param["masking_njobs"])(
-            delayed(mask_cube)(cubef) for cubef in cubelist
-        )
+        info("Scipost and masking done, took %.2f sec.", time() - t0)
 
+        # 2. Combine exposures to obtain the superflat
+        t0 = time()
         method = self.param["method"]
-        info(f"Combining cubes with method {method}")
+        info("Combining cubes with method %s", method)
         cubes = CubeList(cubelist)
         if method == "median":
             supercube, expmap, stat = cubes.median()
@@ -167,6 +171,7 @@ class SUPERFLAT(PythonRecipe):
             supercube.mask |= np.isnan(supercube._var)
         else:
             raise ValueError(f"unknown method {method}")
+        info("Combine done, took %.2f sec.", time() - t0)
 
         # remove temp directory
         if not self.param["keep_cubes"]:
@@ -210,7 +215,7 @@ class SUPERFLAT(PythonRecipe):
 
 def mask_cube(cubef):
     logger = logging.getLogger(__name__)
-    logger.debug("Masking %s", cubef)
+    t0 = time()
     cubedir = os.path.dirname(cubef)
 
     try:
@@ -226,9 +231,14 @@ def mask_cube(cubef):
         sigma=5.0,
         iterations=2,
         opening_iterations=1,
+        return_image=False
     )
 
-    with fits.open(cubef, mode="update") as hdul:
+    with fits.open(cubef) as hdul:
         hdul["DATA"].header["MASKED"] = True
-        hdul["DATA"].data[:, mask._data.astype(bool)] = np.nan
-        hdul.flush()
+        hdul["DATA"].data[:, mask] = np.nan
+        # for some reason this is much faster than updating the
+        # cube in-place with mode='update'
+        hdul.writeto(cubef, overwrite=True)
+
+    logger.info("Masking done, took %.2f sec.", time() - t0)

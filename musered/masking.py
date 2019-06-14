@@ -15,6 +15,7 @@ def mask_sources(
     plot=False,
     sigma=3.0,
     opening_iterations=0,
+    return_image=True,
 ):
     logger = logging.getLogger(__name__)
     try:
@@ -49,7 +50,11 @@ def mask_sources(
         struct = ndi.generate_binary_structure(2, 2)
         mask = ndi.binary_dilation(mask, structure=struct, iterations=iterations)
 
-    im_mask = Image(data=mask, dtype=int, wcs=im.wcs, copy=False)
+    if return_image:
+        im_mask = Image(data=mask, dtype=int, wcs=im.wcs, copy=False)
+    else:
+        return mask
+
     if outfile:
         im_mask.write(outfile, savemask="none")
 
