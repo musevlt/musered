@@ -231,7 +231,7 @@ def mask_cube(cubef):
         sigma=5.0,
         iterations=2,
         opening_iterations=1,
-        return_image=False
+        return_image=False,
     )
 
     with fits.open(cubef) as hdul:

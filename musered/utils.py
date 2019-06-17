@@ -18,7 +18,7 @@ from mpdaf.obj import Cube
 from sqlalchemy import event, func, pool, sql
 from sqlalchemy.engine import Engine
 
-from .settings import RAW_FITS_KEYWORDS, QC_KEYWORDS
+from .settings import QC_KEYWORDS, RAW_FITS_KEYWORDS
 
 EXP_PATTERN = r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}"
 DATETIME_PATTERN = "%Y-%m-%dT%H:%M:%S.%f"
