@@ -740,7 +740,7 @@ class MuseRed(Reporter):
                 **{
                     "night": night,
                     "name": res[0][namecol],
-                    "run": res[0]["run"],
+                    "run": res[0].get("run"),
                     "recipe_name": recipe_name,
                     "DATE_OBS": res[0][datecol],
                     "DPR_CATG": res[0]["DPR_CATG"],

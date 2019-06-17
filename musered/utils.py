@@ -213,6 +213,7 @@ def parse_raw_keywords(flist, runs=None):
                 ("filename", os.path.basename(f)),
                 ("path", f),
                 ("night", None),
+                ("run", None),
                 ("date_import", now),
             ]
         )
