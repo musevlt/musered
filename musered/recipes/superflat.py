@@ -11,7 +11,6 @@ from time import time
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
-from joblib import Parallel, delayed
 from mpdaf.obj import Cube, CubeList
 
 from ..masking import mask_sources
