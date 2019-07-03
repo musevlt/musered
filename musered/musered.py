@@ -1045,6 +1045,7 @@ class MuseRed(Reporter):
         # get the list of dates to process
         from_recipe = recipe_conf.get("from_recipe", "muse_scipost")
         if exps:
+            exps = self.prepare_dates(exps, DPR_TYPE="OBJECT")
             query = list(
                 self.reduced.find(
                     OBJECT=dataset,
