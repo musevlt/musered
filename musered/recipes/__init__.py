@@ -1,7 +1,8 @@
 from ..utils import all_subclasses
 from .calib import *  # noqa
-from .imphot import IMPHOT  # noqa
-from .mpdaf import MPDAFCOMBINE  # noqa
+from .fsf import FSF
+from .imphot import IMPHOT
+from .mpdaf import MPDAFCOMBINE
 from .recipe import *  # noqa
 from .recipe import BaseRecipe
 from .science import *  # noqa

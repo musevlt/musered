@@ -976,9 +976,20 @@ class MuseRed(Reporter):
                 tbl["excluded"] = False
 
             kwargs["exposures"] = tbl
+            
+        elif recipe_name == "fsf":
+            # Find the IMPHOT table for each exposure
+            imphot_recipe = recipe_conf.get("imphot_recipe")
+            if imphot_recipe is not None:
+                kwargs["imphot_tables"] = {
+                    o['name']: f"{o['path']}/IMPHOT.fits"
+                    for o in self.reduced.find(
+                        name=dates, recipe_name=imphot_recipe, DPR_TYPE="IMPHOT", order_by="name"
+                    )
+                }
 
         recipe_cls = get_recipe_cls(recipe_name)
-        use_reduced = recipe_cls.recipe_name not in ("muse_scibasic",)
+        use_reduced = recipe_cls.recipe_name not in ("muse_scibasic", "fsf")
         self._run_recipe_loop(
             recipe_cls,
             dates,
