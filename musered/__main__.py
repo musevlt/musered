@@ -327,9 +327,9 @@ def process_exp(
 
     if zap:
         mr.process_exp("zap", dataset=dataset, **kwargs)
-        
+
     if fsf:
-        mr.process_exp("fsf", dataset=dataset, **kwargs)    
+        mr.process_exp("fsf", dataset=dataset, **kwargs)
 
 
 @click.argument("dataset")

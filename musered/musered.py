@@ -976,15 +976,18 @@ class MuseRed(Reporter):
                 tbl["excluded"] = False
 
             kwargs["exposures"] = tbl
-            
+
         elif recipe_name == "fsf":
             # Find the IMPHOT table for each exposure
             imphot_recipe = recipe_conf.get("imphot_recipe")
             if imphot_recipe is not None:
                 kwargs["imphot_tables"] = {
-                    o['name']: f"{o['path']}/IMPHOT.fits"
+                    o["name"]: f"{o['path']}/IMPHOT.fits"
                     for o in self.reduced.find(
-                        name=dates, recipe_name=imphot_recipe, DPR_TYPE="IMPHOT", order_by="name"
+                        name=dates,
+                        recipe_name=imphot_recipe,
+                        DPR_TYPE="IMPHOT",
+                        order_by="name",
                     )
                 }
 
@@ -1178,6 +1181,8 @@ class MuseRed(Reporter):
         params = params_name or recipe_name
         processed = self.get_processed(recipe_name=params)
 
+        fsf_recipe = recipe_conf.get("fsf_recipe")
+
         flags = recipe_conf.get("exclude_flags")
         for name, select in names_select.items():
             if not force and name in processed:
@@ -1204,6 +1209,20 @@ class MuseRed(Reporter):
             else:
                 scale_tbl = None
 
+            if fsf_recipe:
+                # find the corresponding FSF for each exposures
+                fsf_tables = {
+                    o["name"]: f"{o['path']}/FSF.fits"
+                    for o in self.reduced.find(
+                        name=explist,
+                        recipe_name=fsf_recipe,
+                        DPR_TYPE="FSF",
+                        order_by="name",
+                    )
+                }
+            else:
+                fsf_tables = None
+
             self._run_recipe_simple(
                 recipe_cls,
                 name,
@@ -1211,6 +1230,7 @@ class MuseRed(Reporter):
                 flist,
                 params_name=params_name,
                 scale_table=scale_tbl,
+                fsf_tables=fsf_tables,
                 **kwargs,
             )
 

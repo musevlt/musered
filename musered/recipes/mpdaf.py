@@ -30,6 +30,7 @@ def do_combine(
     var="propagate",
     mad=False,
     scale_table=None,
+    fsf_tables=None,
     filter=None,
 ):
     logger = logging.getLogger("musered")
@@ -75,6 +76,9 @@ def do_combine(
     else:
         raise ValueError(f"unknown method {method}")
 
+    if fsf_tables:
+        fsf_model = combine_fsf(fsf_tables)
+
     logger.info("Saving cube: %s", cube_name)
     cube.write(cube_name, savemask="nan")
     logger.info("Saving img: %s", img_name)
@@ -100,6 +104,10 @@ def do_combine(
     if all([stat, stat_name]):
         logger.info("Saving stats: %s", stat_name)
         stat.write(stat_name, format="fits", overwrite=True)
+
+
+def combine_fsf(fsf_tables):
+    print("combine_fsf")
 
 
 class MPDAFCOMBINE(PythonRecipe):
@@ -131,7 +139,7 @@ class MPDAFCOMBINE(PythonRecipe):
         "version": None,
     }
 
-    def _run(self, flist, *args, scale_table=None, **kwargs):
+    def _run(self, flist, *args, scale_table=None, fsf_tables=None, **kwargs):
         field = fits.getval(flist[0], "OBJECT")
         out = dict(
             cube=join(self.output_dir, f"DATACUBE_FINAL_{field}.fits"),
@@ -170,6 +178,7 @@ class MPDAFCOMBINE(PythonRecipe):
             out["image"],
             out["expimg"],
             scale_table=scale_table,
+            fsf_tables=fsf_tables,
             **self.param,
         )
 
