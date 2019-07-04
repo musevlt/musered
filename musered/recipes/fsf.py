@@ -10,7 +10,7 @@ from os.path import join
 from mpdaf.MUSE import MoffatModel2
 
 import numpy as np
-from astropy.table import Table
+from astropy.table import Table, Column
 
 from ..utils import get_exp_name
 from .recipe import PythonRecipe
@@ -31,19 +31,30 @@ def do_fsf(expname, inputfile, outputfile, imphot_table=None):
         logger.error("muse_psfr is not installed")
         sys.exit(1)
     
+    # Change log  level (NOT WORKING)
+    logpsfrec = logging.getLogger('muse_psfr')
+    logpsfrec.setLevel(logger.level)
+    
+    # run psfrec
     fsfmodel = MoffatModel2.from_psfrec(inputfile)
+    
     fwhm = fsfmodel.get_fwhm(np.array(fsfmodel.lbrange))
     beta = fsfmodel.get_beta(np.array(fsfmodel.lbrange))
-    
     logger.debug('FSF PsfRec model FWHM %.2f-%.2f BETA %.2f-%.2f',fwhm[0],fwhm[1],beta[0],beta[1])
     
-    tab = Table(names=['NAME','LBDA0','LBDA1','FWHM_P0','FWHM_P1','FWHM_P2','BETA_P0','BETA_P1','BETA_P2',
-                       'FWHM_B','FWHM_R','BETA_B','BETA_R'], dtype=['S25']+12*['f4'])
-    tab.add_row(dict(NAME=expname,LBDA0=fsfmodel.lbrange[0],LBDA1=fsfmodel.lbrange[1],
-                     FWHM_P0=fsfmodel.fwhm_pol[0],FWHM_P1=fsfmodel.fwhm_pol[1],FWHM_P2=fsfmodel.fwhm_pol[2],
-                     BETA_P0=fsfmodel.beta_pol[0],BETA_P1=fsfmodel.beta_pol[1],BETA_P2=fsfmodel.beta_pol[2],
-                     FWHM_B=fwhm[0],FWHM_R=fwhm[1],BETA_B=beta[0],BETA_R=beta[1])
-                )
+    
+    
+    tab = Table(names=['NAME','LBDA0','LBDA1','FWHM_B','FWHM_R','BETA_B','BETA_R','NCFWHM','NCBETA'], 
+                dtype=['S25']+6*['f8']+2*['i4'])
+    row = [expname,fsfmodel.lbrange[0],fsfmodel.lbrange[1],fwhm[0],fwhm[1],beta[0],beta[1],
+           len(fsfmodel.fwhm_pol),len(fsfmodel.beta_pol)]
+    for k,val in enumerate(fsfmodel.fwhm_pol):
+        tab.add_column(Column(name=f"FWHM_P{k}", dtype='f8'))
+        row.append(val)
+    for k,val in enumerate(fsfmodel.beta_pol):
+        tab.add_column(Column(name=f"BETA_P{k}", dtype='f8'))
+        row.append(val)          
+    tab.add_row(row)
     
     tab.write(outputfile, overwrite=True)
 
