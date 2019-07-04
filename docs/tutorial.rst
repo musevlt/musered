@@ -56,6 +56,29 @@ used in various Musered commands like for offsets computation or exposures
 combination. Then the ``archive_filter`` block defines how the data is
 retrieved from the ESO archive, see the next section.
 
+By default the dataset name must match the OBJECT keyword ot the raw FITS
+files. This dataset name is used to select the exposures for a given field in
+the ``exp-align`` and ``exp-combine`` recipes. It may happen that a given
+dataset has to match multiple OBJECT names, if the OBJECT name was changed in
+the observation template for some reason, or for mosaics. In these cases it is
+possible to rename or combine multiple OBJECT names::
+
+      OBJECT: [IC4406, IC4406-something]
+
+The original OBJECT name is saved in the ``OBJECT_ORIG`` column in the ``raw``
+table, which may be useful to do specific cube combinations (see
+:ref:`combine-exp-selection`).
+
+.. note::
+    After modifying the OBJECT definition in the settings file the database
+    has to be updated with ``musered update-db --force``, to update the OBJECT
+    column in the ``raw`` table for all exposures.
+
+    This OBJECT value is also stored in the ``reduced`` table during the
+    reduction, but it will not be updated. So if a reduction was already
+    started, one has to reprocess the science recipes, or to update manually
+    the ``reduced`` table.
+
 
 Data retrieval
 --------------
@@ -122,6 +145,11 @@ weather conditions from the text files downloaded from the ESO archive, in the
 some GTO database from ``muselog``, the ranks and comments from observer teams
 are also ingested.
 
+.. note::
+    It is sometimes necessary to force an update of the database, after changes
+    in the settings file. In particular some columns are computed by update-db
+    (OBJECT, runs), so after update the settings it may be useful to update the
+    database with ``musered update-db --force``.
 
 Inspecting the database
 -----------------------

@@ -277,8 +277,8 @@ def parse_raw_keywords(flist, datasets, runs=None):
         logger.error(
             "Found invalid files that looks like login pages. "
             "This happens when been logged out from ESO archive. "
+            "Deleting these files, you should restart retrieve_data"
         )
-        logger.error("Deleting these files, you should restart retrieve_data")
         for f in invalid:
             logger.error("- %s", f)
             os.remove(f)

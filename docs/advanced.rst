@@ -40,6 +40,7 @@ flagged exposures, or it can be a list of flags to exclude:
       - VERYBAD_IMAQUALITY
       - VERYBAD_SLICE
 
+.. _combine-exp-selection:
 
 Exposure selection for ``exp-combine``
 --------------------------------------
