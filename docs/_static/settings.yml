@@ -3,6 +3,9 @@
 # Paths (working directory, database, etc.)
 workdir: '.'
 db: 'musered.db'
+# For Postgres and other remote databases, this allows to specify and
+# environment variable with the database url (with the SQLAlchemy specification)
+# db_env: 'MXDF_DB'
 raw_path: '{workdir}/raw'
 reduced_path: '{workdir}/reduced/{version}'
 muse_calib_path: '~/lib/musedrs/muse-calib'
@@ -11,6 +14,7 @@ muse_calib_path: '~/lib/musedrs/muse-calib'
 version: '0.1'
 revision: '1'
 
+# log level for the terminal output
 loglevel: info
 
 # Definition of datasets.
@@ -31,8 +35,10 @@ datasets:
 
 # python-cpl settings, esorex like.
 cpl:
-  # recipes directory (and version if needed)
+  # recipes directory (and version if needed), usually not needed
+  # if the DRS is installed in /usr
   recipe_path: '~/.local/lib/esopipes-plugins'
+  # to use a specific DRS version:
   # drs_version: '2.1.0'
   # log files directory
   log_dir: '{workdir}/reduced/{version}/logs'
@@ -45,7 +51,8 @@ cpl:
   esorex_msg_format: "%(asctime)s [%(levelname)07s][%(threadName)s] %(name)s: %(message)s"
 
 # This is just an example of how to use substitutions to define date ranges
-# that are used below for static calibrations. Not used elsewhere.
+# that are used below for static calibrations. runs are also used to compute
+# a run column in the datase, which allows to select exposures by run.
 runs:
   GTO17: &GTO17
     start_date: 2017-04-01
@@ -85,6 +92,9 @@ retrieve_data:
   username: MUSE-GTO
   store_password: False
 
+# Global exclusion of frames. The key/value can be either:
+# - a DPR_TYPE and exposures names
+# - or "raw" and a dict defining a query on the raw table
 frames:
   exclude:
     raw:
@@ -107,6 +117,7 @@ recipes:
 
   muse_scibasic:
     init:
+      # all recipes have an output_dir by default, but it can be modified
       output_dir: 'scibasic'
 
   # Example of a special version of scipost to produce images for the
@@ -188,3 +199,16 @@ recipes:
     params:
       method: sigclip
       version: 0.1
+
+  zap:
+    from_recipe: mpdaf_combine
+    # frames:
+    #   # here we can specify the sources mask
+    #   SOURCE_MASK: '{workdir}/MASK.fits'
+    init:
+      output_dir: 'zap'
+    params:
+      cftype: median
+      cfwidthSVD: 300
+      cfwidthSP: 300
+      mask_edges: False

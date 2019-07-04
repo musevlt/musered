@@ -11,7 +11,7 @@ import cpl
 
 # from astropy.io import fits
 from cpl.param import ParameterList
-from mpdaf.log import setup_logging
+from mpdaf.log import setup_logging, setup_logfile
 
 __all__ = ("init_cpl_params", "BaseRecipe", "Recipe", "PythonRecipe")
 
@@ -116,6 +116,14 @@ class BaseRecipe:
             info["calib"] = json.dumps(calib) if json_col else calib
         return info
 
+    def activate_file_logger(self):
+        """Activate the logging to a file."""
+        raise NotImplementedError
+
+    def deactivate_file_logger(self):
+        """Deactivate the logging to a file."""
+        raise NotImplementedError
+
     def _run(self, *args, **kwargs):
         raise NotImplementedError
 
@@ -154,9 +162,6 @@ class BaseRecipe:
 
         if self.n_inputs_min is not None and nfiles < self.n_inputs_min:
             raise ValueError(f"need at least {self.n_inputs_min} exposures")
-
-        date = datetime.datetime.now().isoformat()
-        self.log_file = os.path.join(self.log_dir, f"{self.recipe_name}-{date}.log")
 
         if "output_dir" in kwargs:
             self.output_dir = kwargs["output_dir"]
@@ -202,6 +207,27 @@ class BaseRecipe:
 
 class PythonRecipe(BaseRecipe):
     """Class for Python recipes."""
+
+    def activate_file_logger(self):
+        # setup a root logger, with a format similar to the DRS one
+        date = datetime.datetime.now().isoformat()
+        self.log_file = os.path.join(self.log_dir, f"{self.recipe_name}-{date}.log")
+        fmt = "%(asctime)s [%(levelname)07s] %(name)s: %(message)s"
+        kw = dict(
+            name="", level="DEBUG", logfile=self.log_file, fmt=fmt, rotating=False
+        )
+        try:
+            setup_logfile(datefmt='%H:%M:%S', **kw)
+        except TypeError:
+            # mpdaf<=3.2 does not support the datefmt parameter
+            setup_logfile(**kw)
+        self.logger.info('starting at %s', date)
+
+    def deactivate_file_logger(self):
+        logger = logging.getLogger("")
+        for handler in logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                logger.removeHandler(handler)
 
 
 class Recipe(BaseRecipe):
@@ -349,9 +375,16 @@ class Recipe(BaseRecipe):
         )
         return info
 
-    def _run(self, flist, *args, **kwargs):
+    def activate_file_logger(self):
+        date = datetime.datetime.now().isoformat()
+        self.log_file = os.path.join(self.log_dir, f"{self.recipe_name}-{date}.log")
         cpl.esorex.log.filename = self.log_file
+        self.logger.info('starting at %s', date)
 
+    def deactivate_file_logger(self):
+        cpl.esorex.log.filename = None
+
+    def _run(self, flist, *args, **kwargs):
         if self.n_inputs_rec and len(flist) != self.n_inputs_rec:
             self.logger.warning(
                 "Got %d files though the recommended number is %d",

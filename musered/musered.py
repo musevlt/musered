@@ -644,6 +644,9 @@ class MuseRed(Reporter):
 
         """
         recipe_name = params_name or recipe_cls.recipe_name
+
+        # for calibrations we find exposures with TPL_START, and for
+        # exposures we use DATE_OBS
         if calib:
             label = "calibration sequence"
             datecol = namecol = "TPL_START"
@@ -652,18 +655,20 @@ class MuseRed(Reporter):
             datecol = "DATE_OBS"
             namecol = "name"
 
-        log = self.logger
+        info = self.logger.info
         ndates = len(date_list)
-        log.info("Running %s for %d %ss", recipe_name, ndates, label)
+        labelc = label.capitalize()
+        info("Running %s for %d %ss", recipe_name, ndates, label)
 
+        # build the list of already processed exposures
         if skip and len(self.reduced) > 0:
             processed = self.get_processed(
                 recipe_name=recipe_name, filter_names=date_list
             )
             if processed == set(date_list):
-                log.info("Already processed, nothing to do")
+                info("Already processed, nothing to do")
                 return
-            log.info("Found %d processed exps", len(processed))
+            info("Found %d processed exps", len(processed))
         else:
             processed = set()
 
@@ -676,17 +681,22 @@ class MuseRed(Reporter):
         table = self.reduced if use_reduced else self.raw
         for i, date in enumerate(date_list, start=1):
             if skip and date in processed:
-                log.debug("%s already processed", date)
+                self.logger.debug("%s already processed", date)
                 continue
 
+            # find the exposure to process
             DPR_TYPE = recipe_conf.get("DPR_TYPE", recipe.DPR_TYPE)
             select_args = {namecol: date, "DPR_TYPE": DPR_TYPE}
             if recipe_conf.get("from_recipe"):
                 select_args["recipe_name"] = recipe_conf.get("from_recipe")
-
             res = list(table.find(**select_args))
 
             if use_reduced:
+                # for reduced files we should find only one result, otherwise
+                # it means that the query is bad (if 0), or that previous
+                # recipes were not processed (if 0), or that the recipe was run
+                # multiple times with different parameters, in which case the
+                # user has to specify a recipe with from_recipe
                 if len(res) == 0:
                     raise RuntimeError("could not find exposures")
                 elif len(res) > 1:
@@ -705,56 +715,64 @@ class MuseRed(Reporter):
                     )
                 ins_mode = ins_mode.pop()
 
-            night = res[0]["night"]
-            msg = "%d/%d - %s %s : %d %s file(s), mode=%s"
-            log.info(
-                msg, i, ndates, label.capitalize(), date, len(flist), DPR_TYPE, ins_mode
-            )
+            # activate the file logger and start to log useful information
+            recipe.activate_file_logger()
 
-            if getattr(recipe, "use_drs_output", True):
-                out = f"{date}.{ins_mode}" if calib else date
-                kwargs["output_dir"] = join(self.reduced_path, output_dir, out)
-            else:
-                kwargs["output_dir"] = join(self.reduced_path, output_dir)
+            try:
+                night = res[0]["night"]
+                msg = "%d/%d - %s %s : %d %s file(s), mode=%s"
+                info(msg, i, ndates, labelc, date, len(flist), DPR_TYPE, ins_mode)
 
-            kwargs.update(
-                self.frames.get_frames(
-                    recipe,
-                    night=night,
-                    ins_mode=ins_mode,
-                    dry_run=dry_run,
-                    recipe_conf=recipe_conf,
-                    OBJECT=res[0]["OBJECT"],
+                if getattr(recipe, "use_drs_output", True):
+                    out = f"{date}.{ins_mode}" if calib else date
+                    kwargs["output_dir"] = join(self.reduced_path, output_dir, out)
+                else:
+                    kwargs["output_dir"] = join(self.reduced_path, output_dir)
+
+                # get the associated calibration frames
+                kwargs.update(
+                    self.frames.get_frames(
+                        recipe,
+                        night=night,
+                        ins_mode=ins_mode,
+                        dry_run=dry_run,
+                        recipe_conf=recipe_conf,
+                        OBJECT=res[0]["OBJECT"],
+                    )
                 )
-            )
 
-            if getattr(recipe, "use_illum", False):
-                ref_temp = np.mean([o["INS_TEMP7_VAL"] for o in res])
-                ref_date = np.mean([o["MJD_OBS"] for o in res])
-                kwargs["illum"] = self.find_illum(night, ref_temp, ref_date)
+                if getattr(recipe, "use_illum", False):
+                    ref_temp = np.mean([o["INS_TEMP7_VAL"] for o in res])
+                    ref_date = np.mean([o["MJD_OBS"] for o in res])
+                    kwargs["illum"] = self.find_illum(night, ref_temp, ref_date)
 
-            if dry_run:
-                continue
+                if dry_run:
+                    continue
 
-            params = recipe_conf.get("params")
-            recipe.run(flist, name=date, params=params, **kwargs)
-            self._save_reduced(
-                recipe,
-                keys=("name", "recipe_name", "DPR_TYPE"),
-                **{
-                    "night": night,
-                    "name": res[0][namecol],
-                    "run": res[0].get("run"),
-                    "recipe_name": recipe_name,
-                    "DATE_OBS": res[0][datecol],
-                    "DPR_CATG": res[0]["DPR_CATG"],
-                    "OBJECT": res[0]["OBJECT"],
-                    "INS_MODE": ins_mode,
-                },
-            )
+                # we can now run the recipe
+                params = recipe_conf.get("params")
+                recipe.run(flist, name=date, params=params, **kwargs)
+
+                # and we save all the useful information in the reduced table
+                self._save_reduced(
+                    recipe,
+                    keys=("name", "recipe_name", "DPR_TYPE"),
+                    **{
+                        "night": night,
+                        "name": res[0][namecol],
+                        "run": res[0].get("run"),
+                        "recipe_name": recipe_name,
+                        "DATE_OBS": res[0][datecol],
+                        "DPR_CATG": res[0]["DPR_CATG"],
+                        "OBJECT": res[0]["OBJECT"],
+                        "INS_MODE": ins_mode,
+                    },
+                )
+            finally:
+                recipe.deactivate_file_logger()
 
             if ndates > 1:
-                log.info("===================================================")
+                info("===================================================")
 
     def _run_recipe_simple(
         self,
@@ -784,23 +802,28 @@ class MuseRed(Reporter):
         recipe_name = params_name or recipe_cls.recipe_name
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         recipe = self._instantiate_recipe(recipe_cls, recipe_name)
-        kwargs["output_dir"] = join(self.reduced_path, recipe.output_dir, name)
-        kwargs.update(
-            self.frames.get_frames(recipe, recipe_conf=recipe_conf, OBJECT=OBJECT)
-        )
+        recipe.activate_file_logger()
 
-        if dry_run:
-            return
+        try:
+            kwargs["output_dir"] = join(self.reduced_path, recipe.output_dir, name)
+            kwargs.update(
+                self.frames.get_frames(recipe, recipe_conf=recipe_conf, OBJECT=OBJECT)
+            )
 
-        recipe.run(flist, params=recipe_conf.get("params"), **kwargs)
-        self._save_reduced(
-            recipe,
-            keys=("name", "recipe_name", "DPR_TYPE"),
-            name=name,
-            OBJECT=OBJECT,
-            recipe_name=recipe_name,
-            **(save_kwargs or {}),
-        )
+            if dry_run:
+                return
+
+            recipe.run(flist, params=recipe_conf.get("params"), **kwargs)
+            self._save_reduced(
+                recipe,
+                keys=("name", "recipe_name", "DPR_TYPE"),
+                name=name,
+                OBJECT=OBJECT,
+                recipe_name=recipe_name,
+                **(save_kwargs or {}),
+            )
+        finally:
+            recipe.deactivate_file_logger()
 
     def prepare_dates(self, dates, DPR_TYPE=None, datecol="name", table="raw"):
         """Compute the list of dates (nights, exposures) to process."""
