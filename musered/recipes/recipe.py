@@ -3,15 +3,12 @@ import itertools
 import json
 import logging
 import os
-
-# import shutil
+import re
 import time
 
 import cpl
-
-# from astropy.io import fits
 from cpl.param import ParameterList
-from mpdaf.log import setup_logging, setup_logfile
+from mpdaf.log import setup_logfile, setup_logging
 
 __all__ = ("init_cpl_params", "BaseRecipe", "Recipe", "PythonRecipe")
 
@@ -200,7 +197,7 @@ class BaseRecipe:
 
         self.results = results
         self.timeit = (time.time() - t0) / 60
-        info("%s successfully run, %d warnings", self.recipe_name, self.nbwarn)
+        info("%s successfully run", self.recipe_name)
         info("Execution time %.2f minutes", self.timeit)
         return results
 
@@ -217,13 +214,20 @@ class PythonRecipe(BaseRecipe):
             name="", level="DEBUG", logfile=self.log_file, fmt=fmt, rotating=False
         )
         try:
-            setup_logfile(datefmt='%H:%M:%S', **kw)
+            setup_logfile(datefmt="%H:%M:%S", **kw)
         except TypeError:
             # mpdaf<=3.2 does not support the datefmt parameter
             setup_logfile(**kw)
-        self.logger.info('starting at %s', date)
+        self.logger.info("starting at %s", date)
 
     def deactivate_file_logger(self):
+        # count the number of warnings/errors
+        with open(self.log_file) as f:
+            self.nbwarn = len(re.findall(r"\[WARNING\]|\[  ERROR\]", f.read()))
+
+        self.logger.info("%d warnings", self.nbwarn)
+
+        # remove the file logger
         logger = logging.getLogger("")
         for handler in logger.handlers:
             if isinstance(handler, logging.FileHandler):
@@ -326,12 +330,8 @@ class Recipe(BaseRecipe):
             self.param["nifu"] = nifu
 
         if verbose:
-            self.logger.info(
-                "%s recipe (DRS v%s from %s)",
-                recipe_name,
-                self._recipe.version[1],
-                cpl.Recipe.path,
-            )
+            msg = "%s recipe (DRS v%s from %s)"
+            self.logger.info(msg, recipe_name, self._recipe.version[1], cpl.Recipe.path)
 
     @property
     def calib_frames(self):
@@ -379,18 +379,15 @@ class Recipe(BaseRecipe):
         date = datetime.datetime.now().isoformat()
         self.log_file = os.path.join(self.log_dir, f"{self.recipe_name}-{date}.log")
         cpl.esorex.log.filename = self.log_file
-        self.logger.info('starting at %s', date)
+        self.logger.info("starting at %s", date)
 
     def deactivate_file_logger(self):
         cpl.esorex.log.filename = None
 
     def _run(self, flist, *args, **kwargs):
         if self.n_inputs_rec and len(flist) != self.n_inputs_rec:
-            self.logger.warning(
-                "Got %d files though the recommended number is %d",
-                len(flist),
-                self.n_inputs_rec,
-            )
+            msg = "Got %d files though the recommended number is %d"
+            self.logger.warning(msg, len(flist), self.n_inputs_rec)
 
         if self._recipe.output_dir is None:
             raise NotImplementedError
@@ -409,7 +406,7 @@ class Recipe(BaseRecipe):
         results = self._recipe(raw=self.raw, **kwargs)
 
         self.nbwarn = len(results.log.warning)
-        self.logger.info(
-            "DRS user time: %s, sys: %s", results.stat.user_time, results.stat.sys_time
-        )
+        msg = "DRS user time: %s, sys: %s"
+        self.logger.info(msg, results.stat.user_time, results.stat.sys_time)
+        self.logger.info("%d warnings", self.nbwarn)
         return results
