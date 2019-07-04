@@ -30,16 +30,12 @@ def do_fsf(expname, inputfile, outputfile, imphot_table=None):
     if muse_psfr is None:
         logger.error("muse_psfr is not installed")
         sys.exit(1)
-
-    logger.info(inputfile)
-    logger.info(outputfile)
-    logger.info(imphot_table)
     
     fsfmodel = MoffatModel2.from_psfrec(inputfile)
     fwhm = fsfmodel.get_fwhm(np.array(fsfmodel.lbrange))
     beta = fsfmodel.get_beta(np.array(fsfmodel.lbrange))
     
-    logger.debug('FSF model FWHM %s BETA %s',fwhm,beta)
+    logger.debug('FSF PsfRec model FWHM %.2f-%.2f BETA %.2f-%.2f',fwhm[0],fwhm[1],beta[0],beta[1])
     
     tab = Table(names=['NAME','LBDA0','LBDA1','FWHM_P0','FWHM_P1','FWHM_P2','BETA_P0','BETA_P1','BETA_P2',
                        'FWHM_B','FWHM_R','BETA_B','BETA_R'], dtype=['S25']+12*['f4'])
