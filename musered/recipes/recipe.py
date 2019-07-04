@@ -349,36 +349,6 @@ class Recipe(BaseRecipe):
         )
         return info
 
-    # def _write_fits(self, name_or_hdulist, filename):
-    #     if type(name_or_hdulist) is list:
-    #         # Not isinstance because HDUList inherits from list
-    #         self.logger.error('Got a list of frames: %s', name_or_hdulist)
-    #         name_or_hdulist = name_or_hdulist[0]
-
-    #     self.logger.info('Saving %s', filename)
-    #     if isinstance(name_or_hdulist, str):
-    #         shutil.move(name_or_hdulist, filename)
-    #     elif isinstance(name_or_hdulist, fits.HDUList):
-    #         name_or_hdulist.writeto(filename, overwrite=True)
-    #     else:
-    #         raise ValueError('unknown output type: %r', name_or_hdulist)
-
-    #     self.outfiles.append(filename)
-
-    # def save_results(self, results, name=None):
-    #     ifukey = 'ESO DRS MUSE PIXTABLE LIMITS IFU LOW'
-    #     for frame in self.output_frames:
-    #         if isinstance(results[frame], list):
-    #             for p in results[frame]:
-    #                 chan = p[0].header.get(ifukey)
-    #                 outn = (f'{frame}-{name}-{chan:02d}.fits'
-    #                         if (name and chan) else p[0].header['PIPEFILE'])
-    #                 self._write_fits(p, os.path.join(self.output_dir, outn))
-    #         else:
-    #             p = results[frame]
-    #             outn = f'{frame}-{name}.fits' if name else p.header['PIPEFILE']
-    #             self._write_fits(p, os.path.join(self.output_dir, outn))
-
     def _run(self, flist, *args, **kwargs):
         cpl.esorex.log.filename = self.log_file
 
