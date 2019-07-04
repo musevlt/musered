@@ -17,6 +17,12 @@ revision: '1'
 # log level for the terminal output
 loglevel: info
 
+# List of additional FITS keywords to get from the raw files (and
+# stored in the raw table)
+additional_keywords:
+  - TELESCOP
+  - ESO OBS OBSERVER
+
 # Definition of datasets.
 datasets:
   IC4406:

@@ -39,7 +39,10 @@ def test_parse_keywords(mr, caplog, tmpdir):
         f.write("this is an invalid file")
 
     rows = parse_raw_keywords(
-        [testfile, fakefile], mr.datasets, runs=mr.conf.get("runs")
+        [testfile, fakefile],
+        mr.datasets,
+        runs=mr.conf.get("runs"),
+        additional_keywords=mr.conf.get("additional_keywords"),
     )
     assert len(rows) == 1
     assert caplog.records[0].message.startswith("invalid FITS file")
@@ -67,6 +70,8 @@ def test_parse_keywords(mr, caplog, tmpdir):
         ("TEL_AMBI_WINDDIR", 281.5),
         ("TEL_MOON_RA", 340.834993),
         ("TPL_START", "2017-06-16T01:34:08"),
+        ("TELESCOP", "ESO-VLT-U4"),
+        ("OBS_OBSERVER", "UNKNOWN"),
     ]:
         assert row[key] == expected
 

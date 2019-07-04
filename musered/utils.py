@@ -188,13 +188,20 @@ def normalize_keyword(key):
     return key.replace(" ", "_").replace("-", "_")
 
 
-def parse_raw_keywords(flist, datasets, runs=None):
+def parse_raw_keywords(flist, datasets, runs=None, additional_keywords=None):
     logger = logging.getLogger(__name__)
+    invalid = []
     rows = []
     runs = runs or {}
     now = datetime.datetime.now().isoformat()
+
+    # prepare the list of FITS keywords to use
     keywords = [k.split("/")[0].strip() for k in RAW_FITS_KEYWORDS.splitlines() if k]
-    invalid = []
+    if additional_keywords:
+        logger.info('adding additional keywords: %s', additional_keywords)
+        for key in additional_keywords:
+            if key not in keywords:
+                keywords.append(key)
 
     # compute a mapping of FITS OBJECT to the dataset names
     objects = {}

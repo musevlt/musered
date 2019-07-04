@@ -400,7 +400,12 @@ class MuseRed(Reporter):
         self.logger.info("%d new FITS files, %d known", len(flist), nskip)
 
         # Parse FITS headers to get the keyword values
-        rows = parse_raw_keywords(flist, self.datasets, runs=self.conf.get("runs"))
+        rows = parse_raw_keywords(
+            flist,
+            self.datasets,
+            runs=self.conf.get("runs"),
+            additional_keywords=self.conf.get("additional_keywords"),
+        )
 
         with self.db as tx:
             raw = tx["raw"]
