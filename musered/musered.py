@@ -257,7 +257,7 @@ class MuseRed(Reporter):
             # table does not exist
             return []
 
-        processed = set(o["name"] for o in tbl.find(**clauses))
+        processed = {o["name"] for o in tbl.find(**clauses)}
         if filter_names:
             processed = processed & set(filter_names)
 
@@ -533,13 +533,13 @@ class MuseRed(Reporter):
                 night_list, datecol="night", table="reduced"
             )
 
-        count = len(set(o["name"] for o in self.reduced.find(**kwargs)))
+        count = len({o["name"] for o in self.reduced.find(**kwargs)})
         action = "Remove" if force else "Would remove"
         if not force:
             self.logger.info("Dry-run mode, nothing will be done")
 
         if remove_files:
-            for item in set(o["path"] for o in self.reduced.find(**kwargs)):
+            for item in {o["path"] for o in self.reduced.find(**kwargs)}:
                 if os.path.exists(item):
                     self.logger.info("%s %s", action, item)
                     if force:
@@ -708,7 +708,7 @@ class MuseRed(Reporter):
                 ins_mode = res[0]["INS_MODE"]
             else:
                 flist = [o["path"] for o in res]
-                ins_mode = set(o["INS_MODE"] for o in res)
+                ins_mode = {o["INS_MODE"] for o in res}
                 if len(ins_mode) > 1:
                     raise ValueError(
                         f"{label} with multiple INS.MODE, not supported yet"

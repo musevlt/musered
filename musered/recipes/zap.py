@@ -124,7 +124,7 @@ class ZAP(PythonRecipe):
     @property
     def calib_frames(self):
         """Return the list of calibration frames."""
-        return set(["SOURCE_MASK", "ADDITIONAL_MASK"])
+        return {"SOURCE_MASK", "ADDITIONAL_MASK"}
 
     def _run(self, flist, *args, **kwargs):
         out = dict(
