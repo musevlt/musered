@@ -15,6 +15,7 @@ from astropy.io import ascii, fits
 from astropy.stats import sigma_clip
 from astropy.table import MaskedColumn, Table, vstack
 from mpdaf.obj import Cube
+from mpdaf.tools import isiter
 from sqlalchemy import event, func, pool, sql
 from sqlalchemy.engine import Engine
 
@@ -187,7 +188,7 @@ def normalize_keyword(key):
     return key.replace(" ", "_").replace("-", "_")
 
 
-def parse_raw_keywords(flist, runs=None):
+def parse_raw_keywords(flist, datasets, runs=None):
     logger = logging.getLogger(__name__)
     rows = []
     runs = runs or {}
@@ -195,9 +196,32 @@ def parse_raw_keywords(flist, runs=None):
     keywords = [k.split("/")[0].strip() for k in RAW_FITS_KEYWORDS.splitlines() if k]
     invalid = []
 
+    # compute a mapping of FITS OBJECT to the dataset names
+    objects = {}
+    for name, conf in datasets.items():
+        if "OBJECT" in conf:
+            if isinstance(conf["OBJECT"], str):
+                # if OBJECT in settings, use it. This allows to rename
+                # a given object name
+                objects[conf["OBJECT"]] = name
+            elif isiter(conf["OBJECT"]):
+                # if OBJECT is a list, concatenate the exp names
+                for obj in conf["OBJECT"]:
+                    objects[obj] = name
+            else:
+                raise TypeError(
+                    f"invalid OBJECT format for {name}, must be str or list"
+                )
+        else:
+            # if OBJECT is not specified just use the dataset name
+            objects[name] = name
+
     for f in ProgressBar(flist):
         with open(f, mode="rb") as fd:
             if fd.read(30) != b"SIMPLE  =                    T":
+                # detect invalid FITS files, when we have been logged out and
+                # got the login page instead (which should not happen when
+                # astroquery 0.3.10 is released)
                 size = os.stat(f).st_size
                 if 11_000 < size < 12_000:
                     invalid.append(f)
@@ -207,6 +231,8 @@ def parse_raw_keywords(flist, runs=None):
 
         logger.debug("parsing %s", f)
         hdr = fits.getheader(f, ext=0)
+        obj = hdr.get('OBJECT')
+
         row = OrderedDict(
             [
                 ("name", get_exp_name(f)),
@@ -215,6 +241,8 @@ def parse_raw_keywords(flist, runs=None):
                 ("night", None),
                 ("run", None),
                 ("date_import", now),
+                ("OBJECT", objects.get(obj, obj)),
+                ("OBJECT_ORIG", obj),
             ]
         )
 

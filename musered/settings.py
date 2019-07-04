@@ -5,7 +5,6 @@ ARCFILE                  / Archive File Name
 DATE-OBS                 / Observing date
 EXPTIME                  / Integration time
 MJD-OBS                  / Obs start
-OBJECT                   / Original target
 ORIGFILE                 / Original File Name
 RA
 DEC

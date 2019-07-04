@@ -16,8 +16,17 @@ loglevel: info
 # Definition of datasets.
 datasets:
   IC4406:
+    # This can be used to gather files with different OBJECT names, or to use
+    # another name, by default it supposes that the dataset name matches the
+    # OBJECT keyword.
+    # OBJECT: IC4406
+    # OBJECT: [IC4406, IC4406-something]
+
+    # archive_filter contains the parameters passed to
+    # astroquery.Eso.query_instrument (its "column_filters" argument).
+    # Here for the example we make a query on the target name (obs_targ_name)
+    # but one can also use the program id (prog_id) or other query parameters.
     archive_filter:
-      # "column_filters" passed to astroquery.Eso.query_instrument
       obs_targ_name: IC4406
 
 # python-cpl settings, esorex like.

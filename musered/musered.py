@@ -143,11 +143,15 @@ class MuseRed(Reporter):
         out = defaultdict(list)
         if "night" not in self.raw.columns:
             return out
-        for obj, name in self.execute(
+
+        # make a dict of (OBJECT, explist) where OBJECT comes from the FITS
+        # headers but has been remapped to the dataset names in update_db
+        query = (
             sql.select([self.rawc.OBJECT, self.rawc.name])
             .order_by(self.rawc.name)
             .where(self.rawc.DPR_TYPE == "OBJECT")
-        ):
+        )
+        for obj, name in self.execute(query):
             if self.frames.is_valid(name, "OBJECT"):
                 out[obj].append(name)
         return out
@@ -396,7 +400,7 @@ class MuseRed(Reporter):
         self.logger.info("%d new FITS files, %d known", len(flist), nskip)
 
         # Parse FITS headers to get the keyword values
-        rows = parse_raw_keywords(flist, runs=self.conf.get("runs"))
+        rows = parse_raw_keywords(flist, self.datasets, runs=self.conf.get("runs"))
 
         with self.db as tx:
             raw = tx["raw"]
