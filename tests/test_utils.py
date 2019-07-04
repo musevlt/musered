@@ -38,7 +38,9 @@ def test_parse_keywords(mr, caplog, tmpdir):
     with open(fakefile, "w", encoding="ascii") as f:
         f.write("this is an invalid file")
 
-    rows = parse_raw_keywords([testfile, fakefile], runs=mr.conf.get("runs"))
+    rows = parse_raw_keywords(
+        [testfile, fakefile], mr.datasets, runs=mr.conf.get("runs")
+    )
     assert len(rows) == 1
     assert caplog.records[0].message.startswith("invalid FITS file")
 
