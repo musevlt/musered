@@ -1,5 +1,8 @@
 import logging
-from os.path import join
+import pathlib
+import shutil
+import platform
+from os.path import join, basename
 
 import mpdaf
 import numpy as np
@@ -114,18 +117,19 @@ class MPDAFCOMBINE(PythonRecipe):
     ]
     version = f"mpdaf-{mpdaf.__version__}"
 
-    default_params = dict(
-        method="sigclip",
-        output_wcs=None,
-        nmax=2,
-        nclip=5.0,
-        nstop=2,
-        mosaic=False,
-        version=None,
-        var="propagate",
-        mad=False,
-        filter="white,Johnson_V,Cousins_R,Cousins_I",
-    )
+    default_params = {
+        "cache_cubes": False,
+        "filter": "white,Johnson_V,Cousins_R,Cousins_I",
+        "mad": False,
+        "method": "sigclip",
+        "mosaic": False,
+        "nclip": 5.0,
+        "nmax": 2,
+        "nstop": 2,
+        "output_wcs": None,
+        "var": "propagate",
+        "version": None,
+    }
 
     def _run(self, flist, *args, scale_table=None, **kwargs):
         field = fits.getval(flist[0], "OBJECT")
@@ -136,6 +140,28 @@ class MPDAFCOMBINE(PythonRecipe):
             expmap=join(self.output_dir, f"EXPMAP_CUBE_{field}.fits"),
             expimg=join(self.output_dir, f"EXPMAP_IMAGE_{field}.fits"),
         )
+
+        cachedir = self.param.pop("cache_cubes")
+        if isinstance(cachedir, dict):
+            # get cachedir specific to a given hostname
+            cachedir = cachedir.get(platform.node())
+
+        if cachedir:
+            cachedir = pathlib.Path(cachedir)
+            if not cachedir.exists():
+                cachedir.mkdir(parents=True)
+
+            newflist = []
+            for f in flist:
+                name, cubef = f.split('/')[-2:]
+                outdir = cachedir / name
+                if not (outdir / cubef).exists():
+                    self.logger.info("copy %s to %s", f, outdir)
+                    outdir.mkdir()
+                    shutil.copy(f, str(outdir))
+                newflist.append(str(outdir / cubef))
+            flist = newflist
+
         do_combine(
             flist,
             out["cube"],
@@ -146,4 +172,8 @@ class MPDAFCOMBINE(PythonRecipe):
             scale_table=scale_table,
             **self.param,
         )
+
+        if cachedir:
+            shutil.rmtree(str(cachedir))
+
         return out
