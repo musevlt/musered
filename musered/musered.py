@@ -14,6 +14,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table, vstack
 from astropy.utils.decorators import lazyproperty
+from mpdaf.tools import progressbar
 from sqlalchemy import column as sql_column
 from sqlalchemy import sql
 from sqlalchemy import text as sql_text
@@ -23,7 +24,6 @@ from .frames import FramesFinder
 from .recipes import get_recipe_cls, init_cpl_params, normalize_recipe_name
 from .reporter import Reporter
 from .utils import (
-    ProgressBar,
     dict_values,
     load_db,
     load_table,
@@ -476,7 +476,7 @@ class MuseRed(Reporter):
 
             rows = []
             items = list(self.reduced.find(DPR_TYPE=dpr_type))
-            for item in ProgressBar(items):
+            for item in progressbar(items):
                 if item["name"] in processed:
                     continue
 

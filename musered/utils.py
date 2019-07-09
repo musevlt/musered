@@ -15,7 +15,7 @@ from astropy.io import ascii, fits
 from astropy.stats import sigma_clip
 from astropy.table import MaskedColumn, Table, vstack
 from mpdaf.obj import Cube
-from mpdaf.tools import isiter
+from mpdaf.tools import isiter, progressbar
 from sqlalchemy import event, func, pool, sql
 from sqlalchemy.engine import Engine
 
@@ -198,7 +198,7 @@ def parse_raw_keywords(flist, datasets, runs=None, additional_keywords=None):
     # prepare the list of FITS keywords to use
     keywords = [k.split("/")[0].strip() for k in RAW_FITS_KEYWORDS.splitlines() if k]
     if additional_keywords:
-        logger.info('adding additional keywords: %s', additional_keywords)
+        logger.info("adding additional keywords: %s", additional_keywords)
         for key in additional_keywords:
             if key not in keywords:
                 keywords.append(key)
@@ -223,7 +223,7 @@ def parse_raw_keywords(flist, datasets, runs=None, additional_keywords=None):
             # if OBJECT is not specified just use the dataset name
             objects[name] = name
 
-    for f in ProgressBar(flist):
+    for f in progressbar(flist):
         with open(f, mode="rb") as fd:
             if fd.read(30) != b"SIMPLE  =                    T":
                 # detect invalid FITS files, when we have been logged out and
@@ -238,7 +238,7 @@ def parse_raw_keywords(flist, datasets, runs=None, additional_keywords=None):
 
         logger.debug("parsing %s", f)
         hdr = fits.getheader(f, ext=0)
-        obj = hdr.get('OBJECT')
+        obj = hdr.get("OBJECT")
 
         row = OrderedDict(
             [
@@ -391,30 +391,6 @@ def query_count_to_table(
         col.name = col.name.replace("muse_", "")
 
     return t
-
-
-def isnotebook():  # pragma: no cover
-    try:
-        shell = get_ipython().__class__.__name__
-        if shell == "ZMQInteractiveShell":
-            return True  # Jupyter notebook or qtconsole
-        elif shell == "TerminalInteractiveShell":
-            return False  # Terminal running IPython
-        else:
-            return False  # Other type (?)
-    except NameError:
-        return False  # Probably standard Python interpreter
-
-
-def ProgressBar(*args, **kwargs):
-    logger = logging.getLogger(__name__)
-    if logging.getLevelName(logger.getEffectiveLevel()) == "DEBUG":
-        kwargs["disable"] = True
-
-    from tqdm import tqdm, tqdm_notebook
-
-    func = tqdm_notebook if isnotebook() else tqdm
-    return func(*args, **kwargs)
 
 
 def parse_gto_db(musered_db, gto_dblist):
