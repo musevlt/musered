@@ -1077,22 +1077,19 @@ class MuseRed(Reporter):
 
         # get the list of dates to process
         from_recipe = recipe_conf.get("from_recipe", "muse_scipost")
+        querykw = {}
         if exps:
-            exps = self.prepare_dates(exps, DPR_TYPE="OBJECT")
-            query = list(
-                self.reduced.find(
-                    OBJECT=dataset,
-                    DPR_TYPE=DPR_TYPE,
-                    recipe_name=from_recipe,
-                    name=exps,
-                )
+            querykw["name"] = self.prepare_dates(exps, DPR_TYPE="OBJECT")
+
+        query = list(
+            self.reduced.find(
+                OBJECT=dataset,
+                DPR_TYPE=DPR_TYPE,
+                recipe_name=from_recipe,
+                order_by="name",
+                **querykw,
             )
-        else:
-            query = list(
-                self.reduced.find(
-                    OBJECT=dataset, DPR_TYPE=DPR_TYPE, recipe_name=from_recipe
-                )
-            )
+        )
 
         flist = [f for r in query for f in iglob(f"{r['path']}/{DPR_TYPE}*.fits")]
 
