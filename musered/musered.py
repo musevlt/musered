@@ -757,24 +757,24 @@ class MuseRed(Reporter):
                 # we can now run the recipe
                 params = recipe_conf.get("params")
                 recipe.run(flist, name=date, params=params, **kwargs)
-
-                # and we save all the useful information in the reduced table
-                self._save_reduced(
-                    recipe,
-                    keys=("name", "recipe_name", "DPR_TYPE"),
-                    **{
-                        "night": night,
-                        "name": res[0][namecol],
-                        "run": res[0].get("run"),
-                        "recipe_name": recipe_name,
-                        "DATE_OBS": res[0][datecol],
-                        "DPR_CATG": res[0]["DPR_CATG"],
-                        "OBJECT": res[0]["OBJECT"],
-                        "INS_MODE": ins_mode,
-                    },
-                )
             finally:
                 recipe.deactivate_file_logger()
+
+            # and we save all the useful information in the reduced table
+            self._save_reduced(
+                recipe,
+                keys=("name", "recipe_name", "DPR_TYPE"),
+                **{
+                    "night": night,
+                    "name": res[0][namecol],
+                    "run": res[0].get("run"),
+                    "recipe_name": recipe_name,
+                    "DATE_OBS": res[0][datecol],
+                    "DPR_CATG": res[0]["DPR_CATG"],
+                    "OBJECT": res[0]["OBJECT"],
+                    "INS_MODE": ins_mode,
+                },
+            )
 
             if ndates > 1:
                 info("===================================================")
@@ -819,16 +819,17 @@ class MuseRed(Reporter):
                 return
 
             recipe.run(flist, params=recipe_conf.get("params"), **kwargs)
-            self._save_reduced(
-                recipe,
-                keys=("name", "recipe_name", "DPR_TYPE"),
-                name=name,
-                OBJECT=OBJECT,
-                recipe_name=recipe_name,
-                **(save_kwargs or {}),
-            )
         finally:
             recipe.deactivate_file_logger()
+
+        self._save_reduced(
+            recipe,
+            keys=("name", "recipe_name", "DPR_TYPE"),
+            name=name,
+            OBJECT=OBJECT,
+            recipe_name=recipe_name,
+            **(save_kwargs or {}),
+        )
 
     def prepare_dates(self, dates, DPR_TYPE=None, datecol="name", table="raw"):
         """Compute the list of dates (nights, exposures) to process."""

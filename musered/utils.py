@@ -744,14 +744,14 @@ def find_outliers_qc_chan(mr, table, qclist, nsigma=5, run=None):
 
     Parameters
     ----------
-    mr: musered object
-    table: str
+    mr : musered object
+    table : str
       name of table
-    qclist: list of str
+    qclist : list of str
       list of the QC column names
-    nsigma: float
+    nsigma : float
       value of sigma rejection
-    run: str
+    run : str
       run id
 
     Return
@@ -812,6 +812,7 @@ def dict_values(d):
 
 
 def ensure_list(value):
+    """Make sure that value is a list and convert to list if needed."""
     if isinstance(value, (numbers.Number, str)):
         return [value]
     elif isinstance(value, np.ndarray):
@@ -821,6 +822,7 @@ def ensure_list(value):
 
 
 def make_band_images(cube, imgname, filter):
+    """Create band images for cube with the given filters."""
     logger = logging.getLogger(__name__)
     if isinstance(filter, str):
         filter = filter.split(",")
