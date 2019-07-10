@@ -12,4 +12,4 @@ docs:
     - tox -v -e docs
 py36:
   script:
-    - tox -v -e cov
+    - tox -v -e py36-mpdafdev
