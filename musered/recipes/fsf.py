@@ -37,6 +37,7 @@ def do_fsf(expname, inputfile, outputfile, imphot_table=None, filters=None):
     if logging.getLogger('').handlers[0].level > logging.DEBUG:
         logging.getLogger("muse_psfr").setLevel("WARNING")
     
+    logger.warning('test warning')
     
     # run psfrec
     fsfmodel = MoffatModel2.from_psfrec(inputfile)

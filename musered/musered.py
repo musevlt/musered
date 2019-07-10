@@ -993,6 +993,7 @@ class MuseRed(Reporter):
                 if len(kwargs["imphot_tables"]) < len(dates):
                     self.logger.warning('Missing %d matching imphot tables for the %d exposures',
                                    len(dates)-len(kwargs["imphot_tables"]), len(dates))
+                kwargs["filters"] = [recipe_conf.get("filters"),recipe_conf.get("mean_waves")]
 
         recipe_cls = get_recipe_cls(recipe_name)
         use_reduced = recipe_cls.recipe_name not in ("muse_scibasic", "fsf")
