@@ -1222,6 +1222,12 @@ class MuseRed(Reporter):
                         order_by="name",
                     )
                 }
+                if len(fsf_tables) < len(explist):
+                    self.logger.warning('Missing %d FSF tables for the %d exposures',
+                                   len(explist)-len(fsf_tables), len(explist))
+                    fsf_tables = None
+                else:
+                    self.logger.debug('Found %d FSF tables', len(fsf_tables))
             else:
                 fsf_tables = None
 
