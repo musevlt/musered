@@ -25,7 +25,7 @@ else:
     PSFR_VERSION = muse_psfr.__version__
 
 
-def do_fsf(expname, inputfile, outputfile, imphot_table=None, filters=None):
+def do_fsf(expname, inputfile, outputfile1, outputfile2, imphot_table=None, filters=None):
     logger = logging.getLogger(__name__)
 
     if muse_psfr is None:
@@ -37,10 +37,8 @@ def do_fsf(expname, inputfile, outputfile, imphot_table=None, filters=None):
     if logging.getLogger('').handlers[0].level > logging.DEBUG:
         logging.getLogger("muse_psfr").setLevel("WARNING")
     
-    logger.warning('test warning')
-    
     # run psfrec
-    fsfmodel = MoffatModel2.from_psfrec(inputfile)
+    fsfmodel = MoffatModel2.from_psfrec(inputfile, verbose=False)
     
     fwhm = fsfmodel.get_fwhm(np.array(fsfmodel.lbrange))
     beta = fsfmodel.get_beta(np.array(fsfmodel.lbrange))
@@ -48,8 +46,20 @@ def do_fsf(expname, inputfile, outputfile, imphot_table=None, filters=None):
     
     kernel = 0
     if imphot_table is not None:
-        # computing convolution kernel
         tab = Table.read(imphot_table)
+        if outputfile2 is not None:          
+            # create output table with FWHM and BETA difference
+            vtab = Table(names=['BAND','LBDA','PSREC_FWHM','PSFREC_BETA','IMPHOT_FWHM','IMPHOT_BETA','ERR_FWHM','ERR_BETA'],
+                         dtype=['S25']+7*['f8'])
+            for b,lb in zip(*filters):
+                irow = tab[tab['filter']==b]
+                ifwhm = irow['fwhm']
+                ibeta = irow['beta']
+                pfwhm = fsfmodel.get_fwhm(lb)
+                pbeta = fsfmodel.get_beta(lb)
+                vtab.add_row([b,lb,pfwhm,pbeta,ifwhm,ibeta,ifwhm-pfwhm,ibeta-pbeta])
+            vtab.write(outputfile2, overwrite=True)
+        # computing convolution kernel
         imphot_fwhms = tab[[e['filter'] in filters[0] for e in tab]]['fwhm']
         psfrec_fwhms = fsfmodel.get_fwhm(np.array(filters[1]))
         kernels = np.sqrt(np.clip(imphot_fwhms**2 - psfrec_fwhms**2,0,np.nan))
@@ -99,7 +109,7 @@ def do_fsf(expname, inputfile, outputfile, imphot_table=None, filters=None):
         row.append(val)          
     tab.add_row(row)
     
-    tab.write(outputfile, overwrite=True)
+    tab.write(outputfile1, overwrite=True)
 
 
 class FSF(PythonRecipe):
@@ -116,14 +126,16 @@ class FSF(PythonRecipe):
 
     def _run(self, flist, *args, imphot_tables=None, filters=None, **kwargs):
         expname = get_exp_name(flist[0])
-        out = join(self.output_dir, f"FSF.fits")
+        out1 = join(self.output_dir, f"FSF.fits")
         if imphot_tables is not None:
+            out2 = join(self.output_dir, f"FSF_PSFREC_IMPHOT.fits")
             self.imphot_table = imphot_tables.get(expname)
         else:
+            out2 = None
             self.imphot_table = None
-        do_fsf(expname, flist[0], out, imphot_table=self.imphot_table, 
+        do_fsf(expname, flist[0], out1, out2, imphot_table=self.imphot_table, 
                filters=filters, **self.param)
-        return out
+        return out1,out2
 
     def dump(self, include_files=False, json_col=False):
         info = super().dump(include_files=include_files, json_col=json_col)
