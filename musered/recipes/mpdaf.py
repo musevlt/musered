@@ -7,7 +7,10 @@ from os.path import join, basename
 import mpdaf
 import numpy as np
 from astropy.io import fits
+from astropy.table import Table
 from mpdaf.obj import CubeList, CubeMosaic
+from mpdaf.MUSE.fsf import combine_fsf, MoffatModel2
+
 
 from ..utils import get_exp_name, make_band_images
 from .recipe import PythonRecipe
@@ -16,6 +19,7 @@ from .recipe import PythonRecipe
 def do_combine(
     flist,
     cube_name,
+    cubefsf_name,
     expmap_name,
     stat_name,
     img_name,
@@ -77,7 +81,16 @@ def do_combine(
         raise ValueError(f"unknown method {method}")
 
     if fsf_tables:
-        fsf_model = combine_fsf(fsf_tables)
+        # perform fsf combine
+        fsf_model,fsf_cube = do_combine_fsf(fsf_tables)
+        # save model in combined and FSF cube
+        logger.debug('FSF model saved in cube header')
+        fsf_model.to_header(cube.primary_header)
+        fsf_model.to_header(fsf_cube.primary_header)
+        # save cube
+        logger.info("Saving FSF cube: %s", cubefsf_name)
+        fsf_cube.write(cubefsf_name, savemask="nan")        
+        
 
     logger.info("Saving cube: %s", cube_name)
     cube.write(cube_name, savemask="nan")
@@ -106,9 +119,26 @@ def do_combine(
         stat.write(stat_name, format="fits", overwrite=True)
 
 
-def combine_fsf(fsf_tables):
-    print("combine_fsf")
-
+def do_combine_fsf(fsf_tables):
+    logger = logging.getLogger("musered")
+    logger.info("Combining %d FSF", len(fsf_tables))
+    fsfmodels = []
+    for expname,tabname in fsf_tables.items():
+        fsf = get_fsf_from_table(Table.read(tabname)[0])
+        logger.debug('Exposure %s FSFmodel FWHM %.2f %.2f %.2f', expname, *list(fsf.get_fwhm([5000,7000,9000])))
+        fsfmodels.append(fsf)
+    fsfmodel,cube = combine_fsf(fsfmodels)
+    logger.debug('Combined Cube  FSFmodel FWHM %.2f %.2f %.2f', *list(fsfmodel.get_fwhm([5000,7000,9000])))
+    return fsfmodel,cube
+        
+def get_fsf_from_table(row):
+    fwhm_pol = [row[f'FWHM_P{k}'] for k in range(row['NCFWHM'])]
+    beta_pol = [row[f'BETA_P{k}'] for k in range(row['NCBETA'])]
+    lbrange = [row[f'LBDA{k}'] for k in range(2)]
+    fsf = MoffatModel2(fwhm_pol, beta_pol, lbrange, 0.2)
+    return fsf
+        
+    
 
 class MPDAFCOMBINE(PythonRecipe):
     """Recipe to combine data cubes with MPDAF."""
@@ -122,6 +152,7 @@ class MPDAFCOMBINE(PythonRecipe):
         "STATPIX",
         "EXPMAP_CUBE",
         "EXPMAP_IMAGE",
+        "DATACUBE_FSF",
     ]
     version = f"mpdaf-{mpdaf.__version__}"
 
@@ -143,6 +174,7 @@ class MPDAFCOMBINE(PythonRecipe):
         field = fits.getval(flist[0], "OBJECT")
         out = dict(
             cube=join(self.output_dir, f"DATACUBE_FINAL_{field}.fits"),
+            cubefsf=join(self.output_dir, f"DATACUBE_FSF_{field}.fits"),
             image=join(self.output_dir, f"IMAGE_FOV_{field}.fits"),
             stat=join(self.output_dir, f"STATPIX_{field}.fits"),
             expmap=join(self.output_dir, f"EXPMAP_CUBE_{field}.fits"),
@@ -173,6 +205,7 @@ class MPDAFCOMBINE(PythonRecipe):
         do_combine(
             flist,
             out["cube"],
+            out["cubefsf"],
             out["expmap"],
             out["stat"],
             out["image"],

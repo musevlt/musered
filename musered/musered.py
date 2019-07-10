@@ -819,7 +819,6 @@ class MuseRed(Reporter):
             recipe.run(flist, params=recipe_conf.get("params"), **kwargs)
         finally:
             recipe.deactivate_file_logger()
-
         self._save_reduced(
             recipe,
             keys=("name", "recipe_name", "DPR_TYPE"),
@@ -1165,6 +1164,7 @@ class MuseRed(Reporter):
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         from_recipe = recipe_conf.get("from_recipe", "muse_scipost")
+        fsf_recipe = recipe_conf.get("fsf_recipe")
         recipe_cls = get_recipe_cls(recipe_name)
         DPR_TYPE = recipe_cls.DPR_TYPE
         name_dict = {"muse_exp_combine": "drs", "mpdaf_combine": "mpdaf"}
@@ -1184,8 +1184,6 @@ class MuseRed(Reporter):
         use_scale = recipe_conf.get("use_scale")
         params = params_name or recipe_name
         processed = self.get_processed(recipe_name=params)
-
-        fsf_recipe = recipe_conf.get("fsf_recipe")
 
         flags = recipe_conf.get("exclude_flags")
         for name, select in names_select.items():
