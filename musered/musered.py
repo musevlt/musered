@@ -990,8 +990,9 @@ class MuseRed(Reporter):
                     )               
                 }
                 if len(kwargs["imphot_tables"]) < len(dates):
-                    self.logger.warning('Missing %d matching imphot tables for the %d exposures',
+                    self.logger.error('Missing %d matching imphot tables for the %d exposures',
                                    len(dates)-len(kwargs["imphot_tables"]), len(dates))
+                    raise ValueError('Missing matching imphot table for exposures')
                 kwargs["filters"] = [recipe_conf.get("filters"),recipe_conf.get("mean_waves")]
 
         recipe_cls = get_recipe_cls(recipe_name)
