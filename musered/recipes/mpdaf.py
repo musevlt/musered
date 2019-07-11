@@ -9,8 +9,11 @@ import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 from mpdaf.obj import CubeList, CubeMosaic
-from mpdaf.MUSE.fsf import combine_fsf, MoffatModel2
-
+try:
+    from mpdaf.MUSE.fsf import combine_fsf, MoffatModel2
+except ImportError:
+    combine_fsf = None
+    
 
 from ..utils import get_exp_name, make_band_images
 from .recipe import PythonRecipe
@@ -81,6 +84,8 @@ def do_combine(
         raise ValueError(f"unknown method {method}")
 
     if fsf_tables:
+        if combine_fsf is None:
+            raise ImportError('Cannot import combine_fsf from MPDAF')
         # perform fsf combine
         fsf_model,fsf_cube = do_combine_fsf(fsf_tables)
         # save model in combined and FSF cube
