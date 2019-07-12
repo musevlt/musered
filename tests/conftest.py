@@ -2,7 +2,6 @@ import os
 import shutil
 
 import pytest
-
 from musered import MuseRed
 
 CURDIR = os.path.dirname(os.path.abspath(__file__))

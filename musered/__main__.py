@@ -271,6 +271,7 @@ def process_calib(mr, date, force, dry_run, bias, dark, flat, wavecal, lsf, twil
 @click.option("--makecube", is_flag=True, help="run muse_scipost_make_cube")
 @click.option("--superflat", is_flag=True, help="run superflat")
 @click.option("--zap", is_flag=True, help="run zap")
+@click.option("--fsf", is_flag=True, help="run fsf for individual exposures")
 @click.option("--params", help="name of the parameters block")
 @click.option("--dataset", help="process exposures for a given dataset")
 @click.pass_obj
@@ -285,6 +286,7 @@ def process_exp(
     makecube,
     superflat,
     zap,
+    fsf,
     params,
     dataset,
 ):
@@ -298,7 +300,7 @@ def process_exp(
         date = None
 
     kwargs = dict(dates=date, skip=not force, params_name=params, dry_run=dry_run)
-    run_all = not any([scibasic, standard, scipost, makecube, superflat, zap])
+    run_all = not any([scibasic, standard, scipost, makecube, superflat, zap, fsf])
 
     if scibasic or run_all:
         # if force:
@@ -325,6 +327,9 @@ def process_exp(
 
     if zap:
         mr.process_exp("zap", dataset=dataset, **kwargs)
+
+    if fsf:
+        mr.process_exp("fsf", dataset=dataset, **kwargs)
 
 
 @click.argument("dataset")

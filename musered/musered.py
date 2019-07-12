@@ -819,7 +819,6 @@ class MuseRed(Reporter):
             recipe.run(flist, params=recipe_conf.get("params"), **kwargs)
         finally:
             recipe.deactivate_file_logger()
-
         self._save_reduced(
             recipe,
             keys=("name", "recipe_name", "DPR_TYPE"),
@@ -977,8 +976,27 @@ class MuseRed(Reporter):
 
             kwargs["exposures"] = tbl
 
+        elif recipe_name == "fsf":
+            # Find the IMPHOT table for each exposure
+            imphot_recipe = recipe_conf.get("imphot_recipe")
+            if imphot_recipe is not None:
+                kwargs["imphot_tables"] = {
+                    o["name"]: f"{o['path']}/IMPHOT.fits"
+                    for o in self.reduced.find(
+                        name=dates,
+                        recipe_name=imphot_recipe,
+                        DPR_TYPE="IMPHOT",
+                        order_by="name",
+                    )               
+                }
+                if len(kwargs["imphot_tables"]) < len(dates):
+                    self.logger.error('Missing %d matching imphot tables for the %d exposures',
+                                   len(dates)-len(kwargs["imphot_tables"]), len(dates))
+                    raise ValueError('Missing matching imphot table for exposures')
+                kwargs["filters"] = [recipe_conf.get("filters"),recipe_conf.get("mean_waves")]
+
         recipe_cls = get_recipe_cls(recipe_name)
-        use_reduced = recipe_cls.recipe_name not in ("muse_scibasic",)
+        use_reduced = recipe_cls.recipe_name not in ("muse_scibasic", "fsf")
         self._run_recipe_loop(
             recipe_cls,
             dates,
@@ -1147,6 +1165,7 @@ class MuseRed(Reporter):
         recipe_name = normalize_recipe_name(recipe_name)
         recipe_conf = self._get_recipe_conf(recipe_name, params_name)
         from_recipe = recipe_conf.get("from_recipe", "muse_scipost")
+        fsf_recipe = recipe_conf.get("fsf_recipe")
         recipe_cls = get_recipe_cls(recipe_name)
         DPR_TYPE = recipe_cls.DPR_TYPE
         name_dict = {"muse_exp_combine": "drs", "mpdaf_combine": "mpdaf"}
@@ -1193,6 +1212,26 @@ class MuseRed(Reporter):
             else:
                 scale_tbl = None
 
+            if fsf_recipe:
+                # find the corresponding FSF for each exposures
+                fsf_tables = {
+                    o["name"]: f"{o['path']}/FSF.fits"
+                    for o in self.reduced.find(
+                        name=explist,
+                        recipe_name=fsf_recipe,
+                        DPR_TYPE="FSF",
+                        order_by="name",
+                    )
+                }
+                if len(fsf_tables) < len(explist):
+                    self.logger.warning('Missing %d FSF tables for the %d exposures',
+                                   len(explist)-len(fsf_tables), len(explist))
+                    fsf_tables = None
+                else:
+                    self.logger.debug('Found %d FSF tables', len(fsf_tables))
+            else:
+                fsf_tables = None
+
             self._run_recipe_simple(
                 recipe_cls,
                 name,
@@ -1200,6 +1239,7 @@ class MuseRed(Reporter):
                 flist,
                 params_name=params_name,
                 scale_table=scale_tbl,
+                fsf_tables=fsf_tables,
                 **kwargs,
             )
 
