@@ -1,13 +1,13 @@
 from ..utils import all_subclasses
 from .calib import *  # noqa
-from .imphot import IMPHOT
-from .mpdaf import MPDAFCOMBINE
+from .imphot import IMPHOT  # noqa
+from .mpdaf import MPDAFCOMBINE  # noqa
 from .recipe import *  # noqa
 from .recipe import BaseRecipe
 from .science import *  # noqa
-from .std import STDCOMBINE
-from .superflat import SUPERFLAT
-from .zap import ZAP
+from .std import STDCOMBINE  # noqa
+from .superflat import SUPERFLAT  # noqa
+from .zap import ZAP  # noqa
 
 recipe_classes = {
     cls.recipe_name: cls for cls in all_subclasses(BaseRecipe) if cls.recipe_name
@@ -26,12 +26,17 @@ def normalize_recipe_name(recipe_name):
     'muse_scibasic'
     >>> normalize_recipe_name('muse_scibasic')
     'muse_scibasic'
+    >>> normalize_recipe_name('imphot')
+    'imphot'
+    >>> normalize_recipe_name('imphot_scale')
+    'imphot_scale'
 
     """
     if recipe_name in recipe_classes:
         return recipe_name
     elif not recipe_name.startswith("muse_"):
-        recipe_name = "muse_" + recipe_name
+        if "muse_" + recipe_name in recipe_classes:
+            recipe_name = "muse_" + recipe_name
     return recipe_name
 
 

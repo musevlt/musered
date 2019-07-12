@@ -25,6 +25,7 @@ from .recipes import get_recipe_cls, init_cpl_params, normalize_recipe_name
 from .reporter import Reporter
 from .utils import (
     dict_values,
+    ensure_list,
     load_db,
     load_table,
     load_yaml_config,
@@ -518,41 +519,39 @@ class MuseRed(Reporter):
         force=False,
     ):
         """Remove database entries and files."""
-        for attr in (date_list, night_list):
-            if attr and isinstance(attr, str):
-                raise ValueError(f"{attr} should be a list")
-        if isinstance(recipe_list, str):
-            recipe_list = [recipe_list]
+        date_list = ensure_list(date_list)
+        night_list = ensure_list(night_list)
+        recipe_list = ensure_list(recipe_list)
 
-        kwargs = {}
+        kw = {}
         if recipe_list:
-            kwargs = {
+            kw = {
                 "recipe_name": [normalize_recipe_name(rec) for rec in recipe_list]
             }
         if date_list:
-            kwargs["name"] = self.prepare_dates(
+            kw["name"] = self.prepare_dates(
                 date_list, datecol="name", table="reduced"
             )
         if night_list:
-            kwargs["night"] = self.prepare_dates(
+            kw["night"] = self.prepare_dates(
                 night_list, datecol="night", table="reduced"
             )
 
-        count = len({o["name"] for o in self.reduced.find(**kwargs)})
+        count = self.reduced.count(**kw)
         action = "Remove" if force else "Would remove"
         if not force:
             self.logger.info("Dry-run mode, nothing will be done")
 
         if remove_files:
-            for item in {o["path"] for o in self.reduced.find(**kwargs)}:
+            for item in {o["path"] for o in self.reduced.find(**kw)}:
                 if os.path.exists(item):
                     self.logger.info("%s %s", action, item)
                     if force:
                         shutil.rmtree(item)
 
-        self.logger.info("%s %d exposures/nights from the database", action, count)
+        self.logger.info("%s %d items from the database", action, count)
         if force:
-            self.reduced.delete(**kwargs)
+            self.reduced.delete(**kw)
 
     def find_illum(self, night, ref_temp, ref_mjd_date):
         """Find the best ILLUM exposure for the night.
