@@ -525,31 +525,30 @@ class MuseRed(Reporter):
 
         kw = {}
         if recipe_list:
-            kw = {
-                "recipe_name": [normalize_recipe_name(rec) for rec in recipe_list]
-            }
+            kw = {"recipe_name": [normalize_recipe_name(rec) for rec in recipe_list]}
         if date_list:
-            kw["name"] = self.prepare_dates(
-                date_list, datecol="name", table="reduced"
-            )
+            kw["name"] = self.prepare_dates(date_list, datecol="name", table="reduced")
         if night_list:
             kw["night"] = self.prepare_dates(
                 night_list, datecol="night", table="reduced"
             )
 
-        count = self.reduced.count(**kw)
+        items = list(self.reduced.find(**kw))
+        count = len(items)
+        countexp = len(set(o["name"] for o in items))
         action = "Remove" if force else "Would remove"
         if not force:
             self.logger.info("Dry-run mode, nothing will be done")
 
         if remove_files:
-            for item in {o["path"] for o in self.reduced.find(**kw)}:
+            for item in {o["path"] for o in items}:
                 if os.path.exists(item):
                     self.logger.info("%s %s", action, item)
                     if force:
                         shutil.rmtree(item)
 
-        self.logger.info("%s %d items from the database", action, count)
+        msg = "%s %d items (%d exposures/nights) from the database"
+        self.logger.info(msg, action, count, countexp)
         if force:
             self.reduced.delete(**kw)
 

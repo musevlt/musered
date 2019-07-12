@@ -118,7 +118,7 @@ def test_clean(mr, caplog):
         == textwrap.dedent(
             """\
         Dry-run mode, nothing will be done
-        Would remove 4 exposures/nights from the database
+        Would remove 4 items (4 exposures/nights) from the database
     """
         ).splitlines()
     )
@@ -131,7 +131,7 @@ def test_clean(mr, caplog):
         == textwrap.dedent(
             """\
         Dry-run mode, nothing will be done
-        Would remove 9 exposures/nights from the database
+        Would remove 91 items (9 exposures/nights) from the database
     """
         ).splitlines()
     )
