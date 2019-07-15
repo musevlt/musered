@@ -987,13 +987,19 @@ class MuseRed(Reporter):
                         recipe_name=imphot_recipe,
                         DPR_TYPE="IMPHOT",
                         order_by="name",
-                    )               
+                    )
                 }
                 if len(kwargs["imphot_tables"]) < len(dates):
-                    self.logger.error('Missing %d matching imphot tables for the %d exposures',
-                                   len(dates)-len(kwargs["imphot_tables"]), len(dates))
-                    raise ValueError('Missing matching imphot table for exposures')
-                kwargs["filters"] = [recipe_conf.get("filters"),recipe_conf.get("mean_waves")]
+                    self.logger.error(
+                        "Missing %d matching imphot tables for the %d exposures",
+                        len(dates) - len(kwargs["imphot_tables"]),
+                        len(dates),
+                    )
+                    raise ValueError("Missing matching imphot table for exposures")
+                kwargs["filters"] = [
+                    recipe_conf.get("filters"),
+                    recipe_conf.get("mean_waves"),
+                ]
 
         recipe_cls = get_recipe_cls(recipe_name)
         use_reduced = recipe_cls.recipe_name not in ("muse_scibasic", "fsf")
@@ -1224,11 +1230,14 @@ class MuseRed(Reporter):
                     )
                 }
                 if len(fsf_tables) < len(explist):
-                    self.logger.warning('Missing %d FSF tables for the %d exposures',
-                                   len(explist)-len(fsf_tables), len(explist))
+                    self.logger.warning(
+                        "Missing %d FSF tables for the %d exposures",
+                        len(explist) - len(fsf_tables),
+                        len(explist),
+                    )
                     fsf_tables = None
                 else:
-                    self.logger.debug('Found %d FSF tables', len(fsf_tables))
+                    self.logger.debug("Found %d FSF tables", len(fsf_tables))
             else:
                 fsf_tables = None
 

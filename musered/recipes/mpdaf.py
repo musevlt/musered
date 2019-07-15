@@ -1,22 +1,22 @@
 import logging
 import pathlib
-import shutil
 import platform
-from os.path import join, basename
+import shutil
+from os.path import join
 
 import mpdaf
 import numpy as np
 from astropy.io import fits
 from astropy.table import Table
 from mpdaf.obj import CubeList, CubeMosaic
+
+from ..utils import get_exp_name, make_band_images
+from .recipe import PythonRecipe
+
 try:
     from mpdaf.MUSE.fsf import combine_fsf, MoffatModel2
 except ImportError:
     combine_fsf = None
-    
-
-from ..utils import get_exp_name, make_band_images
-from .recipe import PythonRecipe
 
 
 def do_combine(
@@ -85,17 +85,16 @@ def do_combine(
 
     if fsf_tables:
         if combine_fsf is None:
-            raise ImportError('Cannot import combine_fsf from MPDAF')
+            raise ImportError("Cannot import combine_fsf from MPDAF")
         # perform fsf combine
-        fsf_model,fsf_cube = do_combine_fsf(fsf_tables)
+        fsf_model, fsf_cube = do_combine_fsf(fsf_tables)
         # save model in combined and FSF cube
-        logger.debug('FSF model saved in cube header')
+        logger.debug("FSF model saved in cube header")
         fsf_model.to_header(cube.primary_header)
         fsf_model.to_header(fsf_cube.primary_header)
         # save cube
         logger.info("Saving FSF cube: %s", cubefsf_name)
-        fsf_cube.write(cubefsf_name, savemask="nan")        
-        
+        fsf_cube.write(cubefsf_name, savemask="nan")
 
     logger.info("Saving cube: %s", cube_name)
     cube.write(cube_name, savemask="nan")
@@ -128,22 +127,29 @@ def do_combine_fsf(fsf_tables):
     logger = logging.getLogger("musered")
     logger.info("Combining %d FSF", len(fsf_tables))
     fsfmodels = []
-    for expname,tabname in fsf_tables.items():
+    for expname, tabname in fsf_tables.items():
         fsf = get_fsf_from_table(Table.read(tabname)[0])
-        logger.debug('Exposure %s FSFmodel FWHM %.2f %.2f %.2f', expname, *list(fsf.get_fwhm([5000,7000,9000])))
+        logger.debug(
+            "Exposure %s FSFmodel FWHM %.2f %.2f %.2f",
+            expname,
+            *list(fsf.get_fwhm([5000, 7000, 9000])),
+        )
         fsfmodels.append(fsf)
-    fsfmodel,cube = combine_fsf(fsfmodels)
-    logger.debug('Combined Cube  FSFmodel FWHM %.2f %.2f %.2f', *list(fsfmodel.get_fwhm([5000,7000,9000])))
-    return fsfmodel,cube
-        
+    fsfmodel, cube = combine_fsf(fsfmodels)
+    logger.debug(
+        "Combined Cube  FSFmodel FWHM %.2f %.2f %.2f",
+        *list(fsfmodel.get_fwhm([5000, 7000, 9000])),
+    )
+    return fsfmodel, cube
+
+
 def get_fsf_from_table(row):
-    fwhm_pol = [row[f'FWHM_P{k}'] for k in range(row['NCFWHM'])]
-    beta_pol = [row[f'BETA_P{k}'] for k in range(row['NCBETA'])]
-    lbrange = [row[f'LBDA{k}'] for k in range(2)]
+    fwhm_pol = [row[f"FWHM_P{k}"] for k in range(row["NCFWHM"])]
+    beta_pol = [row[f"BETA_P{k}"] for k in range(row["NCBETA"])]
+    lbrange = [row[f"LBDA{k}"] for k in range(2)]
     fsf = MoffatModel2(fwhm_pol, beta_pol, lbrange, 0.2)
     return fsf
-        
-    
+
 
 class MPDAFCOMBINE(PythonRecipe):
     """Recipe to combine data cubes with MPDAF."""
@@ -198,7 +204,7 @@ class MPDAFCOMBINE(PythonRecipe):
 
             newflist = []
             for f in flist:
-                name, cubef = f.split('/')[-2:]
+                name, cubef = f.split("/")[-2:]
                 outdir = cachedir / name
                 if not (outdir / cubef).exists():
                     self.logger.info("copy %s to %s", f, outdir)

@@ -1,4 +1,3 @@
-
 def _setup_logging():
     import warnings
     from astropy.units import UnitsWarning

@@ -5,9 +5,9 @@ import shutil
 import textwrap
 
 import dataset
+import pytest
 from click.testing import CliRunner
 
-import pytest
 from musered import MuseRed, get_recipe_cls
 from musered.__main__ import cli
 from musered.flags import QAFlags
