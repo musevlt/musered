@@ -41,14 +41,15 @@ def do_fsf(
     # run psfrec
     fsfmodel = MoffatModel2.from_psfrec(inputfile, verbose=False)
 
-    fwhm = fsfmodel.get_fwhm(np.array(fsfmodel.lbrange))
-    beta = fsfmodel.get_beta(np.array(fsfmodel.lbrange))
+    lbrange = np.array([fsfmodel.lbrange[0],7000.0,fsfmodel.lbrange[1]])
+    fwhm = fsfmodel.get_fwhm(lbrange)
+    beta = fsfmodel.get_beta(lbrange)
     logger.info(
         "FSF PsfRec model FWHM %.2f-%.2f BETA %.2f-%.2f",
         fwhm[0],
-        fwhm[1],
+        fwhm[-1],
         beta[0],
-        beta[1],
+        beta[-1],
     )
 
     kernel = 0
@@ -143,14 +144,15 @@ def do_fsf(
                     f3,
                     f3 - f1,
                 )
-            fwhm = cfsfmodel.get_fwhm(np.array(fsfmodel.lbrange))
-            beta = cfsfmodel.get_beta(np.array(fsfmodel.lbrange))
+            lbrange = np.array([fsfmodel.lbrange[0],7000.0,fsfmodel.lbrange[1]])
+            fwhm = cfsfmodel.get_fwhm(lbrange)
+            beta = cfsfmodel.get_beta(lbrange)
             logger.info(
                 "FSF Final model FWHM %.2f-%.2f BETA %.2f-%.2f",
                 fwhm[0],
-                fwhm[1],
+                fwhm[-1],
                 beta[0],
-                beta[1],
+                beta[-1],
             )
             fsfmodel = cfsfmodel
 
@@ -160,14 +162,16 @@ def do_fsf(
             "LBDA0",
             "LBDA1",
             "FWHM_B",
+            "FWHM_V",
             "FWHM_R",
             "BETA_B",
+            "BETA_V",
             "BETA_R",
             "KERNEL",
             "NCFWHM",
             "NCBETA",
         ],
-        dtype=["S25"] + 7 * ["f8"] + 2 * ["i4"],
+        dtype=["S25"] + 9 * ["f8"] + 2 * ["i4"],
     )
     row = [
         expname,
@@ -175,8 +179,10 @@ def do_fsf(
         fsfmodel.lbrange[1],
         fwhm[0],
         fwhm[1],
+        fwhm[2],
         beta[0],
         beta[1],
+        beta[2],
         kernel,
         len(fsfmodel.fwhm_pol),
         len(fsfmodel.beta_pol),
