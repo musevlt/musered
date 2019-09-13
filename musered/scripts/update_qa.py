@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
     "--sky", is_flag=True, help="update qa_reduced table with sky flux in B,V,R"
 )
 @click.option(
+    "--fsf", is_flag=True, help="update qa_reduced table with FSF values"
+)
+@click.option(
     "--sparta",
     is_flag=True,
     help="update qa_raw table with average sparta seeing and GL",
@@ -34,7 +37,7 @@ logger = logging.getLogger(__name__)
 @click.option("--force", is_flag=True, help="force update of database")
 @click.option("--dry-run", is_flag=True, help="don't update the database")
 @click.pass_obj
-def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, band, force, dry_run):
+def update_qa(mr, date, sky, fsf, sparta, imphot, psfrec, recipe, band, force, dry_run):
     """Update QA databases (qa_raw and qa_reduced)."""
 
     if len(date) == 0:
@@ -52,12 +55,14 @@ def update_qa(mr, date, sky, sparta, imphot, psfrec, recipe, band, force, dry_ru
         qa_psfrec(mr, **kwargs)
     if imphot:
         qa_imphot(mr, recipe_name=recipe, band=band, **kwargs)
+    if fsf:
+        qa_fsf(mr, recipe_name=recipe, **kwargs)
 
 
 def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False, band="F775W"):
     if recipe_name is None:
         recipe_name = "imphot"
-
+    dates = mr.prepare_dates(dates, DPR_TYPE='OBJECT')
     rows = list(mr.reduced.find(recipe_name=recipe_name, DPR_TYPE="IMPHOT", name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_reduced, "IM_vers")
@@ -78,7 +83,7 @@ def qa_imphot(mr, recipe_name=None, dates=None, skip=True, dry_run=False, band="
 def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
     if recipe_name is None:
         recipe_name = "muse_scipost"
-
+    dates = mr.prepare_dates(dates, DPR_TYPE='OBJECT')
     recipe_name = normalize_recipe_name(recipe_name)
     rows = list(
         mr.reduced.find(recipe_name=recipe_name, DPR_TYPE="SKY_SPECTRUM", name=dates)
@@ -96,9 +101,33 @@ def qa_sky(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
         pprint.pprint(qarows)
     else:
         upsert_many(mr.db, mr.qa_reduced.name, qarows, ["name"])
+        
+def qa_fsf(mr, recipe_name=None, dates=None, skip=True, dry_run=False):
+    if recipe_name is None:
+        recipe_name = "fsf"
+    dates = mr.prepare_dates(dates, DPR_TYPE='OBJECT')
+    recipe_name = normalize_recipe_name(recipe_name)
+    rows = list(
+        mr.reduced.find(recipe_name=recipe_name, DPR_TYPE="FSF", name=dates)
+    )
+    if skip:
+        exists = _find_existing_exp(mr.qa_reduced, "FSF_FWHM_B")
+        rows = [row for row in rows if row["name"] not in exists]
+    logger.info(f"fsf: found {len(rows)} exposures in database to process")
+    qarows = []
+    for row in rows:
+        fsfvals = _fsf(f"{row['path']}/FSF.fits")
+        logger.debug("Name %s FSF %s", row["name"], fsfvals)
+        qarows.append({"name": row["name"], **fsfvals})
+    if dry_run:
+        pprint.pprint(qarows)
+    else:
+        upsert_many(mr.db, mr.qa_reduced.name, qarows, ["name"])
+
 
 
 def qa_sparta(mr, dates=None, skip=True, dry_run=False):
+    dates = mr.prepare_dates(dates, DPR_TYPE='OBJECT')
     rows = list(mr.raw.find(name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_raw, "SP_See")
@@ -123,7 +152,7 @@ def qa_psfrec(mr, dates=None, skip=True, dry_run=False):
     except ImportError:
         logger.error("psfrec: could not find the muse-psfr package")
         return
-
+    dates = mr.prepare_dates(dates, DPR_TYPE='OBJECT')
     rows = list(mr.raw.find(name=dates))
     if skip:
         exists = _find_existing_exp(mr.qa_raw, "PR_vers")
@@ -166,6 +195,16 @@ def _sky(filename):
     return {
         band: float(np.mean(s["data"][(s["lambda"] >= l1) & (s["lambda"] <= l2)]))
         for band, l1, l2 in bands
+    }
+
+def _fsf(filename):
+    t = Table.read(filename)
+    keys = [["FSF_FWHM_B","FWHM_B"],["FSF_BETA_B","BETA_B"],
+            ["FSF_FWHM_V","FWHM_V"],["FSF_BETA_V","BETA_V"],
+            ["FSF_FWHM_R","FWHM_R"],["FSF_BETA_R","BETA_R"]]
+    return {
+        key1: t[key2][0]
+        for key1,key2 in keys
     }
 
 
