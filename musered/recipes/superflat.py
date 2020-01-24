@@ -3,6 +3,7 @@ import os
 import pathlib
 import platform
 import shutil
+import sys
 from glob import glob
 from os.path import join
 from tempfile import TemporaryDirectory
@@ -34,7 +35,7 @@ class SUPERFLAT(PythonRecipe):
         "IMAGE_EXPMAP",
         "STATPIX",
     ]
-    version = "0.1"
+    version = "0.2"
     # Save the V,R,I images
     default_params = {
         "cache_pixtables": False,
@@ -92,6 +93,13 @@ class SUPERFLAT(PythonRecipe):
         ]
         nexps = len(exps)
         info("Found %d exposures for run %s", nexps, run)
+                        
+        # if a maximum number of exposures has been set, truncate the list
+        if "max_exps" in self.param:
+            if nexps > self.param["max_exps"]:
+                exps = exps[0:self.param["max_exps"]]
+                nexps = len(exps)
+                info("Only the first %d exposures will be used for the superflat", nexps)
 
         # Fix the RA/DEC/DROT values for all exposures to the values of the
         # reference exp. Take into account the offset of the exposure, as we

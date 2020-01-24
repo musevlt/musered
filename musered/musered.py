@@ -975,6 +975,9 @@ class MuseRed(Reporter):
                 tbl["excluded"] = False
 
             kwargs["exposures"] = tbl
+            
+            if "max_exps" in recipe_conf:
+                kwargs["max_exps"] = recipe_conf["max_exps"]
 
         elif recipe_name == "fsf":
             # Find the IMPHOT table for each exposure
