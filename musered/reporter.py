@@ -297,7 +297,7 @@ class Reporter:
                 "OBS_NAME",
             ]
         )
-        for col in t.columns.values():
+        for col in list(t.columns.values()):
             col.name = (
                 col.name.replace("TEL_", "").replace("OCS_SGS_", "").replace("INS_", "")
             )
@@ -384,7 +384,7 @@ class Reporter:
             tbl.sort("name")
             tbl["name"].format = "<s"
             tbl.columns.move_to_end("name", last=False)
-            for col in tbl.columns.values()[1:]:
+            for col in list(tbl.columns.values())[1:]:
                 col[col == 0] = np.ma.masked
             self.fmt.show_table(tbl)
         else:

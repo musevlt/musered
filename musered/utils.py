@@ -383,10 +383,10 @@ def query_count_to_table(
     t = Table(rows=list(rows.values()), masked=True)
     # move name column to the beginning
     t.columns.move_to_end("name", last=False)
-    for col in t.columns.values()[1:]:
+    for col in list(t.columns.values())[1:]:
         col[col == 0] = np.ma.masked
 
-    for col in t.columns.values()[1:]:
+    for col in list(t.columns.values())[1:]:
         # shorten recipe names
         col.name = col.name.replace("muse_", "")
 
