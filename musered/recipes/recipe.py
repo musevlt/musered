@@ -22,7 +22,11 @@ def init_cpl_params(
     msg_format="%(levelname)s - %(name)s: %(message)s",
 ):
     """Load esorex.rc settings and override with the settings file."""
-    cpl.esorex.init()
+
+    try:
+        cpl.esorex.init()
+    except FileNotFoundError as e:
+        print(e)
 
     if recipe_path is not None:
         cpl.Recipe.path = recipe_path
