@@ -15,4 +15,4 @@ from .flags import FLAGS, QAFlags  # noqa
 from .musered import MuseRed  # noqa
 from .recipes import *  # noqa
 from .settings import RAW_FITS_KEYWORDS  # noqa
-from .version import __version__  # noqa
+from .version import version as __version__  # noqa

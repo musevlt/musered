@@ -1,5 +1,8 @@
 [build-system]
-requires = ["setuptools>=30.3.0", "wheel", "setuptools_scm"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "wheel"]
+
+[tool.setuptools_scm]
+write_to = "musered/version.py"
 
 [tool.black]
-target-version = ['py36']
+target-version = ['py37']

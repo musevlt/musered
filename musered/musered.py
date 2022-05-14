@@ -35,7 +35,7 @@ from .utils import (
     parse_weather_conditions,
     upsert_many,
 )
-from .version import __version__
+from .version import version as __version__
 
 __all__ = ("MuseRed",)
 
@@ -975,7 +975,7 @@ class MuseRed(Reporter):
                 tbl["excluded"] = False
 
             kwargs["exposures"] = tbl
-            
+
             if "max_exps" in recipe_conf:
                 kwargs["max_exps"] = recipe_conf["max_exps"]
 

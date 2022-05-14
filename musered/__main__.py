@@ -10,7 +10,7 @@ from .musered import MuseRed
 from .scripts.retrieve_data import check_integrity, retrieve_data
 from .scripts.shell import shell
 from .scripts.update_qa import update_qa
-from .version import __version__
+from .version import version as __version__
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

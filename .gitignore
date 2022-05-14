@@ -16,4 +16,5 @@ build/
 dist/
 docs/_build
 htmlcov/
+musered/version.py
 pip-wheel-metadata/
